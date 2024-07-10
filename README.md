@@ -2,7 +2,6 @@
 
 # ServeStatic
 
-<!-- TODO: Fix these links -->
 <p>
     <a href="https://github.com/Archmonger/ServeStatic/actions?query=workflow%3ATest">
         <img src="https://github.com/Archmonger/ServeStatic/actions/workflows/test-src.yml/badge.svg">
