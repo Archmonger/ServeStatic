@@ -46,5 +46,5 @@ typing-extensions==4.7.1
     # via asgiref
 urllib3==2.0.4
     # via requests
-zipp==3.16.2
+zipp==3.19.1
     # via importlib-metadata
