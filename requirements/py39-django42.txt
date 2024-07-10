@@ -42,7 +42,7 @@ tomli==2.0.1
     # via pytest
 typing-extensions==4.7.1
     # via asgiref
-urllib3==2.0.4
+urllib3==2.2.2
     # via requests
 zipp==3.16.2
     # via importlib-metadata
