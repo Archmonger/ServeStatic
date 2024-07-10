@@ -16,7 +16,7 @@ charset-normalizer==3.2.0
     # via requests
 coverage==7.2.7
     # via -r requirements.in
-django==4.1.10
+django==3.2.25
     # via -r requirements.in
 exceptiongroup==1.1.2
     # via pytest
