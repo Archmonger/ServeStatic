@@ -16,7 +16,7 @@ coverage==7.2.7
     # via -r requirements.in
 django==4.2.3
     # via -r requirements.in
-idna==3.4
+idna==3.7
     # via requests
 iniconfig==2.0.0
     # via pytest

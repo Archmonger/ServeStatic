@@ -18,7 +18,7 @@ django==3.2.20
     # via -r requirements.in
 exceptiongroup==1.1.2
     # via pytest
-idna==3.4
+idna==3.7
     # via requests
 iniconfig==2.0.0
     # via pytest
