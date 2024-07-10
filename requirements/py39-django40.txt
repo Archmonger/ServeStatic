@@ -34,7 +34,7 @@ pytest==7.4.0
     #   pytest-randomly
 pytest-randomly==3.13.0
     # via -r requirements.in
-requests==2.31.0
+requests==2.32.2
     # via -r requirements.in
 sqlparse==0.4.4
     # via django
