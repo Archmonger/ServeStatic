@@ -96,11 +96,11 @@ def test_versioned_file_cached_forever(server, static_files, _collect_static):
     )
 
 
-def test_asgi_versioned_file_cached_forever_brotoli(
+def test_asgi_versioned_file_cached_forever_brotli(
     asgi_application, static_files, _collect_static
 ):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url})
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(asgi_application(scope, receive, send))
@@ -109,6 +109,8 @@ def test_asgi_versioned_file_cached_forever_brotoli(
         send.headers.get(b"Cache-Control", b"").decode("utf-8")
         == f"max-age={ServeStaticMiddleware.FOREVER}, public, immutable"
     )
+    assert send.headers.get(b"Content-Encoding") == b"br"
+    assert send.headers.get(b"Vary") == b"Accept-Encoding"
 
 
 def test_unversioned_file_not_cached_forever(server, static_files, _collect_static):

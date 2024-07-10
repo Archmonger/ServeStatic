@@ -5,7 +5,7 @@
 <!-- TODO: Fix these links -->
 <p>
     <a href="https://github.com/Archmonger/ServeStatic/actions?query=workflow%3ATest">
-        <img src="https://github.com/Archmonger/ServeStatic/workflows/Test/badge.svg?event=push">
+        <img src="https://github.com/Archmonger/ServeStatic/actions/workflows/test-src.yml/badge.svg">
     </a>
     <a href="https://pypi.python.org/pypi/servestatic">
         <img src="https://img.shields.io/pypi/v/servestatic.svg?label=PyPI">
@@ -14,7 +14,7 @@
         <img src="https://img.shields.io/badge/License-MIT-purple.svg">
     </a>
     <a href="https://archmonger.github.io/ServeStatic/">
-        <img src="https://img.shields.io/website?down_message=offline&label=Docs&logo=read%20the%20docs&logoColor=white&up_message=online&url=https%3A%2F%2Farchmonger.github.io%2Fservestatic%2F">
+        <img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Farchmonger.github.io%2FServeStatic%2F&up_message=online&logo=readthedocs&logoColor=white">
     </a>
 </p>
 
