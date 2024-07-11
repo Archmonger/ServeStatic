@@ -13,7 +13,7 @@
         <img src="https://img.shields.io/badge/License-MIT-purple.svg">
     </a>
     <a href="https://archmonger.github.io/ServeStatic/">
-        <img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Farchmonger.github.io%2FServeStatic%2F&up_message=online&logo=readthedocs&logoColor=white">
+        <img alt="Website" src="https://img.shields.io/website?url=https%3A%2F%2Farchmonger.github.io%2FServeStatic%2F&up_message=online&logo=readthedocs&logoColor=white&label=docs">
     </a>
 </p>
 
