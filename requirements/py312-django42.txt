@@ -8,15 +8,15 @@ asgiref==3.7.2
     # via django
 brotli==1.0.9
     # via -r requirements.in
-certifi==2023.7.22
+certifi==2024.7.4
     # via requests
 charset-normalizer==3.2.0
     # via requests
 coverage==7.2.7
     # via -r requirements.in
-django==4.2.3
+django==3.2.25
     # via -r requirements.in
-idna==3.4
+idna==3.7
     # via requests
 iniconfig==2.0.0
     # via pytest
@@ -30,9 +30,9 @@ pytest==7.4.0
     #   pytest-randomly
 pytest-randomly==3.13.0
     # via -r requirements.in
-requests==2.31.0
+requests==2.32.2
     # via -r requirements.in
-sqlparse==0.4.4
+sqlparse==0.5.0
     # via django
-urllib3==2.0.4
+urllib3==2.2.2
     # via requests
