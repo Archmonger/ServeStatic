@@ -10,8 +10,7 @@ from urllib.parse import urlparse
 
 import django
 from aiofiles.base import AiofilesContextManager
-from asgiref.sync import iscoroutinefunction
-from asgiref.sync import markcoroutinefunction
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -49,7 +48,6 @@ class AsyncServeStaticFileResponse(ServeStaticFileResponse):
     def _set_streaming_content(self, value):
         # Make sure the value is an async file handle
         if not isinstance(value, AiofilesContextManager):
-            self.file_to_stream = None
             return super()._set_streaming_content(value)
 
         iterator = AsyncFileIterator(value)
@@ -167,10 +165,16 @@ class ServeStaticMiddleware(ServeStatic):
     def __call__(self, request):
         if iscoroutinefunction(self.get_response):
             return self.acall(request)
-        else:
-            return self.call(request)
+
+        # Force Django >= 3.2 to use async file responses
+        if django.VERSION >= (3, 2):
+            return asyncio.run(self.acall(request))
+
+        # Django version has no async uspport
+        return self.call(request)
 
     def call(self, request):
+        """TODO: This can be deleted once Django 4.2 is the minimum supported version."""
         if self.autorefresh:
             static_file = self.find_file(request.path_info)
         else:
@@ -195,7 +199,10 @@ class ServeStaticMiddleware(ServeStatic):
     def serve(static_file, request):
         response = static_file.get_response(request.method, request.META)
         status = int(response.status)
-        http_response = ServeStaticFileResponse(response.file or (), status=status)
+        http_response = ServeStaticFileResponse(
+            response.file or (),
+            status=status,
+        )
         # Remove default content-type
         del http_response["content-type"]
         for key, value in response.headers:
@@ -206,7 +213,10 @@ class ServeStaticMiddleware(ServeStatic):
     async def aserve(static_file, request):
         response = await static_file.aget_response(request.method, request.META)
         status = int(response.status)
-        http_response = AsyncServeStaticFileResponse(response.file or (), status=status)
+        http_response = AsyncServeStaticFileResponse(
+            response.file or EmptyAsyncIterator(),
+            status=status,
+        )
         # Remove default content-type
         del http_response["content-type"]
         for key, value in response.headers:
@@ -294,6 +304,17 @@ class AsyncFileIterator:
                 if not chunk:
                     break
                 yield chunk
+
+
+class EmptyAsyncIterator:
+    """Async iterator for responses that have no content. Prevents Django from
+    throwing "StreamingHttpResponse must consume synchronous iterators" warnings."""
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
 
 
 class AsyncToSyncIterator:

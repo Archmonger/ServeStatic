@@ -10,7 +10,7 @@ nav:
   - Reference:
       - ServeStaticASGI: servestatic-asgi.md
       - ServeStatic: servestatic.md
-      - Django Project:
+      - Django:
           - Settings: django-settings.md
           - FAQ: django-faq.md
   - About:
