@@ -46,25 +46,21 @@ class AsyncServeStaticFileResponse(ServeStaticFileResponse):
     """
 
     def _set_streaming_content(self, value):
-        # Make sure the value is an async file handle
-        if not isinstance(value, AiofilesContextManager):
-            return super()._set_streaming_content(value)
+        if isinstance(value, AiofilesContextManager):
+            value = AsyncFileIterator(value)
 
-        iterator = AsyncFileIterator(value)
+        # Django < 4.2 doesn't support async file responses, so convert to sync
+        if django.VERSION < (4, 2) and hasattr(value, "__aiter__"):
+            value = AsyncToSyncIterator(value)
 
-        # Django < 4.2 doesn't support async iterators within `streaming_content`, so we
-        # must convert to sync
-        if django.VERSION < (4, 2):
-            iterator = AsyncToSyncIterator(iterator)
-
-        super()._set_streaming_content(iterator)
+        super()._set_streaming_content(value)
 
     if django.VERSION >= (4, 2):
 
         def __iter__(self):
-            """The way that Django 4.2+ converts from async to sync is inefficient, so
-            we override it with a better implementation. Django uses this method for all
-            WSGI responses."""
+            """The way that Django 4.2+ converts async to sync is inefficient, so
+            we override it with a better implementation. Django only uses this method
+            when running via WSGI."""
             try:
                 return iter(self.streaming_content)
             except TypeError:
@@ -307,8 +303,8 @@ class AsyncFileIterator:
 
 
 class EmptyAsyncIterator:
-    """Async iterator for responses that have no content. Prevents Django from
-    throwing "StreamingHttpResponse must consume synchronous iterators" warnings."""
+    """Async iterator for responses that have no content. Prevents Django 4.2+ from
+    showing "StreamingHttpResponse must consume synchronous iterators" warnings."""
 
     def __aiter__(self):
         return self
@@ -320,9 +316,6 @@ class EmptyAsyncIterator:
 class AsyncToSyncIterator:
     """Converts any async iterator to sync as efficiently as possible while retaining
     full compatibility with any environment.
-
-    Currently used to add aiofiles compatibility to Django WSGI and Django versions
-    that do not support __aiter__.
 
     This converter must create a temporary event loop in a thread for two reasons:
     1) Allows us to stream the iterator instead of buffering all contents in memory.
