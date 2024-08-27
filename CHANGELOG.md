@@ -34,8 +34,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
-- Prevent responses with no body from creating a warning by providing Django an empty async iterable as the file content.
-- Force Django>=3.2 to use async file responses if possible, regardless of whether the middleware is run in sync or async mode.
+### Fixed
+
+- Fix Django "StreamingHttpResponse must consume synchronous iterators" warning
 
 ## [1.0.0] - 2024-05-08
 
