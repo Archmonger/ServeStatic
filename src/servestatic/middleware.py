@@ -10,8 +10,7 @@ from urllib.parse import urlparse
 
 import django
 from aiofiles.base import AiofilesContextManager
-from asgiref.sync import iscoroutinefunction
-from asgiref.sync import markcoroutinefunction
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -47,26 +46,21 @@ class AsyncServeStaticFileResponse(ServeStaticFileResponse):
     """
 
     def _set_streaming_content(self, value):
-        # Make sure the value is an async file handle
-        if not isinstance(value, AiofilesContextManager):
-            self.file_to_stream = None
-            return super()._set_streaming_content(value)
+        if isinstance(value, AiofilesContextManager):
+            value = AsyncFileIterator(value)
 
-        iterator = AsyncFileIterator(value)
+        # Django < 4.2 doesn't support async file responses, so convert to sync
+        if django.VERSION < (4, 2) and hasattr(value, "__aiter__"):
+            value = AsyncToSyncIterator(value)
 
-        # Django < 4.2 doesn't support async iterators within `streaming_content`, so we
-        # must convert to sync
-        if django.VERSION < (4, 2):
-            iterator = AsyncToSyncIterator(iterator)
-
-        super()._set_streaming_content(iterator)
+        super()._set_streaming_content(value)
 
     if django.VERSION >= (4, 2):
 
         def __iter__(self):
-            """The way that Django 4.2+ converts from async to sync is inefficient, so
-            we override it with a better implementation. Django uses this method for all
-            WSGI responses."""
+            """The way that Django 4.2+ converts async to sync is inefficient, so
+            we override it with a better implementation. Django only uses this method
+            when running via WSGI."""
             try:
                 return iter(self.streaming_content)
             except TypeError:
@@ -167,19 +161,31 @@ class ServeStaticMiddleware(ServeStatic):
     def __call__(self, request):
         if iscoroutinefunction(self.get_response):
             return self.acall(request)
-        else:
-            return self.call(request)
+
+        # Allow Django >= 3.2 to use async file responses when running via ASGI, even
+        # if Django forces this middleware to run synchronously
+        if django.VERSION >= (3, 2):
+            return asyncio.run(self.acall(request))
+
+        # Django version has no async uspport
+        return self.call(request)
 
     def call(self, request):
+        """If the URL contains a static file, serve it. Otherwise, continue to the next
+        middleware."""
         if self.autorefresh:
             static_file = self.find_file(request.path_info)
         else:
             static_file = self.files.get(request.path_info)
         if static_file is not None:
             return self.serve(static_file, request)
+
+        # Run the next middleware in the stack
         return self.get_response(request)
 
     async def acall(self, request):
+        """If the URL contains a static file, serve it. Otherwise, continue to the next
+        middleware."""
         if self.autorefresh and hasattr(asyncio, "to_thread"):
             # Use a thread while searching disk for files on Python 3.9+
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
@@ -189,13 +195,22 @@ class ServeStaticMiddleware(ServeStatic):
             static_file = self.files.get(request.path_info)
         if static_file is not None:
             return await self.aserve(static_file, request)
-        return await self.get_response(request)
+
+        # Run the next middleware in the stack. Note that get_response can sometimes be sync if
+        # middleware was run in mixed sync-async mode
+        # https://docs.djangoproject.com/en/stable/topics/http/middleware/#asynchronous-support
+        if iscoroutinefunction(self.get_response):
+            return await self.get_response(request)
+        return self.get_response(request)
 
     @staticmethod
     def serve(static_file, request):
         response = static_file.get_response(request.method, request.META)
         status = int(response.status)
-        http_response = ServeStaticFileResponse(response.file or (), status=status)
+        http_response = ServeStaticFileResponse(
+            response.file or (),
+            status=status,
+        )
         # Remove default content-type
         del http_response["content-type"]
         for key, value in response.headers:
@@ -206,7 +221,10 @@ class ServeStaticMiddleware(ServeStatic):
     async def aserve(static_file, request):
         response = await static_file.aget_response(request.method, request.META)
         status = int(response.status)
-        http_response = AsyncServeStaticFileResponse(response.file or (), status=status)
+        http_response = AsyncServeStaticFileResponse(
+            response.file or EmptyAsyncIterator(),
+            status=status,
+        )
         # Remove default content-type
         del http_response["content-type"]
         for key, value in response.headers:
@@ -296,17 +314,29 @@ class AsyncFileIterator:
                 yield chunk
 
 
+class EmptyAsyncIterator:
+    """Async iterator for responses that have no content. Prevents Django 4.2+ from
+    showing "StreamingHttpResponse must consume synchronous iterators" warnings."""
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+
 class AsyncToSyncIterator:
     """Converts any async iterator to sync as efficiently as possible while retaining
     full compatibility with any environment.
 
-    Currently used to add aiofiles compatibility to Django WSGI and Django versions
-    that do not support __aiter__.
-
     This converter must create a temporary event loop in a thread for two reasons:
     1) Allows us to stream the iterator instead of buffering all contents in memory.
     2) Allows the iterator to be used in environments where an event loop may not exist,
-    or may be closed unexpectedly."""
+    or may be closed unexpectedly.
+
+    Currently used to add async file compatibility to Django WSGI and Django versions
+    that do not support __aiter__.
+    """
 
     def __init__(self, iterator: AsyncIterable):
         self.iterator = iterator

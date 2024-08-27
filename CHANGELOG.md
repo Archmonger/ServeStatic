@@ -34,7 +34,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
-- Nothing (yet)!
+### Fixed
+
+- Fix Django "StreamingHttpResponse must consume synchronous iterators" warning
 
 ## [1.0.0] - 2024-05-08
 
