@@ -36,7 +36,8 @@ Using the following categories, list your changes in this order:
 
 ### Fixed
 
-- Fix Django "StreamingHttpResponse must consume synchronous iterators" warning
+- Fix Django `StreamingHttpResponse must consume synchronous iterators` warning
+- Fix Django bug where file paths could fail to be followed on Windows ([Upstream PR](https://github.com/evansd/whitenoise/pull/474))
 
 ## [1.0.0] - 2024-05-08
 
