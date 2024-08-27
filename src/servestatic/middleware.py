@@ -162,7 +162,7 @@ class ServeStaticMiddleware(ServeStatic):
         if iscoroutinefunction(self.get_response):
             return self.acall(request)
 
-        # Force Django >= 3.2 use async file responses when using ASGI, even
+        # Allow Django >= 3.2 to use async file responses when running via ASGI, even
         # if Django forces this middleware to run synchronously
         if django.VERSION >= (3, 2):
             return asyncio.run(self.acall(request))
@@ -171,8 +171,8 @@ class ServeStaticMiddleware(ServeStatic):
         return self.call(request)
 
     def call(self, request):
-        """If the URL contains a static file, serve it.
-        Otherwise, continue to the next middleware."""
+        """If the URL contains a static file, serve it. Otherwise, continue to the next
+        middleware."""
         if self.autorefresh:
             static_file = self.find_file(request.path_info)
         else:
@@ -184,8 +184,8 @@ class ServeStaticMiddleware(ServeStatic):
         return self.get_response(request)
 
     async def acall(self, request):
-        """If the URL contains a static file, serve it.
-        Otherwise, continue to the next middleware."""
+        """If the URL contains a static file, serve it. Otherwise, continue to the next
+        middleware."""
         if self.autorefresh and hasattr(asyncio, "to_thread"):
             # Use a thread while searching disk for files on Python 3.9+
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
