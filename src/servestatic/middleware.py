@@ -162,7 +162,8 @@ class ServeStaticMiddleware(ServeStatic):
         if iscoroutinefunction(self.get_response):
             return self.acall(request)
 
-        # Force Django >= 3.2 to use async file responses
+        # Force Django >= 3.2 use async file responses when using ASGI, even
+        # if Django forces this middleware to run synchronously
         if django.VERSION >= (3, 2):
             return asyncio.run(self.acall(request))
 
@@ -170,16 +171,21 @@ class ServeStaticMiddleware(ServeStatic):
         return self.call(request)
 
     def call(self, request):
-        """TODO: This can be deleted once Django 4.2 is the minimum supported version."""
+        """If the URL contains a static file, serve it.
+        Otherwise, continue to the next middleware."""
         if self.autorefresh:
             static_file = self.find_file(request.path_info)
         else:
             static_file = self.files.get(request.path_info)
         if static_file is not None:
             return self.serve(static_file, request)
+
+        # Run the next middleware in the stack
         return self.get_response(request)
 
     async def acall(self, request):
+        """If the URL contains a static file, serve it.
+        Otherwise, continue to the next middleware."""
         if self.autorefresh and hasattr(asyncio, "to_thread"):
             # Use a thread while searching disk for files on Python 3.9+
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
@@ -189,7 +195,13 @@ class ServeStaticMiddleware(ServeStatic):
             static_file = self.files.get(request.path_info)
         if static_file is not None:
             return await self.aserve(static_file, request)
-        return await self.get_response(request)
+
+        # Run the next middleware in the stack. Note that get_response can sometimes be sync if
+        # middleware was run in mixed sync-async mode
+        # https://docs.djangoproject.com/en/stable/topics/http/middleware/#asynchronous-support
+        if iscoroutinefunction(self.get_response):
+            return await self.get_response(request)
+        return self.get_response(request)
 
     @staticmethod
     def serve(static_file, request):
@@ -320,7 +332,11 @@ class AsyncToSyncIterator:
     This converter must create a temporary event loop in a thread for two reasons:
     1) Allows us to stream the iterator instead of buffering all contents in memory.
     2) Allows the iterator to be used in environments where an event loop may not exist,
-    or may be closed unexpectedly."""
+    or may be closed unexpectedly.
+
+    Currently used to add async file compatibility to Django WSGI and Django versions
+    that do not support __aiter__.
+    """
 
     def __init__(self, iterator: AsyncIterable):
         self.iterator = iterator
