@@ -4,9 +4,10 @@ import asyncio
 import concurrent.futures
 import contextlib
 import os
-from posixpath import basename
+from posixpath import basename, normpath
 from typing import AsyncIterable
 from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import django
 from aiofiles.base import AiofilesContextManager
@@ -252,7 +253,10 @@ class ServeStaticMiddleware(ServeStatic):
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):
-            path = finders.find(url[len(self.static_prefix) :])
+            relative_url = url[len(self.static_prefix) :]
+            path = url2pathname(relative_url)
+            normalized_path = normpath(path).lstrip("/")
+            path = finders.find(normalized_path)
             if path:
                 yield path
         paths = super().candidate_paths_for_url(url)
