@@ -34,6 +34,10 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
+### Added
+
+- Files are now compressed within a thread pool to increase performance ([Upstream PR](https://github.com/evansd/whitenoise/pull/484))
+
 ### Fixed
 
 - Fix Django `StreamingHttpResponse must consume synchronous iterators` warning
