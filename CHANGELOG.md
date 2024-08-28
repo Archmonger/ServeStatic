@@ -32,11 +32,11 @@ Using the following categories, list your changes in this order:
 
 <!--changelog-start-->
 
-## [Unreleased]
+## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.1.0...HEAD)
 
 - Nothing (yet)!
 
-## [1.1.0] - 2024-08-27
+## [1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0) - 2024-08-27
 
 ### Added
 
@@ -47,11 +47,8 @@ Using the following categories, list your changes in this order:
 - Fix Django `StreamingHttpResponse must consume synchronous iterators` warning
 - Fix Django bug where file paths could fail to be followed on Windows ([Upstream PR](https://github.com/evansd/whitenoise/pull/474))
 
-## [1.0.0] - 2024-05-08
+## [1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0) - 2024-05-08
 
 ### Changed
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
-
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/1.0.0...HEAD
-[1.0.0]: https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0
