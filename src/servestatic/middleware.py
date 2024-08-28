@@ -81,7 +81,7 @@ class ServeStaticMiddleware(ServeStatic):
         self.get_response = get_response
         if not iscoroutinefunction(get_response):
             raise ValueError(
-                "ServeStaticMiddleware requires an async compatible version of Django"
+                "ServeStaticMiddleware requires an async compatible version of Django."
             )
         markcoroutinefunction(self)
 
@@ -176,20 +176,6 @@ class ServeStaticMiddleware(ServeStatic):
             return await self.aserve(static_file, request)
 
         return await self.get_response(request)
-
-    @staticmethod
-    def serve(static_file, request):
-        response = static_file.get_response(request.method, request.META)
-        status = int(response.status)
-        http_response = ServeStaticFileResponse(
-            response.file or (),
-            status=status,
-        )
-        # Remove default content-type
-        del http_response["content-type"]
-        for key, value in response.headers:
-            http_response[key] = value
-        return http_response
 
     @staticmethod
     async def aserve(static_file, request):
@@ -334,3 +320,4 @@ class AsyncToSyncIterator:
                     loop.run_until_complete, generator.__anext__()
                 ).result()
         loop.close()
+        thread_executor.shutdown()
