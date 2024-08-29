@@ -168,7 +168,7 @@ class ServeStaticMiddleware(ServeStatic):
         if django.VERSION >= (3, 2):
             return async_to_sync(self.acall)(request)
 
-        # Django version has no async uspport
+        # Django version has no async support
         return self.call(request)
 
     def call(self, request):
@@ -361,4 +361,4 @@ class AsyncToSyncIterator:
                     loop.run_until_complete, generator.__anext__()
                 ).result()
         loop.close()
-        thread_executor.shutdown()
+        thread_executor.shutdown(wait=False)
