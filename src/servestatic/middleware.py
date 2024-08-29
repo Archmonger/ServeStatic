@@ -293,8 +293,8 @@ class AsyncToSyncIterator:
     full compatibility with any environment.
 
     This converter must create a temporary event loop in a thread for two reasons:
-    1) Allows us to stream the iterator instead of buffering all contents in memory.
-    2) Allows the iterator to be used in environments where an event loop may not exist,
+    1. Allows us to stream the iterator instead of buffering all contents in memory.
+    2. Allows the iterator to be used in environments where an event loop may not exist,
     or may be closed unexpectedly.
 
     Currently used to add async file compatibility to Django WSGI and Django versions
