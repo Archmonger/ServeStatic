@@ -37,7 +37,7 @@ Using the following categories, list your changes in this order:
 ### Fixed
 
 -   Fix compatibility with third-party sync only middleware
-    -   Django middleware now only runs in async mode to avoid issues with Django's internal usage of `asgiref.AsyncToSync`
+    -   Django middleware now only runs in async mode to avoid clashing with Django's internal usage of `asgiref.AsyncToSync`
 
 ## [1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0) - 2024-08-27
 
