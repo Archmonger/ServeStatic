@@ -50,7 +50,7 @@ class AsyncServeStaticFileResponse(ServeStaticFileResponse):
         if isinstance(value, AiofilesContextManager):
             value = AsyncFileIterator(value)
 
-        # Django < 4.2 doesn't support async file responses, so convert to sync
+        # Django < 4.2 doesn't support async file responses, so we convert to sync
         if django.VERSION < (4, 2) and hasattr(value, "__aiter__"):
             value = AsyncToSyncIterator(value)
 
