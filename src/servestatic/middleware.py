@@ -11,7 +11,7 @@ from urllib.request import url2pathname
 
 import django
 from aiofiles.base import AiofilesContextManager
-from asgiref.sync import async_to_sync, iscoroutinefunction, markcoroutinefunction
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -75,12 +75,15 @@ class ServeStaticMiddleware(ServeStatic):
     """
 
     async_capable = True
-    sync_capable = True
+    sync_capable = False
 
     def __init__(self, get_response, settings=settings):
         self.get_response = get_response
-        if iscoroutinefunction(get_response):
-            markcoroutinefunction(self)
+        if not iscoroutinefunction(get_response):
+            raise ValueError(
+                "ServeStaticMiddleware requires an async compatible version of Django."
+            )
+        markcoroutinefunction(self)
 
         try:
             autorefresh: bool = settings.SERVESTATIC_AUTOREFRESH
@@ -159,32 +162,7 @@ class ServeStaticMiddleware(ServeStatic):
         if self.use_finders and not self.autorefresh:
             self.add_files_from_finders()
 
-    def __call__(self, request):
-        if iscoroutinefunction(self.get_response):
-            return self.acall(request)
-
-        # Allow Django >= 3.2 to use async file responses when running via ASGI, even
-        # if Django forces this middleware to run synchronously
-        if django.VERSION >= (3, 2):
-            return async_to_sync(self.acall)(request)
-
-        # Django version has no async support
-        return self.call(request)
-
-    def call(self, request):
-        """If the URL contains a static file, serve it. Otherwise, continue to the next
-        middleware."""
-        if self.autorefresh:
-            static_file = self.find_file(request.path_info)
-        else:
-            static_file = self.files.get(request.path_info)
-        if static_file is not None:
-            return self.serve(static_file, request)
-
-        # Run the next middleware in the stack
-        return self.get_response(request)
-
-    async def acall(self, request):
+    async def __call__(self, request):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
         if self.autorefresh and hasattr(asyncio, "to_thread"):
@@ -197,26 +175,7 @@ class ServeStaticMiddleware(ServeStatic):
         if static_file is not None:
             return await self.aserve(static_file, request)
 
-        # Run the next middleware in the stack. Note that get_response can sometimes be sync if
-        # middleware was run in mixed sync-async mode
-        # https://docs.djangoproject.com/en/stable/topics/http/middleware/#asynchronous-support
-        if iscoroutinefunction(self.get_response):
-            return await self.get_response(request)
-        return self.get_response(request)
-
-    @staticmethod
-    def serve(static_file, request):
-        response = static_file.get_response(request.method, request.META)
-        status = int(response.status)
-        http_response = ServeStaticFileResponse(
-            response.file or (),
-            status=status,
-        )
-        # Remove default content-type
-        del http_response["content-type"]
-        for key, value in response.headers:
-            http_response[key] = value
-        return http_response
+        return await self.get_response(request)
 
     @staticmethod
     async def aserve(static_file, request):
