@@ -4,8 +4,7 @@ import os.path
 
 import django
 
-from .utils import AppServer
-from .utils import TEST_FILE_PATH
+from .utils import TEST_FILE_PATH, AppServer
 
 ALLOWED_HOSTS = ["*"]
 
@@ -29,7 +28,13 @@ if django.VERSION >= (4, 2):
 else:
     STATICFILES_STORAGE = "servestatic.storage.CompressedManifestStaticFilesStorage"
 
-MIDDLEWARE = ["servestatic.middleware.ServeStaticMiddleware"]
+MIDDLEWARE = [
+    "tests.middleware.sync_middleware_1",
+    "tests.middleware.async_middleware_1",
+    "servestatic.middleware.ServeStaticMiddleware",
+    "tests.middleware.sync_middleware_2",
+    "tests.middleware.async_middleware_2",
+]
 
 LOGGING = {
     "version": 1,
