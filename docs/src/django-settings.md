@@ -16,7 +16,7 @@ Don't use this for the bulk of your static files because you won't benefit from 
 
 ## `SERVESTATIC_AUTOREFRESH`
 
-**Default:** `settings.DEBUG`
+**Default:** `settings.py:DEBUG`
 
 Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. For both performance and security reasons, this setting should not be used in production.
 
@@ -24,7 +24,7 @@ Recheck the filesystem to see if any files have changed before responding. This 
 
 ## `SERVESTATIC_USE_FINDERS`
 
-**Default:** `settings.DEBUG`
+**Default:** `settings.py:DEBUG`
 
 Instead of only picking up files collected into `STATIC_ROOT`, find and serve files in their original directories using Django's "finders" API. This is useful in development where it matches the behaviour of the old `runserver` command. It's also possible to use this setting in production, avoiding the need to run the `collectstatic` command during the build, so long as you do not wish to use any of the caching and compression features provided by the storage backends.
 
@@ -32,7 +32,7 @@ Instead of only picking up files collected into `STATIC_ROOT`, find and serve fi
 
 ## `SERVESTATIC_MAX_AGE`
 
-**Default:** `60 if not settings.DEBUG else 0`
+**Default:** `60 if not settings.py:DEBUG else 0`
 
 Time (in seconds) for which browsers and proxies should cache **non-versioned** files.
 
