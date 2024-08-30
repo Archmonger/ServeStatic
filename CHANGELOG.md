@@ -32,7 +32,11 @@ Using the following categories, list your changes in this order:
 
 <!--changelog-start-->
 
-## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.1.0...HEAD)
+## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.2.0...HEAD)
+
+-   Nothing (yet)!
+
+## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
 
 ### Added
 
