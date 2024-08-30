@@ -18,6 +18,8 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import FileResponse
 from django.urls import get_script_prefix
 
+from servestatic.responders import MissingFileError
+
 from .asgi import BLOCK_SIZE
 from .string_utils import ensure_leading_trailing_slash
 from .wsgi import ServeStatic
@@ -174,6 +176,18 @@ class ServeStaticMiddleware(ServeStatic):
             static_file = self.files.get(request.path_info)
         if static_file is not None:
             return await self.aserve(static_file, request)
+
+        if settings.DEBUG and request.path.startswith(settings.STATIC_URL):
+            current_finders = finders.get_finders()
+            app_dirs = [
+                storage.location
+                for finder in current_finders
+                for storage in finder.storages.values()
+            ]
+            app_dirs = "\n• ".join(sorted(app_dirs))
+            raise MissingFileError(
+                f"ServeStatic did not find the file '{request.path.lstrip(settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
+            )
 
         return await self.get_response(request)
 
