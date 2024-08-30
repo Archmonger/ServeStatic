@@ -269,3 +269,12 @@ def test_error_message(server):
     )
     assert "•" in response_content
     assert str(Path(__file__).parent / "test_files" / "static") in response_content
+
+
+def test_force_script_name(server, static_files, _collect_static):
+    with override_settings(
+        FORCE_SCRIPT_NAME="/forced_script_name", STATIC_URL="static/"
+    ):
+        url = storage.staticfiles_storage.url(static_files.js_path)
+        response = server.get(url)
+        assert response.content == static_files.js_content
