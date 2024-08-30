@@ -34,6 +34,10 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.1.0...HEAD)
 
+### Added
+
+-   Verbose Django `404` error page when `settings.py:DEBUG` is `True` ([Upstream PR](https://github.com/evansd/whitenoise/pull/366))
+
 ### Fixed
 
 -   Fix compatibility with third-party sync only middleware
