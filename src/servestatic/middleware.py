@@ -4,6 +4,7 @@ import asyncio
 import concurrent.futures
 import contextlib
 import os
+from itertools import chain
 from posixpath import basename, normpath
 from typing import AsyncIterable
 from urllib.parse import urlparse
@@ -14,7 +15,10 @@ from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings
 from django.contrib.staticfiles import finders
-from django.contrib.staticfiles.storage import staticfiles_storage
+from django.contrib.staticfiles.storage import (
+    ManifestStaticFilesStorage,
+    staticfiles_storage,
+)
 from django.http import FileResponse
 
 from servestatic.responders import MissingFileError
@@ -140,6 +144,11 @@ class ServeStaticMiddleware(ServeStatic):
             self.use_finders = settings.DEBUG
 
         try:
+            self.use_manifest = settings.SERVESTATIC_USE_MANIFEST
+        except AttributeError:
+            self.use_manifest = not settings.DEBUG
+
+        try:
             self.static_prefix = settings.SERVESTATIC_STATIC_PREFIX
         except AttributeError:
             self.static_prefix = urlparse(settings.STATIC_URL or "").path
@@ -159,6 +168,9 @@ class ServeStaticMiddleware(ServeStatic):
             root = None
         if root:
             self.add_files(root)
+
+        if self.use_manifest and not self.autorefresh:
+            self.add_files_from_manifest()
 
         if self.use_finders and not self.autorefresh:
             self.add_files_from_finders()
@@ -222,6 +234,19 @@ class ServeStaticMiddleware(ServeStatic):
         stat_cache = {path: os.stat(path) for path in files.values()}
         for url, path in files.items():
             self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+
+    def add_files_from_manifest(self):
+        if isinstance(staticfiles_storage, ManifestStaticFilesStorage):
+            serve_unhashed = not getattr(
+                settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
+            )
+            return {
+                f"{self.static_prefix}{n}"
+                for n in chain(
+                    staticfiles_storage.hashed_files.values(),
+                    (staticfiles_storage.hashed_files.keys() if serve_unhashed else []),
+                )
+            }
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):
