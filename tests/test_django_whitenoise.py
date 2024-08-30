@@ -4,28 +4,29 @@ import asyncio
 import shutil
 import tempfile
 from contextlib import closing
-from urllib.parse import urljoin
-from urllib.parse import urlparse
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import brotli
 import pytest
 from django.conf import settings
-from django.contrib.staticfiles import finders
-from django.contrib.staticfiles import storage
+from django.contrib.staticfiles import finders, storage
 from django.core.asgi import get_asgi_application
 from django.core.management import call_command
 from django.core.wsgi import get_wsgi_application
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
-from .utils import AppServer
-from .utils import AsgiAppServer
-from .utils import AsgiReceiveEmulator
-from .utils import AsgiScopeEmulator
-from .utils import AsgiSendEmulator
-from .utils import Files
-from servestatic.middleware import ServeStaticFileResponse
-from servestatic.middleware import ServeStaticMiddleware
+from servestatic.middleware import ServeStaticFileResponse, ServeStaticMiddleware
+
+from .utils import (
+    AppServer,
+    AsgiAppServer,
+    AsgiReceiveEmulator,
+    AsgiScopeEmulator,
+    AsgiSendEmulator,
+    Files,
+)
 
 
 def reset_lazy_object(obj):
@@ -188,7 +189,7 @@ def test_file_served_from_static_dir(finder_static_files, finder_server):
 
 
 def test_non_ascii_requests_safely_ignored(finder_server):
-    response = finder_server.get(settings.STATIC_URL + "test\u263A")
+    response = finder_server.get(settings.STATIC_URL + "test\u263a")
     assert 404 == response.status_code
 
 
@@ -238,3 +239,21 @@ def test_relative_static_url(server, static_files, _collect_static):
         url = storage.staticfiles_storage.url(static_files.js_path)
         response = server.get(url)
         assert response.content == static_files.js_content
+
+
+def test_404_in_prod(server):
+    response = server.get(settings.STATIC_URL + "garbage")
+    assert response.status_code == 404
+
+
+@override_settings(DEBUG=True)
+def test_error_message(server):
+    response = server.get(settings.STATIC_URL + "garbage")
+    print(response.content.decode())
+    app_dirs = Path(__file__).parent / "test_files" / "static"
+
+    expected = f"""{settings.STATIC_URL + 'garbage'} not found. Searched these paths:
+
+    {app_dirs}"""
+
+    assert expected in str(response.content.decode())
