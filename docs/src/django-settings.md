@@ -160,15 +160,15 @@ SERVESTATIC_IMMUTABLE_FILE_TEST = immutable_file_test
 
 ## `SERVESTATIC_STATIC_PREFIX`
 
-**Default:** Path component of `settings.STATIC_URL` (with `settings.FORCE_SCRIPT_NAME` removed if set)
+**Default:** `settings.py:STATIC_URL`
 
 The URL prefix under which static files will be served.
 
-Usually this can be determined automatically by using the path component of `STATIC_URL`. So if `STATIC_URL` is `https://example.com/static/` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
+If this setting is unset, this value will automatically determined by analysing your `STATIC_URL` setting. For example, if `STATIC_URL = 'https://example.com/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
 
-If your application is not running at the root of the domain and `FORCE_SCRIPT_NAME` is set then this value will be removed from the `STATIC_URL` path first to give the correct prefix.
+Note that `FORCE_SCRIPT_NAME` is also taken into account when automatically determining this value. For example, if `FORCE_SCRIPT_NAME = 'subdir/'` and `STATIC_URL = 'subdir/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
 
-If your deployment is more complicated than this (for instance, if you are using a CDN which is doing path rewriting) then you may need to configure this value directly.
+If your deployment is more complicated than this (for instance, if you are using a CDN which is doing [path rewriting](https://blog.nginx.org/blog/creating-nginx-rewrite-rules)) then you may need to configure this value directly.
 
 ---
 
