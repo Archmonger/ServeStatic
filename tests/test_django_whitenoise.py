@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import shutil
 import tempfile
 from contextlib import closing
@@ -248,12 +249,16 @@ def test_404_in_prod(server):
 
 @override_settings(DEBUG=True)
 def test_error_message(server):
-    response = server.get(settings.STATIC_URL + "garbage")
-    print(response.content.decode())
-    app_dirs = Path(__file__).parent / "test_files" / "static"
+    response = server.get(f"{settings.STATIC_URL}garbage")
+    response_content = str(response.content.decode())
+    response_content = html.unescape(response_content)
 
-    expected = f"""{settings.STATIC_URL + 'garbage'} not found. Searched these paths:
+    # Beautify for easier debugging
+    response_content = response_content[response_content.index("ServeStatic") :]
 
-    {app_dirs}"""
-
-    assert expected in str(response.content.decode())
+    assert (
+        "ServeStatic did not find the file 'garbage' within the following paths:"
+        in response_content
+    )
+    assert "•" in response_content
+    assert str(Path(__file__).parent / "test_files" / "static") in response_content

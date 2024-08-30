@@ -184,9 +184,9 @@ class ServeStaticMiddleware(ServeStatic):
                 for finder in current_finders
                 for storage in finder.storages.values()
             ]
-            app_dirs = "\n    ".join(sorted(app_dirs))
+            app_dirs = "\n• ".join(sorted(app_dirs))
             raise MissingFileError(
-                f"{request.path} not found. Searched these paths:{app_dirs}"
+                f"ServeStatic did not find the file '{request.path.lstrip(settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
             )
 
         return await self.get_response(request)
