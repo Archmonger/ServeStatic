@@ -271,10 +271,10 @@ def test_error_message(server):
     assert str(Path(__file__).parent / "test_files" / "static") in response_content
 
 
+@override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="static/")
 def test_force_script_name(server, static_files, _collect_static):
-    with override_settings(
-        FORCE_SCRIPT_NAME="/forced_script_name", STATIC_URL="static/"
-    ):
-        url = storage.staticfiles_storage.url(static_files.js_path)
-        response = server.get(url)
-        assert response.content == static_files.js_content
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    assert url.startswith("/subdir/static/")
+    response = server.get(url)
+    assert "/subdir" in response.url
+    assert response.content == static_files.js_content
