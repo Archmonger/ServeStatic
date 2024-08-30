@@ -16,7 +16,7 @@ Don't use this for the bulk of your static files because you won't benefit from 
 
 ## `SERVESTATIC_AUTOREFRESH`
 
-**Default:** `settings.DEBUG`
+**Default:** `settings.py:DEBUG`
 
 Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. For both performance and security reasons, this setting should not be used in production.
 
@@ -24,7 +24,7 @@ Recheck the filesystem to see if any files have changed before responding. This 
 
 ## `SERVESTATIC_USE_FINDERS`
 
-**Default:** `settings.DEBUG`
+**Default:** `settings.py:DEBUG`
 
 Instead of only picking up files collected into `STATIC_ROOT`, find and serve files in their original directories using Django's "finders" API. This is useful in development where it matches the behaviour of the old `runserver` command. It's also possible to use this setting in production, avoiding the need to run the `collectstatic` command during the build, so long as you do not wish to use any of the caching and compression features provided by the storage backends.
 
@@ -32,7 +32,7 @@ Instead of only picking up files collected into `STATIC_ROOT`, find and serve fi
 
 ## `SERVESTATIC_MAX_AGE`
 
-**Default:** `60 if not settings.DEBUG else 0`
+**Default:** `60 if not settings.py:DEBUG else 0`
 
 Time (in seconds) for which browsers and proxies should cache **non-versioned** files.
 
@@ -160,15 +160,15 @@ SERVESTATIC_IMMUTABLE_FILE_TEST = immutable_file_test
 
 ## `SERVESTATIC_STATIC_PREFIX`
 
-**Default:** Path component of `settings.STATIC_URL` (with `settings.FORCE_SCRIPT_NAME` removed if set)
+**Default:** `settings.py:STATIC_URL`
 
 The URL prefix under which static files will be served.
 
-Usually this can be determined automatically by using the path component of `STATIC_URL`. So if `STATIC_URL` is `https://example.com/static/` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
+If this setting is unset, this value will automatically determined by analysing your `STATIC_URL` setting. For example, if `STATIC_URL = 'https://example.com/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
 
-If your application is not running at the root of the domain and `FORCE_SCRIPT_NAME` is set then this value will be removed from the `STATIC_URL` path first to give the correct prefix.
+Note that `FORCE_SCRIPT_NAME` is also taken into account when automatically determining this value. For example, if `FORCE_SCRIPT_NAME = 'subdir/'` and `STATIC_URL = 'subdir/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
 
-If your deployment is more complicated than this (for instance, if you are using a CDN which is doing path rewriting) then you may need to configure this value directly.
+If your deployment is more complicated than this (for instance, if you are using a CDN which is doing [path rewriting](https://blog.nginx.org/blog/creating-nginx-rewrite-rules)) then you may need to configure this value directly.
 
 ---
 

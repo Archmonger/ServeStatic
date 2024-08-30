@@ -16,7 +16,6 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import FileResponse
-from django.urls import get_script_prefix
 
 from servestatic.responders import MissingFileError
 
@@ -144,10 +143,10 @@ class ServeStaticMiddleware(ServeStatic):
             self.static_prefix = settings.SERVESTATIC_STATIC_PREFIX
         except AttributeError:
             self.static_prefix = urlparse(settings.STATIC_URL or "").path
-            script_prefix = get_script_prefix().rstrip("/")
-            if script_prefix:
-                if self.static_prefix.startswith(script_prefix):
-                    self.static_prefix = self.static_prefix[len(script_prefix) :]
+            if settings.FORCE_SCRIPT_NAME:
+                script_name = settings.FORCE_SCRIPT_NAME.rstrip("/")
+                if self.static_prefix.startswith(script_name):
+                    self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         self.static_root = settings.STATIC_ROOT

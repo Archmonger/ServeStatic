@@ -29,8 +29,8 @@ It's designed to work nicely with a CDN for high-traffic sites so you don't have
 
 `ServeStatic` automatically takes care of best-practices for you, for instance:
 
-- Serving compressed content (gzip and Brotli formats, handling Accept-Encoding and Vary headers correctly)
-- Setting far-future cache headers on content which won't change
+-   Serving compressed content (gzip and Brotli formats, handling Accept-Encoding and Vary headers correctly)
+-   Setting far-future cache headers on content which won't change
 
 Worried that serving static files with Python is horribly inefficient? Still think you should be using Amazon S3? Have a look at the FAQ below.
 
@@ -58,4 +58,4 @@ None of this is rocket science, but it's fiddly and annoying and `ServeStatic` t
 
 ---
 
-_This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for continued maintenience and feature updates._
+_This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for continued maintenance and feature updates._
