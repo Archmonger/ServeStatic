@@ -244,7 +244,14 @@ def test_relative_static_url(server, static_files, _collect_static):
 
 def test_404_in_prod(server):
     response = server.get(settings.STATIC_URL + "garbage")
+    response_content = str(response.content.decode())
+    response_content = html.unescape(response_content)
+
     assert response.status_code == 404
+    assert (
+        "ServeStatic did not find the file 'garbage' within the following paths:"
+        not in response_content
+    )
 
 
 @override_settings(DEBUG=True)
