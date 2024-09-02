@@ -41,7 +41,11 @@ The most common issue is that there are CSS files which reference other files (u
 To test whether the problems are due to `ServeStatic` or not, try swapping the `ServeStatic` storage backend for the Django one:
 
 ```python
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    },
+}
 ```
 
 If the problems persist then your issue is with Django itself (try the [docs](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/) or the [mailing list](https://groups.google.com/d/forum/django-users)). If the problem only occurs with ServeStatic then raise a ticket on the [issue tracker](https://github.com/Archmonger/ServeStatic/issues).

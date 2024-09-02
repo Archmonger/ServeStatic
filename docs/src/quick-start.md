@@ -28,11 +28,14 @@ That's it, you're ready to go.
 Want forever-cacheable files and compression support? Just add this to your `settings.py`.
 
 ```python linenums="0"
-STATICFILES_STORAGE = "servestatic.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "servestatic.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 ```
 
-For more details, including on setting up CloudFront and other CDNs see
-the [full Django guide](django.md).
+For more details, including on setting up CloudFront and other CDNs see the [full Django guide](django.md).
 
 ## Using with WSGI
 
