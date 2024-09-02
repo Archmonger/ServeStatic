@@ -51,6 +51,7 @@ jobs:
               with:
                   name: coverage-data
                   path: ".coverage.*"
+                  include-hidden-files: true
 
     coverage:
         name: Coverage
