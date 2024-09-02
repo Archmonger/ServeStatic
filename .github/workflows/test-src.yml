@@ -75,7 +75,6 @@ jobs:
               uses: actions/upload-artifact/merge@v4
               with:
                   name: coverage-data
-                  pattern: "coverage-data-*"
                   delete-merged: true
 
             - name: Combine coverage and fail if it's <100%
