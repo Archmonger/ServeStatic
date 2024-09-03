@@ -13,7 +13,7 @@ from urllib.request import url2pathname
 import django
 from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
@@ -82,7 +82,7 @@ class ServeStaticMiddleware(ServeStatic):
     async_capable = True
     sync_capable = False
 
-    def __init__(self, get_response, settings=settings):
+    def __init__(self, get_response, settings=django_settings):
         self.get_response = get_response
         if not iscoroutinefunction(get_response):
             raise ValueError(
@@ -90,41 +90,23 @@ class ServeStaticMiddleware(ServeStatic):
             )
         markcoroutinefunction(self)
 
-        try:
-            autorefresh: bool = settings.SERVESTATIC_AUTOREFRESH
-        except AttributeError:
-            autorefresh = settings.DEBUG
-        try:
-            max_age = settings.SERVESTATIC_MAX_AGE
-        except AttributeError:
-            if settings.DEBUG:
-                max_age = 0
-            else:
-                max_age = 60
-        try:
-            allow_all_origins = settings.SERVESTATIC_ALLOW_ALL_ORIGINS
-        except AttributeError:
-            allow_all_origins = True
-        try:
-            charset = settings.SERVESTATIC_CHARSET
-        except AttributeError:
-            charset = "utf-8"
-        try:
-            mimetypes = settings.SERVESTATIC_MIMETYPES
-        except AttributeError:
-            mimetypes = None
-        try:
-            add_headers_function = settings.SERVESTATIC_ADD_HEADERS_FUNCTION
-        except AttributeError:
-            add_headers_function = None
-        try:
-            index_file = settings.SERVESTATIC_INDEX_FILE
-        except AttributeError:
-            index_file = None
-        try:
-            immutable_file_test = settings.SERVESTATIC_IMMUTABLE_FILE_TEST
-        except AttributeError:
-            immutable_file_test = None
+        autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", settings.DEBUG)
+        max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if settings.DEBUG else 60)
+        allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
+        charset = getattr(settings, "SERVESTATIC_CHARSET", "utf-8")
+        mimetypes = getattr(settings, "SERVESTATIC_MIMETYPES", None)
+        add_headers_function = getattr(
+            settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None
+        )
+        index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
+        immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
+        self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", settings.DEBUG)
+        self.use_manifest = getattr(
+            settings, "SERVESTATIC_USE_MANIFEST", not settings.DEBUG
+        )
+        self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
+        self.static_root = getattr(settings, "STATIC_ROOT", None)
+        root = getattr(settings, "SERVESTATIC_ROOT", None)
 
         super().__init__(
             application=None,
@@ -138,19 +120,7 @@ class ServeStaticMiddleware(ServeStatic):
             immutable_file_test=immutable_file_test,
         )
 
-        try:
-            self.use_finders = settings.SERVESTATIC_USE_FINDERS
-        except AttributeError:
-            self.use_finders = settings.DEBUG
-
-        try:
-            self.use_manifest = settings.SERVESTATIC_USE_MANIFEST
-        except AttributeError:
-            self.use_manifest = not settings.DEBUG
-
-        try:
-            self.static_prefix = settings.SERVESTATIC_STATIC_PREFIX
-        except AttributeError:
+        if self.static_prefix is None:
             self.static_prefix = urlparse(settings.STATIC_URL or "").path
             if settings.FORCE_SCRIPT_NAME:
                 script_name = settings.FORCE_SCRIPT_NAME.rstrip("/")
@@ -158,19 +128,14 @@ class ServeStaticMiddleware(ServeStatic):
                     self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
-        self.static_root = settings.STATIC_ROOT
-        if self.static_root:
-            self.add_files(self.static_root, prefix=self.static_prefix)
-
-        try:
-            root = settings.SERVESTATIC_ROOT
-        except AttributeError:
-            root = None
-        if root:
-            self.add_files(root)
-
         if self.use_manifest and not self.autorefresh:
             self.add_files_from_manifest()
+
+        if self.static_root and not self.use_manifest:
+            self.add_files(self.static_root, prefix=self.static_prefix)
+
+        if root:
+            self.add_files(root)
 
         if self.use_finders and not self.autorefresh:
             self.add_files_from_finders()
@@ -188,7 +153,9 @@ class ServeStaticMiddleware(ServeStatic):
         if static_file is not None:
             return await self.aserve(static_file, request)
 
-        if settings.DEBUG and request.path.startswith(settings.STATIC_URL):
+        if django_settings.DEBUG and request.path.startswith(
+            django_settings.STATIC_URL
+        ):
             current_finders = finders.get_finders()
             app_dirs = [
                 storage.location
@@ -197,7 +164,7 @@ class ServeStaticMiddleware(ServeStatic):
             ]
             app_dirs = "\n• ".join(sorted(app_dirs))
             raise MissingFileError(
-                f"ServeStatic did not find the file '{request.path.lstrip(settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
+                f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
             )
 
         return await self.get_response(request)
@@ -238,7 +205,7 @@ class ServeStaticMiddleware(ServeStatic):
     def add_files_from_manifest(self):
         if isinstance(staticfiles_storage, ManifestStaticFilesStorage):
             serve_unhashed = not getattr(
-                settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
+                django_settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
             )
             return {
                 f"{self.static_prefix}{n}"
