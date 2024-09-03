@@ -70,6 +70,8 @@ jobs:
 
             - name: Download data
               uses: actions/download-artifact@v3
+              with:
+                  name: coverage-data
 
             - name: Combine coverage and fail if it's <100%
               run: |
