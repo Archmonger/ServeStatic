@@ -203,17 +203,23 @@ class ServeStaticMiddleware(ServeStatic):
             self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
-        if isinstance(staticfiles_storage, ManifestStaticFilesStorage):
-            serve_unhashed = not getattr(
-                django_settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
-            )
-            return {
-                f"{self.static_prefix}{n}"
-                for n in chain(
-                    staticfiles_storage.hashed_files.values(),
-                    (staticfiles_storage.hashed_files.keys() if serve_unhashed else []),
+        if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
+            return
+
+        # Dictionary with hashed filenames as keys and unhashed filenames as values
+        django_file_storage: dict = staticfiles_storage.hashed_files
+        serve_unhashed = not getattr(
+            django_settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
+        )
+
+        for hashed_name, unhashed_name in django_file_storage.items():
+            if serve_unhashed:
+                self.add_file_to_dictionary(
+                    f"{self.static_prefix}{unhashed_name}", unhashed_name
                 )
-            }
+            self.add_file_to_dictionary(
+                f"{self.static_prefix}{hashed_name}", unhashed_name
+            )
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):

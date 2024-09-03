@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import warnings
@@ -8,10 +9,7 @@ from typing import Callable
 from wsgiref.headers import Headers
 
 from .media_types import MediaTypes
-from .responders import IsDirectoryError
-from .responders import MissingFileError
-from .responders import Redirect
-from .responders import StaticFile
+from .responders import IsDirectoryError, MissingFileError, Redirect, StaticFile
 from .string_utils import ensure_leading_trailing_slash
 
 
@@ -81,17 +79,16 @@ class BaseServeStatic:
             # to store the list of directories in reverse order so later ones
             # match first when they're checked in "autorefresh" mode
             self.directories.insert(0, (root, prefix))
+        elif os.path.isdir(root):
+            self.update_files_dictionary(root, prefix)
         else:
-            if os.path.isdir(root):
-                self.update_files_dictionary(root, prefix)
-            else:
-                warnings.warn(f"No directory at: {root}", stacklevel=3)
+            warnings.warn(f"No directory at: {root}", stacklevel=3)
 
     def update_files_dictionary(self, root, prefix):
         # Build a mapping from paths to the results of `os.stat` calls
         # so we only have to touch the filesystem once
         stat_cache = dict(scantree(root))
-        for path in stat_cache.keys():
+        for path in stat_cache:
             relative_path = path[len(root) :]
             relative_url = relative_path.replace("\\", "/")
             url = prefix + relative_url
@@ -100,7 +97,7 @@ class BaseServeStatic:
     def add_file_to_dictionary(self, url, path, stat_cache=None):
         if self.is_compressed_variant(path, stat_cache=stat_cache):
             return
-        if self.index_file is not None and url.endswith("/" + self.index_file):
+        if self.index_file is not None and url.endswith(f"/{self.index_file}"):
             index_url = url[: -len(self.index_file)]
             index_no_slash = index_url.rstrip("/")
             self.files[url] = self.redirect(url, index_url)
@@ -116,10 +113,8 @@ class BaseServeStatic:
         if not self.url_is_canonical(url):
             return
         for path in self.candidate_paths_for_url(url):
-            try:
+            with contextlib.suppress(MissingFileError):
                 return self.find_file_at_path(path, url)
-            except MissingFileError:
-                pass
 
     def candidate_paths_for_url(self, url):
         for root, prefix in self.directories:
@@ -136,7 +131,7 @@ class BaseServeStatic:
             if url.endswith("/"):
                 path = os.path.join(path, self.index_file)
                 return self.get_static_file(path, url)
-            elif url.endswith("/" + self.index_file):
+            elif url.endswith(f"/{self.index_file}"):
                 if os.path.isfile(path):
                     return self.redirect(url, url[: -len(self.index_file)])
             else:
@@ -144,7 +139,7 @@ class BaseServeStatic:
                     return self.get_static_file(path, url)
                 except IsDirectoryError:
                     if os.path.isfile(os.path.join(path, self.index_file)):
-                        return self.redirect(url, url + "/")
+                        return self.redirect(url, f"{url}/")
             raise MissingFileError(path)
 
         return self.get_static_file(path, url)
@@ -187,7 +182,7 @@ class BaseServeStatic:
             path,
             headers.items(),
             stat_cache=stat_cache,
-            encodings={"gzip": path + ".gz", "br": path + ".br"},
+            encodings={"gzip": f"{path}.gz", "br": f"{path}.br"},
         )
 
     def add_mime_headers(self, headers, path, url):
@@ -200,9 +195,7 @@ class BaseServeStatic:
 
     def add_cache_headers(self, headers, path, url):
         if self.immutable_file_test(path, url):
-            headers["Cache-Control"] = "max-age={}, public, immutable".format(
-                self.FOREVER
-            )
+            headers["Cache-Control"] = f"max-age={self.FOREVER}, public, immutable"
         elif self.max_age is not None:
             headers["Cache-Control"] = f"max-age={self.max_age}, public"
 
@@ -220,7 +213,7 @@ class BaseServeStatic:
         We use relative redirects as we don't know the absolute URL the app is
         being hosted under
         """
-        if to_url == from_url + "/":
+        if to_url == f"{from_url}/":
             relative_url = from_url.split("/")[-1] + "/"
         elif from_url == to_url + self.index_file:
             relative_url = "./"
