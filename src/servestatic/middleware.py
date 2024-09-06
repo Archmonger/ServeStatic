@@ -4,7 +4,6 @@ import asyncio
 import concurrent.futures
 import contextlib
 import os
-from itertools import chain
 from posixpath import basename, normpath
 from typing import AsyncIterable
 from urllib.parse import urlparse
@@ -15,10 +14,7 @@ from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
-from django.contrib.staticfiles.storage import (
-    ManifestStaticFilesStorage,
-    staticfiles_storage,
-)
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import FileResponse
 
 from servestatic.responders import MissingFileError
@@ -82,14 +78,14 @@ class ServeStaticMiddleware(ServeStatic):
     async_capable = True
     sync_capable = False
 
-    def __init__(self, get_response, settings=django_settings):
-        self.get_response = get_response
+    def __init__(self, get_response=None, settings=django_settings):
         if not iscoroutinefunction(get_response):
             raise ValueError(
                 "ServeStaticMiddleware requires an async compatible version of Django."
             )
         markcoroutinefunction(self)
 
+        self.get_response = get_response
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", settings.DEBUG)
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if settings.DEBUG else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
@@ -107,6 +103,7 @@ class ServeStaticMiddleware(ServeStatic):
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
         root = getattr(settings, "SERVESTATIC_ROOT", None)
+        self.load_manifest_files = False
 
         super().__init__(
             application=None,
@@ -129,7 +126,7 @@ class ServeStaticMiddleware(ServeStatic):
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         if self.use_manifest and not self.autorefresh:
-            self.add_files_from_manifest()
+            self.load_manifest_files = True
 
         if self.static_root and not self.use_manifest:
             self.add_files(self.static_root, prefix=self.static_prefix)
@@ -143,6 +140,9 @@ class ServeStaticMiddleware(ServeStatic):
     async def __call__(self, request):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
+        if self.load_manifest_files:
+            self.add_files_from_manifest()
+            self.load_manifest_files = False
         if self.autorefresh and hasattr(asyncio, "to_thread"):
             # Use a thread while searching disk for files on Python 3.9+
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
@@ -203,22 +203,21 @@ class ServeStaticMiddleware(ServeStatic):
             self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
-        if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
-            return
-
-        # Dictionary with hashed filenames as keys and unhashed filenames as values
         django_file_storage: dict = staticfiles_storage.hashed_files
+
         serve_unhashed = not getattr(
             django_settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
         )
 
-        for hashed_name, unhashed_name in django_file_storage.items():
+        for unhashed_name, hashed_name in django_file_storage.items():
             if serve_unhashed:
                 self.add_file_to_dictionary(
-                    f"{self.static_prefix}{unhashed_name}", unhashed_name
+                    f"{self.static_prefix}{unhashed_name}",
+                    staticfiles_storage.path(unhashed_name),
                 )
             self.add_file_to_dictionary(
-                f"{self.static_prefix}{hashed_name}", unhashed_name
+                f"{self.static_prefix}{hashed_name}",
+                staticfiles_storage.path(unhashed_name),
             )
 
     def candidate_paths_for_url(self, url):
