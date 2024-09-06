@@ -14,7 +14,10 @@ from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
-from django.contrib.staticfiles.storage import staticfiles_storage
+from django.contrib.staticfiles.storage import (
+    ManifestStaticFilesStorage,
+    staticfiles_storage,
+)
 from django.http import FileResponse
 
 from servestatic.responders import MissingFileError
@@ -102,6 +105,9 @@ class ServeStaticMiddleware(ServeStatic):
         )
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
+        self.keep_only_hashed_files = getattr(
+            django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False
+        )
         root = getattr(settings, "SERVESTATIC_ROOT", None)
         self.load_manifest_files = False
 
@@ -141,13 +147,10 @@ class ServeStaticMiddleware(ServeStatic):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
         if self.load_manifest_files:
-            self.add_files_from_manifest()
+            await asyncio.to_thread(self.add_files_from_manifest)
             self.load_manifest_files = False
-        if self.autorefresh and hasattr(asyncio, "to_thread"):
-            # Use a thread while searching disk for files on Python 3.9+
+        if self.autorefresh:
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
-        elif self.autorefresh:
-            static_file = self.find_file(request.path_info)
         else:
             static_file = self.files.get(request.path_info)
         if static_file is not None:
@@ -203,14 +206,15 @@ class ServeStaticMiddleware(ServeStatic):
             self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
+        if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
+            raise ValueError(
+                "SERVESTATIC_USE_MANIFEST is set to True but "
+                "staticfiles storage is not using a manifest."
+            )
         django_file_storage: dict = staticfiles_storage.hashed_files
 
-        serve_unhashed = not getattr(
-            django_settings, "WHITENOISE_KEEP_ONLY_HASHED_FILES", False
-        )
-
         for unhashed_name, hashed_name in django_file_storage.items():
-            if serve_unhashed:
+            if not self.keep_only_hashed_files:
                 self.add_file_to_dictionary(
                     f"{self.static_prefix}{unhashed_name}",
                     staticfiles_storage.path(unhashed_name),
