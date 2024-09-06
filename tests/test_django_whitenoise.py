@@ -9,7 +9,9 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import brotli
+import django
 import pytest
+from asgiref.testing import ApplicationCommunicator
 from django.conf import settings
 from django.contrib.staticfiles import finders, storage
 from django.core.asgi import get_asgi_application
@@ -73,7 +75,7 @@ def application(_collect_static):
 
 @pytest.fixture()
 def asgi_application(_collect_static):
-    return AsgiAppServer(get_asgi_application())
+    return get_asgi_application()
 
 
 @pytest.fixture()
@@ -98,6 +100,7 @@ def test_versioned_file_cached_forever(server, static_files, _collect_static):
     )
 
 
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
 def test_asgi_versioned_file_cached_forever_brotli(
     asgi_application, static_files, _collect_static
 ):
@@ -105,7 +108,7 @@ def test_asgi_versioned_file_cached_forever_brotli(
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
-    asyncio.run(asgi_application(scope, receive, send))
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
     assert brotli.decompress(send.body) == static_files.js_content
     assert (
         send.headers.get(b"Cache-Control", b"").decode("utf-8")
@@ -113,6 +116,32 @@ def test_asgi_versioned_file_cached_forever_brotli(
     )
     assert send.headers.get(b"Content-Encoding") == b"br"
     assert send.headers.get(b"Vary") == b"Accept-Encoding"
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+def test_asgi_versioned_file_cached_forever_brotli_2(
+    asgi_application, static_files, _collect_static
+):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    headers = dict(response["headers"])
+
+    assert brotli.decompress(response["body"]) == static_files.js_content
+    assert (
+        headers.get(b"Cache-Control", b"").decode("utf-8")
+        == f"max-age={ServeStaticMiddleware.FOREVER}, public, immutable"
+    )
+    assert headers.get(b"Content-Encoding") == b"br"
+    assert headers.get(b"Vary") == b"Accept-Encoding"
 
 
 def test_unversioned_file_not_cached_forever(server, static_files, _collect_static):
