@@ -97,7 +97,7 @@ class ServeStaticMiddleware(ServeStatic):
         add_headers_function = getattr(
             settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None
         )
-        index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
+        self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
         self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", settings.DEBUG)
         self.use_manifest = getattr(
@@ -119,7 +119,7 @@ class ServeStaticMiddleware(ServeStatic):
             charset=charset,
             mimetypes=mimetypes,
             add_headers_function=add_headers_function,
-            index_file=index_file,
+            index_file=self.index_file,
             immutable_file_test=immutable_file_test,
         )
 
@@ -211,18 +211,25 @@ class ServeStaticMiddleware(ServeStatic):
                 "SERVESTATIC_USE_MANIFEST is set to True but "
                 "staticfiles storage is not using a manifest."
             )
-        django_file_storage: dict = staticfiles_storage.hashed_files
+        staticfiles: dict = staticfiles_storage.hashed_files
 
-        for unhashed_name, hashed_name in django_file_storage.items():
+        for unhashed_name, hashed_name in staticfiles.items():
+            file_path = staticfiles_storage.path(unhashed_name)
+            if self.index_file is not None and unhashed_name.endswith(self.index_file):
+                index_url = (
+                    f"{self.static_prefix}{unhashed_name[: -len(self.index_file)]}"
+                )
+                index_no_slash = index_url.rstrip("/")
+                url = f"{self.static_prefix}{unhashed_name}"
+                self.files[url] = self.redirect(url, index_url)
+                self.files[index_no_slash] = self.redirect(index_no_slash, index_url)
+                self.add_file_to_dictionary(index_url, file_path)
+
             if not self.keep_only_hashed_files:
                 self.add_file_to_dictionary(
-                    f"{self.static_prefix}{unhashed_name}",
-                    staticfiles_storage.path(unhashed_name),
+                    f"{self.static_prefix}{unhashed_name}", file_path
                 )
-            self.add_file_to_dictionary(
-                f"{self.static_prefix}{hashed_name}",
-                staticfiles_storage.path(unhashed_name),
-            )
+            self.add_file_to_dictionary(f"{self.static_prefix}{hashed_name}", file_path)
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):
