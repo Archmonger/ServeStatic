@@ -215,15 +215,6 @@ class ServeStaticMiddleware(ServeStatic):
 
         for unhashed_name, hashed_name in staticfiles.items():
             file_path = staticfiles_storage.path(unhashed_name)
-            if self.index_file is not None and unhashed_name.endswith(self.index_file):
-                index_url = (
-                    f"{self.static_prefix}{unhashed_name[: -len(self.index_file)]}"
-                )
-                index_no_slash = index_url.rstrip("/")
-                url = f"{self.static_prefix}{unhashed_name}"
-                self.files[url] = self.redirect(url, index_url)
-                self.files[index_no_slash] = self.redirect(index_no_slash, index_url)
-                self.add_file_to_dictionary(index_url, file_path)
 
             if not self.keep_only_hashed_files:
                 self.add_file_to_dictionary(
