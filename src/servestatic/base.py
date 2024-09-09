@@ -48,6 +48,11 @@ class BaseServeStatic:
         self.add_headers_function = add_headers_function
         self._immutable_file_test = immutable_file_test
         self._immutable_file_test_regex: re.Pattern | None = None
+        self.media_types = MediaTypes(extra_types=mimetypes)
+        self.application = application
+        self.files = {}
+        self.directories = []
+
         if index_file is True:
             self.index_file: str | None = "index.html"
         elif isinstance(index_file, str):
@@ -55,10 +60,11 @@ class BaseServeStatic:
         else:
             self.index_file = None
 
-        self.media_types = MediaTypes(extra_types=mimetypes)
-        self.application = application
-        self.files = {}
-        self.directories = []
+        if isinstance(immutable_file_test, str):
+            self.user_immutable_file_test = re.compile(immutable_file_test)
+        else:
+            self.user_immutable_file_test = immutable_file_test
+
         if root is not None:
             self.add_files(root, prefix)
 
@@ -202,15 +208,10 @@ class BaseServeStatic:
         This should be implemented by sub-classes (see e.g. ServeStaticMiddleware)
         or by setting the `immutable_file_test` config option
         """
-        if self._immutable_file_test is not None:
-            if callable(self._immutable_file_test):
-                return self._immutable_file_test(path, url)
-            if isinstance(self._immutable_file_test, str):
-                if self._immutable_file_test_regex is None:
-                    self._immutable_file_test_regex = re.compile(
-                        self._immutable_file_test
-                    )
-                return bool(self._immutable_file_test_regex.search(url))
+        if self.user_immutable_file_test is not None:
+            if callable(self.user_immutable_file_test):
+                return self.user_immutable_file_test(path, url)
+            return bool(self.user_immutable_file_test.search(url))
         return False
 
     def redirect(self, from_url, to_url):
