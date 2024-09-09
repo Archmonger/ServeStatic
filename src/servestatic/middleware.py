@@ -90,17 +90,17 @@ class ServeStaticMiddleware(ServeStatic):
                     self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
-        if self.use_manifest and not self.autorefresh:
-            self.add_files_from_manifest()
-
         if self.static_root and not self.use_manifest:
             self.add_files(self.static_root, prefix=self.static_prefix)
 
-        if root:
-            self.add_files(root)
+        if self.use_manifest:
+            self.add_files_from_manifest()
 
         if self.use_finders and not self.autorefresh:
             self.add_files_from_finders()
+
+        if root:
+            self.add_files(root)
 
     async def __call__(self, request):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
@@ -177,6 +177,14 @@ class ServeStaticMiddleware(ServeStatic):
                     f"{self.static_prefix}{unhashed_name}", file_path
                 )
             self.add_file_to_dictionary(f"{self.static_prefix}{hashed_name}", file_path)
+
+        if staticfiles_storage.location:
+            # Later calls to `add_files` overwrite earlier ones, hence we need
+            # to store the list of directories in reverse order so later ones
+            # match first when they're checked in "autorefresh" mode
+            self.directories.insert(
+                0, (staticfiles_storage.location, self.static_prefix)
+            )
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):
