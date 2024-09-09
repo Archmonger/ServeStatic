@@ -58,7 +58,10 @@ class ServeStaticMiddleware(ServeStatic):
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
         self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", settings.DEBUG)
         self.use_manifest = getattr(
-            settings, "SERVESTATIC_USE_MANIFEST", not settings.DEBUG
+            settings,
+            "SERVESTATIC_USE_MANIFEST",
+            not settings.DEBUG
+            and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
         )
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
@@ -66,7 +69,6 @@ class ServeStaticMiddleware(ServeStatic):
             django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False
         )
         root = getattr(settings, "SERVESTATIC_ROOT", None)
-        self.load_manifest_files = False
 
         super().__init__(
             application=None,
@@ -89,7 +91,7 @@ class ServeStaticMiddleware(ServeStatic):
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         if self.use_manifest and not self.autorefresh:
-            self.load_manifest_files = True
+            self.add_files_from_manifest()
 
         if self.static_root and not self.use_manifest:
             self.add_files(self.static_root, prefix=self.static_prefix)
@@ -103,9 +105,6 @@ class ServeStaticMiddleware(ServeStatic):
     async def __call__(self, request):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
-        if self.load_manifest_files:
-            await asyncio.to_thread(self.add_files_from_manifest)
-            self.load_manifest_files = False
         if self.autorefresh:
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
         else:
