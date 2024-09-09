@@ -8,9 +8,14 @@ from posixpath import normpath
 from typing import Callable
 from wsgiref.headers import Headers
 
-from .media_types import MediaTypes
-from .responders import IsDirectoryError, MissingFileError, Redirect, StaticFile
-from .utils import ensure_leading_trailing_slash, scantree
+from servestatic.media_types import MediaTypes
+from servestatic.responders import (
+    IsDirectoryError,
+    MissingFileError,
+    Redirect,
+    StaticFile,
+)
+from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 
 class BaseServeStatic:

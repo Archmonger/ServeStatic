@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from wsgiref.util import FileWrapper
 
-from .base import BaseServeStatic
-from .utils import decode_path_info
+from servestatic.base import BaseServeStatic
+from servestatic.utils import decode_path_info
 
 
 class ServeStatic(BaseServeStatic):
