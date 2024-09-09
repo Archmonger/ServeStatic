@@ -32,15 +32,15 @@ class ServeStaticASGI(BaseServeStatic):
 
         # Serve static file if it exists
         if static_file:
-            await AsgiFileServer(static_file)(scope, receive, send)
+            await FileServerASGI(static_file)(scope, receive, send)
             return
 
         # Serve the user's ASGI application
         await self.user_app(scope, receive, send)
 
 
-class AsgiFileServer:
-    """Simple ASGI application that streams a StaticFile over HTTP in chunks."""
+class FileServerASGI:
+    """Primitive ASGI v3 application that streams a StaticFile over HTTP in chunks."""
 
     def __init__(self, static_file):
         self.static_file = static_file
