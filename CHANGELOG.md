@@ -34,6 +34,10 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.2.0...HEAD)
 
+### Added
+
+-   Utilize Django manifest rather than scanning the directories for files when using `SERVESTATIC_USE_MANIFEST`.
+
 ### Changed
 
 -   Minimum python version is now 3.9.
