@@ -370,8 +370,7 @@ class FileEntry:
         except OSError as exc:
             if exc.errno in (errno.ENOENT, errno.ENAMETOOLONG):
                 raise MissingFileError(path) from exc
-            else:
-                raise
+            raise
         if not stat.S_ISREG(stat_result.st_mode):
             if stat.S_ISDIR(stat_result.st_mode):
                 raise IsDirectoryError(f"Path is a directory: {path}")
