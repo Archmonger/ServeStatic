@@ -46,8 +46,9 @@ class ServeStaticMiddleware(ServeStatic):
         markcoroutinefunction(self)
 
         self.get_response = get_response
-        autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", settings.DEBUG)
-        max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if settings.DEBUG else 60)
+        debug = getattr(settings, "DEBUG")
+        autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
+        max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
         charset = getattr(settings, "SERVESTATIC_CHARSET", "utf-8")
         mimetypes = getattr(settings, "SERVESTATIC_MIMETYPES", None)
@@ -56,12 +57,11 @@ class ServeStaticMiddleware(ServeStatic):
         )
         self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
-        self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", settings.DEBUG)
+        self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", debug)
         self.use_manifest = getattr(
             settings,
             "SERVESTATIC_USE_MANIFEST",
-            not settings.DEBUG
-            and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
+            not debug and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
         )
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
