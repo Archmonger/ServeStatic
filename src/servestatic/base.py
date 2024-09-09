@@ -5,12 +5,12 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import Callable
+from typing import Callable, overload
 from wsgiref.headers import Headers
 
 from .media_types import MediaTypes
 from .responders import IsDirectoryError, MissingFileError, Redirect, StaticFile
-from .utils import ensure_leading_trailing_slash
+from .utils import ensure_leading_trailing_slash, scantree
 
 
 class BaseServeStatic:
@@ -61,6 +61,9 @@ class BaseServeStatic:
         self.directories = []
         if root is not None:
             self.add_files(root, prefix)
+
+    @overload
+    async def __call__(self, *args, **kwargs): ...
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError("Subclasses must implement `__call__`")
@@ -228,14 +231,3 @@ class BaseServeStatic:
         else:
             headers = {}
         return Redirect(relative_url, headers=headers)
-
-
-def scantree(root):
-    """
-    Recurse the given directory yielding (pathname, os.stat(pathname)) pairs
-    """
-    for entry in os.scandir(root):
-        if entry.is_dir():
-            yield from scantree(entry.path)
-        else:
-            yield entry.path, entry.stat()

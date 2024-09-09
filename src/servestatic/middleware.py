@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
-import contextlib
 import os
 from posixpath import basename, normpath
-from typing import AsyncIterable
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
@@ -18,10 +15,13 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.http import FileResponse
 
 from servestatic.responders import MissingFileError
-
-from .asgi import BLOCK_SIZE
-from .utils import ensure_leading_trailing_slash
-from .wsgi import ServeStatic
+from servestatic.utils import (
+    AsyncFileIterator,
+    AsyncToSyncIterator,
+    EmptyAsyncIterator,
+    ensure_leading_trailing_slash,
+)
+from servestatic.wsgi import ServeStatic
 
 __all__ = ["ServeStaticMiddleware"]
 
@@ -227,64 +227,3 @@ class AsyncServeStaticFileResponse(FileResponse):
                 return iter(self.streaming_content)
             except TypeError:
                 return iter(AsyncToSyncIterator(self.streaming_content))
-
-
-class AsyncFileIterator:
-    def __init__(self, file_context: AiofilesContextManager):
-        self.file_context = file_context
-
-    async def __aiter__(self):
-        """Async iterator compatible with Django Middleware. Yields chunks of data from
-        the provided async file context manager."""
-        async with self.file_context as async_file:
-            while True:
-                chunk = await async_file.read(BLOCK_SIZE)
-                if not chunk:
-                    break
-                yield chunk
-
-
-class EmptyAsyncIterator:
-    """Async iterator for responses that have no content. Prevents Django 4.2+ from
-    showing "StreamingHttpResponse must consume synchronous iterators" warnings."""
-
-    def __aiter__(self):
-        return self
-
-    async def __anext__(self):
-        raise StopAsyncIteration
-
-
-class AsyncToSyncIterator:
-    """Converts any async iterator to sync as efficiently as possible while retaining
-    full compatibility with any environment.
-
-    This converter must create a temporary event loop in a thread for two reasons:
-    1. Allows us to stream the iterator instead of buffering all contents in memory.
-    2. Allows the iterator to be used in environments where an event loop may not exist,
-    or may be closed unexpectedly.
-
-    Currently used to add async file compatibility to Django WSGI and Django versions
-    that do not support __aiter__.
-    """
-
-    def __init__(self, iterator: AsyncIterable):
-        self.iterator = iterator
-
-    def __iter__(self):
-        # Create a dedicated event loop to run the async iterator on.
-        loop = asyncio.new_event_loop()
-        thread_executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="ServeStatic"
-        )
-
-        # Convert from async to sync by stepping through the async iterator and yielding
-        # the result of each step.
-        generator = self.iterator.__aiter__()
-        with contextlib.suppress(GeneratorExit, StopAsyncIteration):
-            while True:
-                yield thread_executor.submit(
-                    loop.run_until_complete, generator.__anext__()
-                ).result()
-        loop.close()
-        thread_executor.shutdown(wait=False)
