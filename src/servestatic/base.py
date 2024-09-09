@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import Callable, overload
+from typing import Callable
 from wsgiref.headers import Headers
 
 from .media_types import MediaTypes
@@ -17,6 +17,9 @@ class BaseServeStatic:
     # Ten years is what nginx sets a max age if you use 'expires max;'
     # so we'll follow its lead
     FOREVER = 10 * 365 * 24 * 60 * 60
+
+    __call__: Callable
+    """"Subclasses must implement `__call__`"""
 
     def __init__(
         self,
@@ -67,12 +70,6 @@ class BaseServeStatic:
 
         if root is not None:
             self.add_files(root, prefix)
-
-    @overload
-    async def __call__(self, *args, **kwargs): ...
-
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError("Subclasses must implement `__call__`")
 
     def add_files(self, root, prefix=None):
         root = os.path.abspath(root)
