@@ -10,7 +10,7 @@ from wsgiref.headers import Headers
 
 from .media_types import MediaTypes
 from .responders import IsDirectoryError, MissingFileError, Redirect, StaticFile
-from .string_utils import ensure_leading_trailing_slash
+from .utils import ensure_leading_trailing_slash
 
 
 class BaseServeStatic:

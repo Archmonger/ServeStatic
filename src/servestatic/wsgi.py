@@ -3,7 +3,7 @@ from __future__ import annotations
 from wsgiref.util import FileWrapper
 
 from .base import BaseServeStatic
-from .string_utils import decode_path_info
+from .utils import decode_path_info
 
 
 class ServeStatic(BaseServeStatic):

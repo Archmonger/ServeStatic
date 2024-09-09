@@ -6,7 +6,7 @@ from asgiref.compatibility import guarantee_single_callable
 
 from servestatic.base import BaseServeStatic
 
-from .string_utils import decode_path_info
+from .utils import decode_path_info
 
 # This is the same size as wsgiref.FileWrapper
 BLOCK_SIZE = 8192
