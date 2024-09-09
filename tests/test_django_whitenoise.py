@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import aiofiles
 import brotli
 import django
 import pytest
@@ -20,7 +21,7 @@ from django.core.wsgi import get_wsgi_application
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
-from servestatic.middleware import ServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
 
 from .utils import (
     AppServer,
@@ -256,7 +257,7 @@ def test_directory_path_without_trailing_slash_redirected(
 
 
 def test_servestatic_file_response_has_only_one_header():
-    response = ServeStaticFileResponse(open(__file__, "rb"))
+    response = AsyncServeStaticFileResponse(aiofiles.open(__file__, "rb"))
     response.close()
     headers = {key.lower() for key, value in response.items()}
     # This subclass should have none of the default headers that FileReponse
