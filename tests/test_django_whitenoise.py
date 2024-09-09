@@ -224,7 +224,7 @@ def test_non_ascii_requests_safely_ignored(finder_server):
 
 
 def test_requests_for_directory_safely_ignored(finder_server):
-    url = settings.STATIC_URL + "directory"
+    url = f"{settings.STATIC_URL}directory"
     response = finder_server.get(url)
     assert 404 == response.status_code
 
@@ -272,7 +272,7 @@ def test_relative_static_url(server, static_files, _collect_static):
 
 
 def test_404_in_prod(server):
-    response = server.get(settings.STATIC_URL + "garbage")
+    response = server.get(f"{settings.STATIC_URL}garbage")
     response_content = str(response.content.decode())
     response_content = html.unescape(response_content)
 

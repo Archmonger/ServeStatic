@@ -101,11 +101,11 @@ class AsyncSlicedFile:
         return data
 
     async def __aenter__(self):
-        self.fileobj = await self.context_manager
+        self.fileobj = await self.context_manager.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self.fileobj.close()
+        return await self.context_manager.__aexit__(exc_type, exc, tb)
 
 
 class StaticFile:

@@ -115,7 +115,7 @@ def test_get_accept_gzip(server, files):
 
 
 def test_cannot_directly_request_gzipped_file(server, files):
-    response = server.get(files.gzip_url + ".gz")
+    response = server.get(f"{files.gzip_url}.gz")
     assert_is_default_response(response)
 
 
@@ -176,7 +176,7 @@ def test_max_age(server, files):
 
 
 def test_other_requests_passed_through(server):
-    response = server.get("/%s/not/static" % AppServer.PREFIX)
+    response = server.get(f"/{AppServer.PREFIX}/not/static")
     assert_is_default_response(response)
 
 
@@ -255,7 +255,7 @@ def test_directory_path_without_trailing_slash_redirected(server, files):
 
 def test_request_initial_bytes(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=0-13"})
-    assert response.content == files.js_content[0:14]
+    assert response.content == files.js_content[:14]
 
 
 def test_request_trailing_bytes(server, files):
@@ -281,7 +281,7 @@ def test_overlong_trailing_ranges_return_entire_file(server, files):
 def test_out_of_range_error(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=10000-11000"})
     assert response.status_code == 416
-    assert response.headers["Content-Range"] == "bytes */%s" % len(files.js_content)
+    assert response.headers["Content-Range"] == f"bytes */{len(files.js_content)}"
 
 
 def test_warn_about_missing_directories(application):

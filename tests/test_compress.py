@@ -22,15 +22,13 @@ TEST_FILES = {COMPRESSABLE_FILE: b"a" * 1000, TOO_SMALL_FILE: b"hi"}
 def files_dir():
     # Make a temporary directory and copy in test files
     tmp = tempfile.mkdtemp()
+    timestamp = 1498579535
     for path, contents in TEST_FILES.items():
         path = os.path.join(tmp, path.lstrip("/"))
-        try:
+        with contextlib.suppress(FileExistsError):
             os.makedirs(os.path.dirname(path))
-        except FileExistsError:
-            pass
         with open(path, "wb") as f:
             f.write(contents)
-        timestamp = 1498579535
         os.utime(path, (timestamp, timestamp))
     compress_main([tmp, "--quiet"])
     yield tmp
@@ -39,23 +37,23 @@ def files_dir():
 
 def test_compresses_file(files_dir):
     with contextlib.closing(
-        gzip.open(os.path.join(files_dir, COMPRESSABLE_FILE + ".gz"), "rb")
+        gzip.open(os.path.join(files_dir, f"{COMPRESSABLE_FILE}.gz"), "rb")
     ) as f:
         contents = f.read()
     assert TEST_FILES[COMPRESSABLE_FILE] == contents
 
 
 def test_doesnt_compress_if_no_saving(files_dir):
-    assert not os.path.exists(os.path.join(files_dir, TOO_SMALL_FILE + "gz"))
+    assert not os.path.exists(os.path.join(files_dir, f"{TOO_SMALL_FILE}gz"))
 
 
 def test_ignores_other_extensions(files_dir):
-    assert not os.path.exists(os.path.join(files_dir, WRONG_EXTENSION + ".gz"))
+    assert not os.path.exists(os.path.join(files_dir, f"{WRONG_EXTENSION}.gz"))
 
 
 def test_mtime_is_preserved(files_dir):
     path = os.path.join(files_dir, COMPRESSABLE_FILE)
-    gzip_path = path + ".gz"
+    gzip_path = f"{path}.gz"
     assert os.path.getmtime(path) == os.path.getmtime(gzip_path)
 
 

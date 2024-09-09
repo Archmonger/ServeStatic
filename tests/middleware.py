@@ -1,4 +1,3 @@
-from asgiref.sync import iscoroutinefunction
 from django.utils.decorators import async_only_middleware, sync_only_middleware
 
 

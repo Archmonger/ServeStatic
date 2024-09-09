@@ -14,8 +14,8 @@ SECRET_KEY = "test_secret"
 
 INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
 
-FORCE_SCRIPT_NAME = "/" + AppServer.PREFIX
-STATIC_URL = FORCE_SCRIPT_NAME + "/static/"
+FORCE_SCRIPT_NAME = f"/{AppServer.PREFIX}"
+STATIC_URL = f"{FORCE_SCRIPT_NAME}/static/"
 
 STATIC_ROOT = os.path.join(TEST_FILE_PATH, "root")
 

@@ -26,5 +26,4 @@ class ServeStatic(BaseServeStatic):
         if response.file is not None:
             file_wrapper = environ.get("wsgi.file_wrapper", FileWrapper)
             return file_wrapper(response.file)
-        else:
-            return []
+        return []
