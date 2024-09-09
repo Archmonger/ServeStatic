@@ -1,11 +1,11 @@
 # `ServeStatic` API Reference
 
-| Name          | Type       | Description                                                                                            | Default |
-| ------------- | ---------- | ------------------------------------------------------------------------------------------------------ | ------- |
-| `application` | `Callable` | Original WSGI application                                                                              | N/A     |
-| `root`        | `str`      | Absolute path to a directory of static files to be served.                                             | `None`  |
-| `prefix`      | `str`      | If set, the URL prefix under which the files will be served. Trailing slashes are automatically added. | `None`  |
-| `**kwargs`    |            | Sets [configuration attributes](#configuration-attributes) for this instance                           | N/A     |
+| Name | Type | Description | Default |
+| --- | --- | --- | --- |
+| `application` | `Callable` | Original WSGI application | N/A |
+| `root` | `str` | Absolute path to a directory of static files to be served. | `None` |
+| `prefix` | `str` | If set, the URL prefix under which the files will be served. Trailing slashes are automatically added. | `None` |
+| `**kwargs` |  | Sets [configuration attributes](#configuration-attributes) for this instance | N/A |
 
 <!--shared-api-start-->
 
@@ -43,9 +43,9 @@ If `True` enable index file serving. If set to a non-empty string, enable index 
 
 When the `index_file` option is enabled:
 
-- Visiting `/example/` will serve the file at `/example/index.html`
-- Visiting `/example` will redirect (302) to `/example/`
-- Visiting `/example/index.html` will redirect (302) to `/example/`
+-   Visiting `/example/` will serve the file at `/example/index.html`
+-   Visiting `/example` will redirect (302) to `/example/`
+-   Visiting `/example/index.html` will redirect (302) to `/example/`
 
 If you want to something other than `index.html` as the index file, then you can also set this option to an alternative filename.
 

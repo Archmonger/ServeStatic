@@ -10,13 +10,16 @@ from wsgiref.headers import Headers
 
 from .media_types import MediaTypes
 from .responders import IsDirectoryError, MissingFileError, Redirect, StaticFile
-from .string_utils import ensure_leading_trailing_slash
+from .utils import ensure_leading_trailing_slash, scantree
 
 
 class BaseServeStatic:
     # Ten years is what nginx sets a max age if you use 'expires max;'
     # so we'll follow its lead
     FOREVER = 10 * 365 * 24 * 60 * 60
+
+    __call__: Callable
+    """"Subclasses must implement `__call__`"""
 
     def __init__(
         self,
@@ -46,6 +49,13 @@ class BaseServeStatic:
         self.allow_all_origins = allow_all_origins
         self.charset = charset
         self.add_headers_function = add_headers_function
+        self._immutable_file_test = immutable_file_test
+        self._immutable_file_test_regex: re.Pattern | None = None
+        self.media_types = MediaTypes(extra_types=mimetypes)
+        self.application = application
+        self.files = {}
+        self.directories = []
+
         if index_file is True:
             self.index_file: str | None = "index.html"
         elif isinstance(index_file, str):
@@ -53,22 +63,13 @@ class BaseServeStatic:
         else:
             self.index_file = None
 
-        if immutable_file_test is not None:
-            if not callable(immutable_file_test):
-                regex = re.compile(immutable_file_test)
-                self.immutable_file_test = lambda path, url: bool(regex.search(url))
-            else:
-                self.immutable_file_test = immutable_file_test
+        if isinstance(immutable_file_test, str):
+            self.user_immutable_file_test = re.compile(immutable_file_test)
+        else:
+            self.user_immutable_file_test = immutable_file_test
 
-        self.media_types = MediaTypes(extra_types=mimetypes)
-        self.application = application
-        self.files = {}
-        self.directories = []
         if root is not None:
             self.add_files(root, prefix)
-
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError("Subclasses must implement `__call__`")
 
     def add_files(self, root, prefix=None):
         root = os.path.abspath(root)
@@ -204,6 +205,10 @@ class BaseServeStatic:
         This should be implemented by sub-classes (see e.g. ServeStaticMiddleware)
         or by setting the `immutable_file_test` config option
         """
+        if self.user_immutable_file_test is not None:
+            if callable(self.user_immutable_file_test):
+                return self.user_immutable_file_test(path, url)
+            return bool(self.user_immutable_file_test.search(url))
         return False
 
     def redirect(self, from_url, to_url):
@@ -224,14 +229,3 @@ class BaseServeStatic:
         else:
             headers = {}
         return Redirect(relative_url, headers=headers)
-
-
-def scantree(root):
-    """
-    Recurse the given directory yielding (pathname, os.stat(pathname)) pairs
-    """
-    for entry in os.scandir(root):
-        if entry.is_dir():
-            yield from scantree(entry.path)
-        else:
-            yield entry.path, entry.stat()

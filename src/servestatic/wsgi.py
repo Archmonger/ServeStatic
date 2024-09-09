@@ -3,7 +3,7 @@ from __future__ import annotations
 from wsgiref.util import FileWrapper
 
 from .base import BaseServeStatic
-from .string_utils import decode_path_info
+from .utils import decode_path_info
 
 
 class ServeStatic(BaseServeStatic):
@@ -26,5 +26,4 @@ class ServeStatic(BaseServeStatic):
         if response.file is not None:
             file_wrapper = environ.get("wsgi.file_wrapper", FileWrapper)
             return file_wrapper(response.file)
-        else:
-            return []
+        return []

@@ -11,6 +11,7 @@ TEST_FILE_PATH = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 class SilentWSGIHandler(WSGIRequestHandler):
+    @staticmethod
     def log_message(*args):
         pass
 
@@ -31,20 +32,21 @@ class AppServer:
 
     def serve_under_prefix(self, environ, start_response):
         prefix = shift_path_info(environ)
-        if prefix != self.PREFIX:
-            start_response("404 Not Found", [])
-            return []
-        else:
+        if prefix == self.PREFIX:
             return self.application(environ, start_response)
+        start_response("404 Not Found", [])
+        return []
 
     def get(self, *args, **kwargs):
         return self.request("get", *args, **kwargs)
 
     def request(self, method, path, *args, **kwargs):
-        url = "http://{0[0]}:{0[1]}{1}".format(self.server.server_address, path)
+        domain = self.server.server_address[0]
+        port = self.server.server_address[1]
+        url = f"http://{domain}:{port}{path}"
         thread = threading.Thread(target=self.server.handle_request)
         thread.start()
-        response = requests.request(method, url, *args, **kwargs)
+        response = requests.request(method, url, *args, **kwargs, timeout=5)
         thread.join()
         return response
 
@@ -72,9 +74,9 @@ class Files:
             url = f"/{AppServer.PREFIX}/{path}"
             with open(os.path.join(self.directory, path), "rb") as f:
                 content = f.read()
-            setattr(self, name + "_path", path)
-            setattr(self, name + "_url", url)
-            setattr(self, name + "_content", content)
+            setattr(self, f"{name}_path", path)
+            setattr(self, f"{name}_url", url)
+            setattr(self, f"{name}_content", content)
 
 
 class AsgiScopeEmulator(dict):

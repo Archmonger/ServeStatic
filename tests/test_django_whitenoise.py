@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import aiofiles
 import brotli
 import django
 import pytest
@@ -20,7 +21,7 @@ from django.core.wsgi import get_wsgi_application
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
-from servestatic.middleware import ServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
 
 from .utils import (
     AppServer,
@@ -224,7 +225,7 @@ def test_non_ascii_requests_safely_ignored(finder_server):
 
 
 def test_requests_for_directory_safely_ignored(finder_server):
-    url = settings.STATIC_URL + "directory"
+    url = f"{settings.STATIC_URL}directory"
     response = finder_server.get(url)
     assert 404 == response.status_code
 
@@ -256,7 +257,7 @@ def test_directory_path_without_trailing_slash_redirected(
 
 
 def test_servestatic_file_response_has_only_one_header():
-    response = ServeStaticFileResponse(open(__file__, "rb"))
+    response = AsyncServeStaticFileResponse(aiofiles.open(__file__, "rb"))
     response.close()
     headers = {key.lower() for key, value in response.items()}
     # This subclass should have none of the default headers that FileReponse
@@ -272,7 +273,7 @@ def test_relative_static_url(server, static_files, _collect_static):
 
 
 def test_404_in_prod(server):
-    response = server.get(settings.STATIC_URL + "garbage")
+    response = server.get(f"{settings.STATIC_URL}garbage")
     response_content = str(response.content.decode())
     response_content = html.unescape(response_content)
 
@@ -302,6 +303,17 @@ def test_error_message(server):
 
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="static/")
 def test_force_script_name(server, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    assert url.startswith("/subdir/static/")
+    response = server.get(url)
+    assert "/subdir" in response.url
+    assert response.content == static_files.js_content
+
+
+@override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="/subdir/static/")
+def test_force_script_name_with_matching_static_url(
+    server, static_files, _collect_static
+):
     url = storage.staticfiles_storage.url(static_files.js_path)
     assert url.startswith("/subdir/static/")
     response = server.get(url)
