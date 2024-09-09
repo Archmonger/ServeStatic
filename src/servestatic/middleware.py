@@ -157,9 +157,8 @@ class ServeStaticMiddleware(ServeStatic):
                 )
                 # Use setdefault as only first matching file should be used
                 files.setdefault(url, storage.path(path))
-        stat_cache = {path: os.stat(path) for path in files.values()}
         for url, path in files.items():
-            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+            self.add_file_to_dictionary(url, path)
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
