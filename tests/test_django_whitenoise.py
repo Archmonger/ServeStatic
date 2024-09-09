@@ -202,8 +202,8 @@ def test_no_content_disposition_header(server, static_files, _collect_static):
 
 
 @pytest.fixture()
-def finder_application(finder_static_files):
-    return get_wsgi_application()
+def finder_application(finder_static_files, application):
+    return application
 
 
 @pytest.fixture()
