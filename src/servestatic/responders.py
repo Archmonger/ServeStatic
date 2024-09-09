@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import errno
 import os
 import re
@@ -62,10 +63,7 @@ class SlicedFile(BufferedIOBase):
             self.seeked = True
         if self.remaining <= 0:
             return b""
-        if size < 0:
-            size = self.remaining
-        else:
-            size = min(size, self.remaining)
+        size = self.remaining if size < 0 else min(size, self.remaining)
         data = self.fileobj.read(size)
         self.remaining -= len(data)
         return data
@@ -97,10 +95,7 @@ class AsyncSlicedFile:
             self.seeked = True
         if self.remaining <= 0:
             return b""
-        if size < 0:
-            size = self.remaining
-        else:
-            size = min(size, self.remaining)
+        size = self.remaining if size < 0 else min(size, self.remaining)
         data = await self.fileobj.read(size)
         self.remaining -= len(data)
         return data
@@ -128,19 +123,14 @@ class StaticFile:
         if self.is_not_modified(request_headers):
             return self.not_modified_response
         path, headers = self.get_path_and_headers(request_headers)
-        if method != "HEAD":
-            file_handle = open(path, "rb")
-        else:
-            file_handle = None
+        file_handle = open(path, "rb") if method != "HEAD" else None
         range_header = request_headers.get("HTTP_RANGE")
         if range_header:
-            try:
+            # If we can't interpret the Range request for any reason then
+            # just ignore it and return the standard response (this
+            # behaviour is allowed by the spec)
+            with contextlib.suppress(ValueError):
                 return self.get_range_response(range_header, headers, file_handle)
-            except ValueError:
-                # If we can't interpret the Range request for any reason then
-                # just ignore it and return the standard response (this
-                # behaviour is allowed by the spec)
-                pass
         return Response(HTTPStatus.OK, headers, file_handle)
 
     async def aget_response(self, method, request_headers):
@@ -151,23 +141,18 @@ class StaticFile:
         if self.is_not_modified(request_headers):
             return self.not_modified_response
         path, headers = self.get_path_and_headers(request_headers)
-        if method != "HEAD":
-            # We do not await this async file handle to allow us the option of opening
-            # it in a thread later
-            file_handle = aiofiles.open(path, "rb")
-        else:
-            file_handle = None
+        # We do not await this async file handle to allow us the option of opening
+        # it in a thread later
+        file_handle = aiofiles.open(path, "rb") if method != "HEAD" else None
         range_header = request_headers.get("HTTP_RANGE")
         if range_header:
-            try:
+            # If we can't interpret the Range request for any reason then
+            # just ignore it and return the standard response (this
+            # behaviour is allowed by the spec)
+            with contextlib.suppress(ValueError):
                 return await self.aget_range_response(
                     range_header, headers, file_handle
                 )
-            except ValueError:
-                # If we can't interpret the Range request for any reason then
-                # just ignore it and return the standard response (this
-                # behaviour is allowed by the spec)
-                pass
         return Response(HTTPStatus.OK, headers, file_handle)
 
     def get_range_response(self, range_header, base_headers, file_handle):
@@ -182,8 +167,12 @@ class StaticFile:
             return self.get_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = SlicedFile(file_handle, start, end)
-        headers.append(("Content-Range", f"bytes {start}-{end}/{size}"))
-        headers.append(("Content-Length", str(end - start + 1)))
+        headers.extend(
+            (
+                ("Content-Range", f"bytes {start}-{end}/{size}"),
+                ("Content-Length", str(end - start + 1)),
+            )
+        )
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     async def aget_range_response(self, range_header, base_headers, file_handle):
@@ -199,18 +188,19 @@ class StaticFile:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = AsyncSlicedFile(file_handle, start, end)
-        headers.append(("Content-Range", f"bytes {start}-{end}/{size}"))
-        headers.append(("Content-Length", str(end - start + 1)))
+        headers.extend(
+            (
+                ("Content-Range", f"bytes {start}-{end}/{size}"),
+                ("Content-Length", str(end - start + 1)),
+            )
+        )
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     def get_byte_range(self, range_header, size):
         start, end = self.parse_byte_range(range_header)
         if start < 0:
             start = max(start + size, 0)
-        if end is None:
-            end = size - 1
-        else:
-            end = min(end, size - 1)
+        end = size - 1 if end is None else min(end, size - 1)
         return start, end
 
     @staticmethod
@@ -284,10 +274,9 @@ class StaticFile:
 
     @staticmethod
     def get_not_modified_response(headers):
-        not_modified_headers = []
-        for key in NOT_MODIFIED_HEADERS:
-            if key in headers:
-                not_modified_headers.append((key, headers[key]))
+        not_modified_headers = [
+            (key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers
+        ]
         return Response(
             status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None
         )
@@ -364,9 +353,9 @@ class FileEntry:
     def __init__(self, path, stat_cache=None):
         self.path = path
         stat_function = os.stat if stat_cache is None else stat_cache.__getitem__
-        stat = self.stat_regular_file(path, stat_function)
-        self.size = stat.st_size
-        self.mtime = stat.st_mtime
+        _stat = self.stat_regular_file(path, stat_function)
+        self.size = _stat.st_size
+        self.mtime = _stat.st_mtime
 
     @staticmethod
     def stat_regular_file(path, stat_function):
@@ -376,16 +365,15 @@ class FileEntry:
         """
         try:
             stat_result = stat_function(path)
-        except KeyError:
-            raise MissingFileError(path)
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENAMETOOLONG):
-                raise MissingFileError(path)
+        except KeyError as exc:
+            raise MissingFileError(path) from exc
+        except OSError as exc:
+            if exc.errno in (errno.ENOENT, errno.ENAMETOOLONG):
+                raise MissingFileError(path) from exc
             else:
                 raise
         if not stat.S_ISREG(stat_result.st_mode):
             if stat.S_ISDIR(stat_result.st_mode):
                 raise IsDirectoryError(f"Path is a directory: {path}")
-            else:
-                raise NotARegularFileError(f"Not a regular file: {path}")
+            raise NotARegularFileError(f"Not a regular file: {path}")
         return stat_result

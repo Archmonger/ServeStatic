@@ -23,6 +23,8 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
     StaticFilesStorage subclass that compresses output files.
     """
 
+    compressor: Compressor | None
+
     def post_process(
         self, paths: dict[str, Any], dry_run: bool = False, **options: Any
     ) -> _PostProcessT:
@@ -44,9 +46,10 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
         compressed: list[tuple[str, str, bool]] = []
         full_path = self.path(path)
         prefix_len = len(full_path) - len(path)
-        for compressed_path in self.compressor.compress(full_path):
-            compressed_name = compressed_path[prefix_len:]
-            compressed.append((path, compressed_name, True))
+        compressed.extend(
+            (path, compressed_path[prefix_len:], True)
+            for compressed_path in self.compressor.compress(full_path)
+        )
         return compressed
 
     def create_compressor(self, **kwargs: Any) -> Compressor:
@@ -65,6 +68,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
     """
 
     _new_files = None
+    compressor: Compressor | None
 
     def __init__(self, *args, **kwargs):
         manifest_strict = getattr(settings, "SERVESTATIC_MANIFEST_STRICT", None)
@@ -153,9 +157,10 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         compressed: list[tuple[str, str]] = []
         path = self.path(name)
         prefix_len = len(path) - len(name)
-        for compressed_path in self.compressor.compress(path):
-            compressed_name = compressed_path[prefix_len:]
-            compressed.append((name, compressed_name))
+        compressed.extend(
+            (name, compressed_path[prefix_len:])
+            for compressed_path in self.compressor.compress(path)
+        )
         return compressed
 
     def make_helpful_exception(self, exception, name):

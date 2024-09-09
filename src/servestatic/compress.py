@@ -60,23 +60,18 @@ class Compressor:
         self.extension_re = self.get_extension_re(extensions)
         self.use_gzip = use_gzip
         self.use_brotli = use_brotli and brotli_installed
-        if not quiet:
-            self.log = log
+        self.log = (lambda _: None) if quiet else log
 
     @staticmethod
     def get_extension_re(extensions):
         if not extensions:
             return re.compile("^$")
-        else:
-            return re.compile(
-                r"\.({})$".format("|".join(map(re.escape, extensions))), re.IGNORECASE
-            )
+        return re.compile(
+            rf'\.({"|".join(map(re.escape, extensions))})$', re.IGNORECASE
+        )
 
     def should_compress(self, filename):
         return not self.extension_re.search(filename)
-
-    def log(self, message):
-        pass
 
     def _lazy_compress(self, path):
         with open(path, "rb") as f:
@@ -122,9 +117,7 @@ class Compressor:
             is_effective = ratio <= 0.95
         if is_effective:
             self.log(
-                "{} compressed {} ({}K -> {}K)".format(
-                    encoding_name, path, orig_size // 1024, compressed_size // 1024
-                )
+                f"{encoding_name} compressed {path} ({orig_size // 1024}K -> {compressed_size // 1024}K)"
             )
         else:
             self.log(f"Skipping {path} ({encoding_name} compression not effective)")
