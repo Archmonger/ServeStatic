@@ -76,15 +76,18 @@ class BaseServeStatic:
         if root is not None:
             self.add_files(root, prefix)
 
+    def insert_directory(self, root, prefix):
+        # Later calls to `add_files` overwrite earlier ones, hence we need
+        # to store the list of directories in reverse order so later ones
+        # match first when they're checked in "autorefresh" mode
+        self.directories.insert(0, (root, prefix))
+
     def add_files(self, root, prefix=None):
         root = os.path.abspath(root)
         root = root.rstrip(os.path.sep) + os.path.sep
         prefix = ensure_leading_trailing_slash(prefix)
         if self.autorefresh:
-            # Later calls to `add_files` overwrite earlier ones, hence we need
-            # to store the list of directories in reverse order so later ones
-            # match first when they're checked in "autorefresh" mode
-            self.directories.insert(0, (root, prefix))
+            self.insert_directory(root, prefix)
         elif os.path.isdir(root):
             self.update_files_dictionary(root, prefix)
         else:

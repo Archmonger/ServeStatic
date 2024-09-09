@@ -181,9 +181,7 @@ class ServeStaticMiddleware(ServeStatic):
             # Later calls to `add_files` overwrite earlier ones, hence we need
             # to store the list of directories in reverse order so later ones
             # match first when they're checked in "autorefresh" mode
-            self.directories.insert(
-                0, (staticfiles_storage.location, self.static_prefix)
-            )
+            self.insert_directory(staticfiles_storage.location, self.static_prefix)
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):
