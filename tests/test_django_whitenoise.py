@@ -308,3 +308,14 @@ def test_force_script_name(server, static_files, _collect_static):
     response = server.get(url)
     assert "/subdir" in response.url
     assert response.content == static_files.js_content
+
+
+@override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="/subdir/static/")
+def test_force_script_name_with_matching_static_url(
+    server, static_files, _collect_static
+):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    assert url.startswith("/subdir/static/")
+    response = server.get(url)
+    assert "/subdir" in response.url
+    assert response.content == static_files.js_content
