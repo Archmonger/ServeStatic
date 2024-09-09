@@ -6,9 +6,7 @@ We mention Heroku in a few places, but there's nothing Heroku-specific about Ser
 
 ## Step 1: Enable ServeStatic
 
-Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list. The ServeStatic middleware should be placed directly after the Django
-[SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security)
-(if you are using it) and before all other middleware:
+Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list. The ServeStatic middleware should be placed directly after the Django [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security) (if you are using it) and before all other middleware:
 
 ```python linenums="0"
 MIDDLEWARE = [
@@ -19,8 +17,7 @@ MIDDLEWARE = [
 ]
 ```
 
-That's it -- ServeStatic will now serve your static files.
-However, to get the best performance you should proceed to step 3 below and enable compression and caching.
+That's it -- ServeStatic will now serve your static files. However, to get the best performance you should proceed to step 3 below and enable compression and caching.
 
 ??? question "How should I order my middleware?"
 
@@ -39,8 +36,7 @@ STORAGES = {
 }
 ```
 
-This combines automatic compression with the caching behaviour provided by Django's
-[ManifestStaticFilesStorage](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) backend. If you want to apply compression but don't want the caching behaviour then you can use the alternative backend:
+This combines automatic compression with the caching behaviour provided by Django's [ManifestStaticFilesStorage](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) backend. If you want to apply compression but don't want the caching behaviour then you can use the alternative backend:
 
 ```python linenums="0"
 "servestatic.storage.CompressedStaticFilesStorage"
@@ -78,9 +74,7 @@ Make sure you're using the [static](https://docs.djangoproject.com/en/stable/ref
 <img src="/static/images/hi.jpg" alt="Hi!">
 ```
 
-For further details see the Django
-[staticfiles](https://docs.djangoproject.com/en/stable/howto/static-files/)
-guide.
+For further details see the Django [staticfiles](https://docs.djangoproject.com/en/stable/howto/static-files/) guide.
 
 ---
 

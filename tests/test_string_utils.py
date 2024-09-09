@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from servestatic.string_utils import ensure_leading_trailing_slash
+from servestatic.utils import ensure_leading_trailing_slash
 
 
 class EnsureLeadingTrailingSlashTests:
