@@ -24,7 +24,6 @@ class ServeStaticASGI(BaseServeStatic):
         static_file = None
         if scope["type"] == "http":
             if self.autorefresh:
-                # Use a thread while searching disk for files on Python 3.9+
                 static_file = await asyncio.to_thread(self.find_file, path)
             else:
                 static_file = self.files.get(path)
