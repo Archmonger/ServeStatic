@@ -94,17 +94,15 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         self.add_stats_to_manifest()
 
     def add_stats_to_manifest(self):
-        """Identical to Django's implementation, but this adds additional `stats` field."""
-        _paths, _hash = self.load_manifest()
-        payload = {
-            "paths": _paths,
-            "version": self.manifest_version,
-            "hash": _hash,
+        """Adds additional `stats` field to Django's manifest file."""
+        current = self.read_manifest()
+        current = json.loads(current) if current else {}
+        payload = current | {
             "stats": self.stat_static_root(),
         }
+        new = json.dumps(payload).encode()
         self.manifest_storage.delete(self.manifest_name)
-        contents = json.dumps(payload).encode()
-        self.manifest_storage._save(self.manifest_name, ContentFile(contents))
+        self.manifest_storage._save(self.manifest_name, ContentFile(new))
 
     def stat_static_root(self):
         """Stats all the files within the static root folder."""
