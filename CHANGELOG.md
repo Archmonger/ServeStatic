@@ -34,32 +34,38 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/1.2.0...HEAD)
 
+### Added
+
+-   You can now utilize the Django manifest rather than scanning the filesystem when using `settings.py:SERVESTATIC_USE_MANIFEST`.
+    -   When also using ServeStatic's `CompressedManifestStaticFilesStorage` backend, ServeStatic will no longer need to call `os.stat`.
+
 ### Changed
 
 -   Minimum python version is now 3.9.
+-   Django `setings.py:SERVESTATIC_USE_FINDERS` will now discover files strictly using the [finders API](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module). Previously, ServeStatic would also scan `settings.py:STATIC_ROOT` for files not found by the finders API.
 
 ## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
 
 ### Added
 
--   Verbose Django `404` error page when `settings.py:DEBUG` is `True` ([Upstream PR](https://github.com/evansd/whitenoise/pull/366))
+-   Verbose Django `404` error page when `settings.py:DEBUG` is `True`
 
 ### Fixed
 
--   Fix Django compatibility with third-party sync middleware
-    -   ServeStatic Django middleware now only runs in async mode to avoid clashing with Django's internal usage of `asgiref.AsyncToSync`
--   Respect Django `settings.py:FORCE_SCRIPT_NAME` configuration value ([Upstream PR](https://github.com/evansd/whitenoise/pull/486))
+-   Fix Django compatibility with third-party sync middleware.
+    -   ServeStatic Django middleware now only runs in async mode to avoid clashing with Django's internal usage of `asgiref.AsyncToSync`.
+-   Respect Django `settings.py:FORCE_SCRIPT_NAME` configuration value.
 
 ## [1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0) - 2024-08-27
 
 ### Added
 
--   Files are now compressed within a thread pool to increase performance ([Upstream PR](https://github.com/evansd/whitenoise/pull/484))
+-   Files are now compressed within a thread pool to increase performance.
 
 ### Fixed
 
--   Fix Django `StreamingHttpResponse must consume synchronous iterators` warning
--   Fix Django bug where file paths could fail to be followed on Windows ([Upstream PR](https://github.com/evansd/whitenoise/pull/474))
+-   Fix Django `StreamingHttpResponse must consume synchronous iterators` warning.
+-   Fix Django bug where file paths could fail to be followed on Windows.
 
 ## [1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0) - 2024-05-08
 

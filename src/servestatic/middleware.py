@@ -11,7 +11,10 @@ from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
-from django.contrib.staticfiles.storage import staticfiles_storage
+from django.contrib.staticfiles.storage import (
+    ManifestStaticFilesStorage,
+    staticfiles_storage,
+)
 from django.http import FileResponse
 
 from servestatic.responders import MissingFileError
@@ -20,6 +23,7 @@ from servestatic.utils import (
     AsyncToSyncIterator,
     EmptyAsyncIterator,
     ensure_leading_trailing_slash,
+    stat_files,
 )
 from servestatic.wsgi import ServeStatic
 
@@ -35,7 +39,7 @@ class ServeStaticMiddleware(ServeStatic):
     async_capable = True
     sync_capable = False
 
-    def __init__(self, get_response, settings=django_settings):
+    def __init__(self, get_response=None, settings=django_settings):
         if not iscoroutinefunction(get_response):
             raise ValueError(
                 "ServeStaticMiddleware requires an async compatible version of Django."
@@ -43,8 +47,9 @@ class ServeStaticMiddleware(ServeStatic):
         markcoroutinefunction(self)
 
         self.get_response = get_response
-        autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", settings.DEBUG)
-        max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if settings.DEBUG else 60)
+        debug = getattr(settings, "DEBUG")
+        autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
+        max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
         charset = getattr(settings, "SERVESTATIC_CHARSET", "utf-8")
         mimetypes = getattr(settings, "SERVESTATIC_MIMETYPES", None)
@@ -53,9 +58,17 @@ class ServeStaticMiddleware(ServeStatic):
         )
         self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
-        self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", settings.DEBUG)
+        self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", debug)
+        self.use_manifest = getattr(
+            settings,
+            "SERVESTATIC_USE_MANIFEST",
+            not debug and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
+        )
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
+        self.keep_only_hashed_files = getattr(
+            django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False
+        )
         root = getattr(settings, "SERVESTATIC_ROOT", None)
 
         super().__init__(
@@ -79,22 +92,25 @@ class ServeStaticMiddleware(ServeStatic):
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         if self.static_root:
+            self.insert_directory(self.static_root, self.static_prefix)
+
+        if self.static_root and not self.use_manifest and not self.use_finders:
             self.add_files(self.static_root, prefix=self.static_prefix)
+
+        if self.use_manifest:
+            self.add_files_from_manifest()
+
+        if self.use_finders:
+            self.add_files_from_finders()
 
         if root:
             self.add_files(root)
 
-        if self.use_finders and not self.autorefresh:
-            self.add_files_from_finders()
-
     async def __call__(self, request):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
-        if self.autorefresh and hasattr(asyncio, "to_thread"):
-            # Use a thread while searching disk for files on Python 3.9+
+        if self.autorefresh:
             static_file = await asyncio.to_thread(self.find_file, request.path_info)
-        elif self.autorefresh:
-            static_file = self.find_file(request.path_info)
         else:
             static_file = self.files.get(request.path_info)
         if static_file is not None:
@@ -145,9 +161,48 @@ class ServeStaticMiddleware(ServeStatic):
                 )
                 # Use setdefault as only first matching file should be used
                 files.setdefault(url, storage.path(path))
-        stat_cache = {path: os.stat(path) for path in files.values()}
+                self.insert_directory(storage.location, self.static_prefix)
+
+        stat_cache = stat_files(files.values())
         for url, path in files.items():
             self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+
+    def add_files_from_manifest(self):
+        if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
+            raise ValueError(
+                "SERVESTATIC_USE_MANIFEST is set to True but "
+                "staticfiles storage is not using a manifest."
+            )
+        staticfiles: dict = staticfiles_storage.hashed_files
+        stat_cache = None
+
+        # Fetch stats from manifest if using ServeStatic's manifest storage
+        if hasattr(staticfiles_storage, "load_manifest_stats"):
+            manifest_stats: dict = staticfiles_storage.load_manifest_stats()
+            if manifest_stats:
+                stat_cache = {
+                    staticfiles_storage.path(k): os.stat_result(v)
+                    for k, v in manifest_stats.items()
+                }
+
+        # Add files to ServeStatic
+        for unhashed_name, hashed_name in staticfiles.items():
+            file_path = staticfiles_storage.path(unhashed_name)
+            if not self.keep_only_hashed_files:
+                self.add_file_to_dictionary(
+                    f"{self.static_prefix}{unhashed_name}",
+                    file_path,
+                    stat_cache=stat_cache,
+                )
+            self.add_file_to_dictionary(
+                f"{self.static_prefix}{hashed_name}",
+                file_path,
+                stat_cache=stat_cache,
+            )
+
+        # Add the static directory to ServeStatic
+        if staticfiles_storage.location:
+            self.insert_directory(staticfiles_storage.location, self.static_prefix)
 
     def candidate_paths_for_url(self, url):
         if self.use_finders and url.startswith(self.static_prefix):

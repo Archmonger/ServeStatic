@@ -5,8 +5,7 @@ import asyncio
 from asgiref.compatibility import guarantee_single_callable
 
 from servestatic.base import BaseServeStatic
-
-from .utils import decode_path_info
+from servestatic.utils import decode_path_info
 
 # This is the same size as wsgiref.FileWrapper
 BLOCK_SIZE = 8192
@@ -25,7 +24,6 @@ class ServeStaticASGI(BaseServeStatic):
         static_file = None
         if scope["type"] == "http":
             if self.autorefresh:
-                # Use a thread while searching disk for files on Python 3.9+
                 static_file = await asyncio.to_thread(self.find_file, path)
             else:
                 static_file = self.files.get(path)

@@ -22,11 +22,27 @@ Recheck the filesystem to see if any files have changed before responding. This 
 
 ---
 
+## `SERVESTATIC_USE_MANIFEST`
+
+**Default:** `not settings.py:DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`
+
+Find and serve files using Django's manifest file.
+
+This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
+
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup which improves startup speeds.
+
+---
+
 ## `SERVESTATIC_USE_FINDERS`
 
 **Default:** `settings.py:DEBUG`
 
-Instead of only picking up files collected into `STATIC_ROOT`, find and serve files in their original directories using Django's "finders" API. This is useful in development where it matches the behaviour of the old `runserver` command. It's also possible to use this setting in production, avoiding the need to run the `collectstatic` command during the build, so long as you do not wish to use any of the caching and compression features provided by the storage backends.
+Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API.
+
+It's possible to use this setting in production, but be mindful of the [`settings.py:STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`settings.py:STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings. By default, the finders API only searches the `'static'` directory in each app, which are not the copies post-processed by ServeStatic.
+
+Note that `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
 
 ---
 

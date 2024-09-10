@@ -91,6 +91,12 @@ def test_get_root_file(server, root_files, _collect_static):
     assert response.content == root_files.robots_content
 
 
+@override_settings(SERVESTATIC_USE_MANIFEST=False)
+def test_get_root_file_no_manifest(server, root_files, _collect_static):
+    response = server.get(root_files.robots_url)
+    assert response.content == root_files.robots_content
+
+
 def test_versioned_file_cached_forever(server, static_files, _collect_static):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url)
@@ -202,8 +208,8 @@ def test_no_content_disposition_header(server, static_files, _collect_static):
 
 
 @pytest.fixture()
-def finder_application(finder_static_files):
-    return get_wsgi_application()
+def finder_application(finder_static_files, application):
+    return application
 
 
 @pytest.fixture()
@@ -214,6 +220,13 @@ def finder_server(finder_application):
 
 
 def test_file_served_from_static_dir(finder_static_files, finder_server):
+    url = settings.STATIC_URL + finder_static_files.js_path
+    response = finder_server.get(url)
+    assert response.content == finder_static_files.js_content
+
+
+@override_settings(SERVESTATIC_USE_MANIFEST=False)
+def test_file_served_from_static_dir_no_manifest(finder_static_files, finder_server):
     url = settings.STATIC_URL + finder_static_files.js_path
     response = finder_server.get(url)
     assert response.content == finder_static_files.js_content
@@ -231,6 +244,15 @@ def test_requests_for_directory_safely_ignored(finder_server):
 
 
 def test_index_file_served_at_directory_path(finder_static_files, finder_server):
+    path = finder_static_files.index_path.rpartition("/")[0] + "/"
+    response = finder_server.get(settings.STATIC_URL + path)
+    assert response.content == finder_static_files.index_content
+
+
+@override_settings(SERVESTATIC_USE_MANIFEST=False)
+def test_index_file_served_at_directory_path_no_manifest(
+    finder_static_files, finder_server
+):
     path = finder_static_files.index_path.rpartition("/")[0] + "/"
     response = finder_server.get(settings.STATIC_URL + path)
     assert response.content == finder_static_files.index_content
@@ -265,11 +287,11 @@ def test_servestatic_file_response_has_only_one_header():
     assert headers == {"content-type"}
 
 
+@override_settings(STATIC_URL="static/")
 def test_relative_static_url(server, static_files, _collect_static):
-    with override_settings(STATIC_URL="static/"):
-        url = storage.staticfiles_storage.url(static_files.js_path)
-        response = server.get(url)
-        assert response.content == static_files.js_content
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    response = server.get(url)
+    assert response.content == static_files.js_content
 
 
 def test_404_in_prod(server):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
 import errno
+import json
 import os
 import re
 import textwrap
@@ -12,8 +14,10 @@ from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
     StaticFilesStorage,
 )
+from django.core.files.base import ContentFile
 
-from .compress import Compressor
+from servestatic.compress import Compressor
+from servestatic.utils import stat_files
 
 _PostProcessT = Iterator[Union[Tuple[str, str, bool], Tuple[str, None, RuntimeError]]]
 
@@ -87,6 +91,47 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
             if isinstance(processed, Exception):
                 processed = self.make_helpful_exception(processed, name)
             yield name, hashed_name, processed
+
+        self.add_stats_to_manifest()
+
+    def add_stats_to_manifest(self):
+        """Adds additional `stats` field to Django's manifest file."""
+        current = self.read_manifest()
+        current = json.loads(current) if current else {}
+        payload = current | {
+            "stats": self.stat_static_root(),
+        }
+        new = json.dumps(payload).encode()
+        # Django < 3.2 doesn't have a manifest_storage attribute
+        manifest_storage = getattr(self, "manifest_storage", self)
+        manifest_storage.delete(self.manifest_name)
+        manifest_storage._save(self.manifest_name, ContentFile(new))
+
+    def stat_static_root(self):
+        """Stats all the files within the static root folder."""
+        static_root = getattr(settings, "STATIC_ROOT", None)
+        if static_root is None:
+            return {}
+
+        file_paths = []
+        for root, _, files in os.walk(static_root):
+            file_paths.extend(
+                os.path.join(root, f) for f in files if f != self.manifest_name
+            )
+        stats = stat_files(file_paths)
+
+        # Remove the static root folder from the path
+        return {path[len(static_root) + 1 :]: stat for path, stat in stats.items()}
+
+    def load_manifest_stats(self):
+        """Derivative of Django's `load_manifest` but for the `stats` field."""
+        content = self.read_manifest()
+        if content is None:
+            return {}
+        with contextlib.suppress(json.JSONDecodeError):
+            stored = json.loads(content)
+            return stored.get("stats", {})
+        raise ValueError(f"Couldn't load stats from manifest '{self.manifest_name}'")
 
     def post_process_with_compression(self, files):
         # Files may get hashed multiple times, we want to keep track of all the
