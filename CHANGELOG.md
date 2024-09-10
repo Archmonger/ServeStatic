@@ -42,7 +42,7 @@ Using the following categories, list your changes in this order:
 ### Changed
 
 -   Minimum python version is now 3.9.
--   Django `setings.py:SERVESTATIC_USE_FINDERS` will now pre-populate known files strictly using the [finders API](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module). Previously, ServeStatic would also scan `settings.py:STATIC_ROOT` for files not found by the finders API.
+-   Django `setings.py:SERVESTATIC_USE_FINDERS` will now discover files strictly using the [finders API](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module). Previously, ServeStatic would also scan `settings.py:STATIC_ROOT` for files not found by the finders API.
 
 ## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
 
