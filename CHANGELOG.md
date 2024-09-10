@@ -36,12 +36,13 @@ Using the following categories, list your changes in this order:
 
 ### Added
 
--   Utilize Django manifest rather than scanning the directories for files when using `SERVESTATIC_USE_MANIFEST`. (Derivative of [upstream PR](https://github.com/evansd/whitenoise/pull/275))
+-   You can now utilize the Django manifest rather than scanning the filesystem when using `settings.py:SERVESTATIC_USE_MANIFEST`. (Derivative of [upstream PR](https://github.com/evansd/whitenoise/pull/275))
+    -   Note: If also using `CompressedManifestStaticFilesStorage` storage backend, ServeStatic will no longer need to call `os.stat`.
 
 ### Changed
 
 -   Minimum python version is now 3.9.
--   Django `setings.py:SERVESTATIC_USE_FINDERS` will now strictly use Django finders to locate files. ServeStatic will no longer manually traverse the `STATIC_ROOT` directory to add additional files when this settings is enabled.
+-   Django `setings.py:SERVESTATIC_USE_FINDERS` will now pre-populate known files strictly using the [finders API](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module). Previously, ServeStatic would also scan `settings.py:STATIC_ROOT` for files not found by the finders API.
 
 ## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
 

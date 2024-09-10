@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
 import errno
 import json
 import os
@@ -126,18 +127,11 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         """Derivative of Django's `load_manifest` but for the `stats` field."""
         content = self.read_manifest()
         if content is None:
-            return {}, ""
-        try:
+            return {}
+        with contextlib.suppress(json.JSONDecodeError):
             stored = json.loads(content)
-        except json.JSONDecodeError:
-            pass
-        else:
-            version = stored.get("version")
-            if version in ("1.0", "1.1"):
-                return stored.get("stats", {})
-        raise ValueError(
-            f"Couldn't load manifest '{self.manifest_name}' (version {self.manifest_version})"
-        )
+            return stored.get("stats", {})
+        raise ValueError(f"Couldn't load stats from manifest '{self.manifest_name}'")
 
     def post_process_with_compression(self, files):
         # Files may get hashed multiple times, we want to keep track of all the

@@ -185,6 +185,7 @@ class ServeStaticMiddleware(ServeStatic):
                     for k, v in manifest_stats.items()
                 }
 
+        # Add files to ServeStatic
         for unhashed_name, hashed_name in staticfiles.items():
             file_path = staticfiles_storage.path(unhashed_name)
             if not self.keep_only_hashed_files:
@@ -199,6 +200,7 @@ class ServeStaticMiddleware(ServeStatic):
                 stat_cache=stat_cache,
             )
 
+        # Add the static directory to ServeStatic
         if staticfiles_storage.location:
             self.insert_directory(staticfiles_storage.location, self.static_prefix)
 
