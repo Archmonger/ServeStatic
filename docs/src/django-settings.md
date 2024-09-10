@@ -22,6 +22,18 @@ Recheck the filesystem to see if any files have changed before responding. This 
 
 ---
 
+## `SERVESTATIC_USE_MANIFEST`
+
+**Default:** `not settings.py:DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`
+
+Find and serve files using Django's manifest file.
+
+This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
+
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup which improves startup speeds.
+
+---
+
 ## `SERVESTATIC_USE_FINDERS`
 
 **Default:** `settings.py:DEBUG`
