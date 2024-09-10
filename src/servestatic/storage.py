@@ -91,21 +91,36 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
                 processed = self.make_helpful_exception(processed, name)
             yield name, hashed_name, processed
 
-    def save_manifest(self):
+        self.add_stats_to_manifest()
+
+    def add_stats_to_manifest(self):
         """Identical to Django's implementation, but this adds additional `stats` field."""
-        self.manifest_hash = self.file_hash(
-            None, ContentFile(json.dumps(sorted(self.hashed_files.items())).encode())
-        )
+        _paths, _hash = self.load_manifest()
         payload = {
-            "paths": self.hashed_files,
+            "paths": _paths,
             "version": self.manifest_version,
-            "hash": self.manifest_hash,
-            "stats": stat_files(self.hashed_files.keys(), path_resolver=self.path),
+            "hash": _hash,
+            "stats": self.stat_static_root(),
         }
-        if self.manifest_storage.exists(self.manifest_name):
-            self.manifest_storage.delete(self.manifest_name)
+        self.manifest_storage.delete(self.manifest_name)
         contents = json.dumps(payload).encode()
         self.manifest_storage._save(self.manifest_name, ContentFile(contents))
+
+    def stat_static_root(self):
+        """Stats all the files within the static root folder."""
+        static_root = getattr(settings, "STATIC_ROOT", None)
+        if static_root is None:
+            return {}
+
+        file_paths = []
+        for root, _, files in os.walk(static_root):
+            file_paths.extend(
+                os.path.join(root, f) for f in files if f != self.manifest_name
+            )
+        stats = stat_files(file_paths)
+
+        # Remove the static root folder from the path
+        return {path[len(static_root) + 1 :]: stat for path, stat in stats.items()}
 
     def load_manifest_stats(self):
         """Derivative of Django's `load_manifest` but for the `stats` field."""
