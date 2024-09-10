@@ -32,14 +32,11 @@ def scantree(root):
             yield entry.path, entry.stat()
 
 
-def stat_files(paths, path_resolver=lambda path: path) -> dict:
+def stat_files(paths) -> dict:
     """Stat all files in `relative_paths` via threads."""
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            rel_path: executor.submit(os.stat, path_resolver(rel_path))
-            for rel_path in paths
-        }
+        futures = {rel_path: executor.submit(os.stat, rel_path) for rel_path in paths}
         return {rel_path: future.result() for rel_path, future in futures.items()}
 
 
