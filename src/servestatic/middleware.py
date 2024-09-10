@@ -176,12 +176,14 @@ class ServeStaticMiddleware(ServeStatic):
         staticfiles: dict = staticfiles_storage.hashed_files
         stat_cache = None
 
+        # Fetch stats from manifest if using ServeStatic's manifest storage
         if hasattr(staticfiles_storage, "load_manifest_stats"):
-            stat_cache: dict = staticfiles_storage.load_manifest_stats()
-            stat_cache = {
-                staticfiles_storage.path(k): os.stat_result(v)
-                for k, v in stat_cache.items()
-            }
+            manifest_stats: dict = staticfiles_storage.load_manifest_stats()
+            if manifest_stats:
+                stat_cache = {
+                    staticfiles_storage.path(k): os.stat_result(v)
+                    for k, v in manifest_stats.items()
+                }
 
         for unhashed_name, hashed_name in staticfiles.items():
             file_path = staticfiles_storage.path(unhashed_name)

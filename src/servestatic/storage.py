@@ -101,8 +101,10 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
             "stats": self.stat_static_root(),
         }
         new = json.dumps(payload).encode()
-        self.manifest_storage.delete(self.manifest_name)
-        self.manifest_storage._save(self.manifest_name, ContentFile(new))
+        # Django < 3.2 doesn't have a manifest_storage attribute
+        manifest_storage = getattr(self, "manifest_storage", self)
+        manifest_storage.delete(self.manifest_name)
+        manifest_storage._save(self.manifest_name, ContentFile(new))
 
     def stat_static_root(self):
         """Stats all the files within the static root folder."""
