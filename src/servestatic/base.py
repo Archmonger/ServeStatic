@@ -77,6 +77,11 @@ class BaseServeStatic:
             self.add_files(root, prefix)
 
     def insert_directory(self, root, prefix):
+        # Exit early if the directory is already in the list
+        for existing_root, existing_prefix in self.directories:
+            if existing_root == root and existing_prefix == prefix:
+                return
+
         # Later calls to `add_files` overwrite earlier ones, hence we need
         # to store the list of directories in reverse order so later ones
         # match first when they're checked in "autorefresh" mode

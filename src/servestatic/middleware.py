@@ -90,13 +90,16 @@ class ServeStaticMiddleware(ServeStatic):
                     self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
-        if self.static_root and not self.use_manifest:
+        if self.static_root:
+            self.insert_directory(self.static_root, self.static_prefix)
+
+        if self.static_root and not self.use_manifest and not self.use_finders:
             self.add_files(self.static_root, prefix=self.static_prefix)
 
         if self.use_manifest:
             self.add_files_from_manifest()
 
-        if self.use_finders and not self.autorefresh:
+        if self.use_finders:
             self.add_files_from_finders()
 
         if root:
@@ -157,6 +160,8 @@ class ServeStaticMiddleware(ServeStatic):
                 )
                 # Use setdefault as only first matching file should be used
                 files.setdefault(url, storage.path(path))
+                self.insert_directory(storage.location, self.static_prefix)
+
         for url, path in files.items():
             self.add_file_to_dictionary(url, path)
 
