@@ -26,7 +26,11 @@ Recheck the filesystem to see if any files have changed before responding. This 
 
 **Default:** `settings.py:DEBUG`
 
-Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API. It's possible to use this setting in production, but be mindful of the [`settings.py:STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`settings.py:STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings. By default, the finders API only searches the `'static'` directory in each app, which are not the copies post-processed by ServeStatic.
+Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API.
+
+It's possible to use this setting in production, but be mindful of the [`settings.py:STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`settings.py:STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings. By default, the finders API only searches the `'static'` directory in each app, which are not the copies post-processed by ServeStatic.
+
+Note that `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
 
 ---
 
