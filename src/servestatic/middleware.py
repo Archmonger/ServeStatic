@@ -23,6 +23,7 @@ from servestatic.utils import (
     AsyncToSyncIterator,
     EmptyAsyncIterator,
     ensure_leading_trailing_slash,
+    stat_files,
 )
 from servestatic.wsgi import ServeStatic
 
@@ -162,8 +163,9 @@ class ServeStaticMiddleware(ServeStatic):
                 files.setdefault(url, storage.path(path))
                 self.insert_directory(storage.location, self.static_prefix)
 
+        stat_cache = stat_files(files.values())
         for url, path in files.items():
-            self.add_file_to_dictionary(url, path)
+            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):

@@ -16,6 +16,7 @@ from django.contrib.staticfiles.storage import (
 from django.core.files.base import ContentFile
 
 from servestatic.compress import Compressor
+from servestatic.utils import stat_files
 
 _PostProcessT = Iterator[Union[Tuple[str, str, bool], Tuple[str, None, RuntimeError]]]
 
@@ -99,7 +100,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
             "paths": self.hashed_files,
             "version": self.manifest_version,
             "hash": self.manifest_hash,
-            "stats": self.stat_files(self.hashed_files.keys()),
+            "stats": stat_files(self.hashed_files.keys(), path_resolver=self.path),
         }
         if self.manifest_storage.exists(self.manifest_name):
             self.manifest_storage.delete(self.manifest_name)
@@ -122,15 +123,6 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         raise ValueError(
             f"Couldn't load manifest '{self.manifest_name}' (version {self.manifest_version})"
         )
-
-    def stat_files(self, relative_paths) -> dict:
-        """Stat all files in `relative_paths` concurrently."""
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {
-                rel_path: executor.submit(os.stat, self.path(rel_path))
-                for rel_path in relative_paths
-            }
-            return {rel_path: future.result() for rel_path, future in futures.items()}
 
     def post_process_with_compression(self, files):
         # Files may get hashed multiple times, we want to keep track of all the
