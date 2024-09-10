@@ -167,20 +167,30 @@ class ServeStaticMiddleware(ServeStatic):
                 "staticfiles storage is not using a manifest."
             )
         staticfiles: dict = staticfiles_storage.hashed_files
+        stat_cache = None
+
+        if hasattr(staticfiles_storage, "load_manifest_stats"):
+            stat_cache: dict = staticfiles_storage.load_manifest_stats()
+            stat_cache = {
+                staticfiles_storage.path(k): os.stat_result(v)
+                for k, v in stat_cache.items()
+            }
 
         for unhashed_name, hashed_name in staticfiles.items():
             file_path = staticfiles_storage.path(unhashed_name)
-
             if not self.keep_only_hashed_files:
                 self.add_file_to_dictionary(
-                    f"{self.static_prefix}{unhashed_name}", file_path
+                    f"{self.static_prefix}{unhashed_name}",
+                    file_path,
+                    stat_cache=stat_cache,
                 )
-            self.add_file_to_dictionary(f"{self.static_prefix}{hashed_name}", file_path)
+            self.add_file_to_dictionary(
+                f"{self.static_prefix}{hashed_name}",
+                file_path,
+                stat_cache=stat_cache,
+            )
 
         if staticfiles_storage.location:
-            # Later calls to `add_files` overwrite earlier ones, hence we need
-            # to store the list of directories in reverse order so later ones
-            # match first when they're checked in "autorefresh" mode
             self.insert_directory(staticfiles_storage.location, self.static_prefix)
 
     def candidate_paths_for_url(self, url):

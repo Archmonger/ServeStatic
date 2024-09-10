@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import errno
+import json
 import os
 import re
 import textwrap
@@ -12,6 +13,7 @@ from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
     StaticFilesStorage,
 )
+from django.core.files.base import ContentFile
 
 from servestatic.compress import Compressor
 
@@ -87,6 +89,48 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
             if isinstance(processed, Exception):
                 processed = self.make_helpful_exception(processed, name)
             yield name, hashed_name, processed
+
+    def save_manifest(self):
+        """Identical to Django's implementation, but this adds additional `stats` field."""
+        self.manifest_hash = self.file_hash(
+            None, ContentFile(json.dumps(sorted(self.hashed_files.items())).encode())
+        )
+        payload = {
+            "paths": self.hashed_files,
+            "version": self.manifest_version,
+            "hash": self.manifest_hash,
+            "stats": self.stat_files(self.hashed_files.keys()),
+        }
+        if self.manifest_storage.exists(self.manifest_name):
+            self.manifest_storage.delete(self.manifest_name)
+        contents = json.dumps(payload).encode()
+        self.manifest_storage._save(self.manifest_name, ContentFile(contents))
+
+    def load_manifest_stats(self):
+        """Derivative of Django's `load_manifest` but for the `stats` field."""
+        content = self.read_manifest()
+        if content is None:
+            return {}, ""
+        try:
+            stored = json.loads(content)
+        except json.JSONDecodeError:
+            pass
+        else:
+            version = stored.get("version")
+            if version in ("1.0", "1.1"):
+                return stored.get("stats", {})
+        raise ValueError(
+            f"Couldn't load manifest '{self.manifest_name}' (version {self.manifest_version})"
+        )
+
+    def stat_files(self, relative_paths) -> dict:
+        """Stat all files in `relative_paths` concurrently."""
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                rel_path: executor.submit(os.stat, self.path(rel_path))
+                for rel_path in relative_paths
+            }
+            return {rel_path: future.result() for rel_path, future in futures.items()}
 
     def post_process_with_compression(self, files):
         # Files may get hashed multiple times, we want to keep track of all the
