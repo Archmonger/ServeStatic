@@ -10,12 +10,6 @@ import requests
 TEST_FILE_PATH = os.path.join(os.path.dirname(__file__), "test_files")
 
 
-class SilentWSGIHandler(WSGIRequestHandler):
-    @staticmethod
-    def log_message(*args):
-        pass
-
-
 class AppServer:
     """
     Wraps a WSGI application and allows you to make real HTTP
@@ -27,7 +21,7 @@ class AppServer:
     def __init__(self, application):
         self.application = application
         self.server = make_server(
-            "127.0.0.1", 0, self.serve_under_prefix, handler_class=SilentWSGIHandler
+            "127.0.0.1", 0, self.serve_under_prefix, handler_class=WSGIRequestHandler
         )
 
     def serve_under_prefix(self, environ, start_response):
