@@ -4,11 +4,11 @@ import asyncio
 
 from asgiref.compatibility import guarantee_single_callable
 
-from servestatic.base import BaseServeStatic
+from servestatic.base import ServeStaticBase
 from servestatic.utils import decode_path_info, get_block_size
 
 
-class ServeStaticASGI(BaseServeStatic):
+class ServeStaticASGI(ServeStaticBase):
     user_app = None
 
     async def __call__(self, scope, receive, send):

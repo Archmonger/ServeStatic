@@ -30,12 +30,12 @@ from servestatic.utils import (
     ensure_leading_trailing_slash,
     stat_files,
 )
-from servestatic.wsgi import BaseServeStatic
+from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
 
-class ServeStaticMiddleware(BaseServeStatic):
+class ServeStaticMiddleware(ServeStaticBase):
     """
     Wrap ServeStatic to allow it to function as Django middleware, rather
     than ASGI/WSGI middleware.
