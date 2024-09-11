@@ -16,7 +16,12 @@ from django.contrib.staticfiles.storage import (
 )
 from django.http import FileResponse, HttpRequest
 
-from servestatic.responders import MissingFileError, StaticFile
+from servestatic.responders import (
+    AsyncSlicedFile,
+    MissingFileError,
+    SlicedFile,
+    StaticFile,
+)
 from servestatic.utils import (
     AsyncFile,
     AsyncFileIterator,
@@ -263,12 +268,19 @@ class AsyncServeStaticFileResponse(FileResponse):
         pass
 
     def _set_streaming_content(self, value):
-        if isinstance(value, AsyncFile):
-            # Django < 4.2 doesn't support async file responses, so we use a sync file handle
-            if django.VERSION < (4, 2):
+        # Django < 4.2 doesn't support async file responses, so we must perform
+        # some conversions to ensure compatibility.
+        if django.VERSION < (4, 2):
+            if isinstance(value, AsyncFile):
                 value = value.open_raw()
-            else:
-                value = AsyncFileIterator(value)
+            elif isinstance(value, EmptyAsyncIterator):
+                value = ()
+            elif isinstance(value, AsyncSlicedFile):
+                value = SlicedFile(value.fileobj.open_raw(), value.start, value.end)
+        # Django 4.2+ supports async file responses, but they need to be wrapped in
+        # an iterator for compatibility.
+        elif isinstance(value, (AsyncFile, AsyncSlicedFile)):
+            value = AsyncFileIterator(value)
 
         super()._set_streaming_content(value)
 

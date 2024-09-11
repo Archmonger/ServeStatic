@@ -81,6 +81,21 @@ class AsyncToSyncIterator:
         thread_executor.shutdown(wait=False)
 
 
+def open_lazy(f):
+    """Decorator that ensures the file is open before calling a function.
+    Needs to be external to `AsyncFile` for Python 3.9 compatibility."""
+
+    @functools.wraps(f)
+    async def wrapper(self: "AsyncFile", *args, **kwargs):
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
+        if self.file_obj is None:
+            self.file_obj = await self._executor(open, *self.open_args)
+        return await f(self, *args, **kwargs)
+
+    return wrapper
+
+
 class AsyncFile:
     """A class that wraps a file object and provides async methods for reading and writing.
     This currently only covers the file operations needed by ServeStatic, but could be expanded
@@ -121,20 +136,6 @@ class AsyncFile:
             self.loop = asyncio.get_event_loop()
         with self.lock:
             return await self.loop.run_in_executor(self.executor, func, *args)
-
-    @staticmethod
-    def open_lazy(f):
-        """Decorator that ensures the file is open before calling a function."""
-
-        @functools.wraps(f)
-        async def wrapper(self: "AsyncFile", *args, **kwargs):
-            if self.closed:
-                raise ValueError("I/O operation on closed file.")
-            if self.file_obj is None:
-                self.file_obj = await self._executor(open, *self.open_args)
-            return await f(self, *args, **kwargs)
-
-        return wrapper
 
     def open_raw(self):
         """Open the file without using the executor."""

@@ -53,6 +53,7 @@ class SlicedFile(BufferedIOBase):
         self.fileobj = fileobj
         self.seeked = False
         self.start = start
+        self.end = end
         self.remaining = end - start + 1
 
     def read(self, size=-1):
@@ -79,6 +80,7 @@ class AsyncSlicedFile:
         self.fileobj = fileobj
         self.seeked = False
         self.start = start
+        self.end = end
         self.remaining = end - start + 1
 
     async def read(self, size=-1):
