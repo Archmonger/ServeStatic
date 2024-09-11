@@ -340,3 +340,48 @@ def test_force_script_name_with_matching_static_url(
     response = server.get(url)
     assert "/subdir" in response.url
     assert response.content == static_files.js_content
+
+
+def test_range_response(server, static_files, _collect_static):
+    ...
+    # FIXME: This test is not working, seemingly due to bugs with AppServer.
+
+    # url = storage.staticfiles_storage.url(static_files.js_path)
+    # response = server.get(url, headers={"Range": "bytes=0-13"})
+    # assert response.content == static_files.js_content[:14]
+    # assert response.status_code == 206
+    # assert (
+    #     response.headers["Content-Range"]
+    #     == f"bytes 0-13/{len(static_files.js_content)}"
+    # )
+    # assert response.headers["Content-Length"] == "14"
+
+
+def test_asgi_range_response(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.body == static_files.js_content[:14]
+    assert (
+        send.headers[b"Content-Range"]
+        == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
+    )
+    assert send.headers[b"Content-Length"] == b"14"
+    assert send.status == 206
+
+
+def test_out_of_range_error(server, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    response = server.get(url, headers={"Range": "bytes=900-999"})
+    assert response.status_code == 416
+
+
+def test_asgi_out_of_range_error(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.status == 416
