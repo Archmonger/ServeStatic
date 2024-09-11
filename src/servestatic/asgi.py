@@ -5,10 +5,7 @@ import asyncio
 from asgiref.compatibility import guarantee_single_callable
 
 from servestatic.base import BaseServeStatic
-from servestatic.utils import decode_path_info
-
-# This is the same size as wsgiref.FileWrapper
-BLOCK_SIZE = 8192
+from servestatic.utils import decode_path_info, get_block_size
 
 
 class ServeStaticASGI(BaseServeStatic):
@@ -42,6 +39,7 @@ class FileServerASGI:
 
     def __init__(self, static_file):
         self.static_file = static_file
+        self.block_size = get_block_size()
 
     async def __call__(self, scope, receive, send):
         # Convert ASGI headers into WSGI headers. Allows us to reuse all of our WSGI
@@ -75,7 +73,7 @@ class FileServerASGI:
         # Stream the file response body
         async with response.file as async_file:
             while True:
-                chunk = await async_file.read(BLOCK_SIZE)
+                chunk = await async_file.read(self.block_size)
                 more_body = bool(chunk)
                 await send(
                     {

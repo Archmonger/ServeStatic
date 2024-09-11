@@ -3,10 +3,19 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import contextlib
+import functools
 import os
-from typing import AsyncIterable
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from io import IOBase
+from typing import AsyncIterable, Callable
 
-from aiofiles.base import AiofilesContextManager
+# This is the same size as wsgiref.FileWrapper
+ASGI_BLOCK_SIZE = 8192
+
+
+def get_block_size():
+    return ASGI_BLOCK_SIZE
 
 
 # Follow Django in treating URLs as UTF-8 encoded (which requires undoing the
@@ -72,6 +81,90 @@ class AsyncToSyncIterator:
         thread_executor.shutdown(wait=False)
 
 
+class AsyncFile:
+    """A class that wraps a file object and provides async methods for reading and writing.
+    This currently only covers the file operations needed by ServeStatic, but could be expanded
+    in the future."""
+
+    def __init__(
+        self,
+        file_path,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+        closefd: bool = True,
+        opener: Callable[[str, int], int] | None = None,
+    ):
+        self.open_args = (
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self.executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
+        )
+        self.lock = threading.Lock()
+        self.file_obj: None | IOBase = None
+        self.closed = False
+
+    async def _executor(self, func, *args):
+        """Run a function in a dedicated thread, specific to this instance."""
+        if self.loop is None:
+            self.loop = asyncio.get_event_loop()
+        with self.lock:
+            return await self.loop.run_in_executor(self.executor, func, *args)
+
+    @staticmethod
+    def open_lazy(f):
+        """Decorator that ensures the file is open before calling a function."""
+
+        @functools.wraps(f)
+        async def wrapper(self: "AsyncFile", *args, **kwargs):
+            if self.closed:
+                raise ValueError("I/O operation on closed file.")
+            if self.file_obj is None:
+                self.file_obj = await self._executor(open, *self.open_args)
+            return await f(self, *args, **kwargs)
+
+        return wrapper
+
+    def open_raw(self):
+        """Open the file without using the executor."""
+        self.executor.shutdown(wait=True)
+        return open(*self.open_args)  # pylint: disable=unspecified-encoding
+
+    async def close(self):
+        self.closed = True
+        if self.file_obj:
+            await self._executor(self.file_obj.close)
+
+    @open_lazy
+    async def read(self, size=-1):
+        return await self._executor(self.file_obj.read, size)
+
+    @open_lazy
+    async def seek(self, offset, whence=0):
+        return await self._executor(self.file_obj.seek, offset, whence)
+
+    @open_lazy
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
+    def __del__(self):
+        self.executor.shutdown(wait=True)
+
+
 class EmptyAsyncIterator:
     """Placeholder async iterator for responses that have no content."""
 
@@ -83,17 +176,15 @@ class EmptyAsyncIterator:
 
 
 class AsyncFileIterator:
-    def __init__(self, file_context: AiofilesContextManager):
-        self.file_context = file_context
+    """Async iterator that yields chunks of data from the provided async file."""
+
+    def __init__(self, async_file: AsyncFile):
+        self.async_file = async_file
 
     async def __aiter__(self):
-        """Async iterator compatible with Django Middleware. Yields chunks of data from
-        the provided async file context manager."""
-        from servestatic.asgi import BLOCK_SIZE
-
-        async with self.file_context as async_file:
+        async with self.async_file as async_file:
             while True:
-                chunk = await async_file.read(BLOCK_SIZE)
+                chunk = await async_file.read(get_block_size())
                 if not chunk:
                     break
                 yield chunk
