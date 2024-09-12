@@ -36,13 +36,17 @@ Using the following categories, list your changes in this order:
 
 ### Added
 
--   You can now utilize the Django manifest rather than scanning the filesystem when using `settings.py:SERVESTATIC_USE_MANIFEST`.
+-   Django `settings.py:SERVESTATIC_USE_MANIFEST` utilize the Django manifest rather than scanning the filesystem.
     -   When also using ServeStatic's `CompressedManifestStaticFilesStorage` backend, ServeStatic will no longer need to call `os.stat`.
 
 ### Changed
 
 -   Minimum python version is now 3.9.
 -   Django `setings.py:SERVESTATIC_USE_FINDERS` will now discover files strictly using the [finders API](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module). Previously, ServeStatic would also scan `settings.py:STATIC_ROOT` for files not found by the finders API.
+-   Async file reading is now done via threads rather than [`aiofiles`](https://github.com/Tinche/aiofiles) due [recent performance tests](https://github.com/mosquito/aiofile/issues/88#issuecomment-2314380621).
+-   `BaseServeStatic` has been renamed to `ServeStaticBase`.
+-   `AsgiFileServer` has been renamed to `FileServerASGI`.
+-   Lots of internal refactoring to improve performance, code quality, and maintainability.
 
 ## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
 
