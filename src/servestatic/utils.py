@@ -124,7 +124,9 @@ class AsyncFile:
             opener,
         )
         self.loop: asyncio.AbstractEventLoop | None = None
-        self.executor: ThreadPoolExecutor | None = None
+        self.executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
+        )
         self.lock = threading.Lock()
         self.file_obj: None | IOBase = None
         self.closed = False
@@ -133,17 +135,12 @@ class AsyncFile:
         """Run a function in a dedicated thread, specific to this instance."""
         if self.loop is None:
             self.loop = asyncio.get_event_loop()
-        if self.executor is None:
-            self.executor = ThreadPoolExecutor(
-                max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
-            )
         with self.lock:
             return await self.loop.run_in_executor(self.executor, func, *args)
 
     def open_raw(self):
         """Open the file without using the executor."""
-        if self.executor:
-            self.executor.shutdown(wait=True)
+        self.executor.shutdown(wait=True)
         return open(*self.open_args)  # pylint: disable=unspecified-encoding
 
     async def close(self):
@@ -167,8 +164,7 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        if self.executor:
-            self.executor.shutdown(wait=True)
+        self.executor.shutdown(wait=True)
 
 
 class EmptyAsyncIterator:
