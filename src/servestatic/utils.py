@@ -90,7 +90,7 @@ def open_lazy(f):
         if self.closed:
             raise ValueError("I/O operation on closed file.")
         if self.file_obj is None:
-            self.file_obj = await self._executor(open, *self.open_args)
+            self.file_obj = await self._execute(open, *self.open_args)
         return await f(self, *args, **kwargs)
 
     return wrapper
@@ -123,37 +123,40 @@ class AsyncFile:
             opener,
         )
         self.loop: asyncio.AbstractEventLoop | None = None
-        self.executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
-        )
+        self.executor: ThreadPoolExecutor | None = None
         self.lock = threading.Lock()
         self.file_obj: None | IOBase = None
         self.closed = False
 
-    async def _executor(self, func, *args):
+    async def _execute(self, func, *args):
         """Run a function in a dedicated thread, specific to this instance."""
         if self.loop is None:
             self.loop = asyncio.get_event_loop()
+        if self.executor is None:
+            self.executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
+            )
         with self.lock:
             return await self.loop.run_in_executor(self.executor, func, *args)
 
     def open_raw(self):
         """Open the file without using the executor."""
-        self.executor.shutdown(wait=True)
+        if self.executor:
+            self.executor.shutdown(wait=True)
         return open(*self.open_args)  # pylint: disable=unspecified-encoding
 
     async def close(self):
         self.closed = True
         if self.file_obj:
-            await self._executor(self.file_obj.close)
+            await self._execute(self.file_obj.close)
 
     @open_lazy
     async def read(self, size=-1):
-        return await self._executor(self.file_obj.read, size)
+        return await self._execute(self.file_obj.read, size)
 
     @open_lazy
     async def seek(self, offset, whence=0):
-        return await self._executor(self.file_obj.seek, offset, whence)
+        return await self._execute(self.file_obj.seek, offset, whence)
 
     @open_lazy
     async def __aenter__(self):
@@ -163,7 +166,8 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        self.executor.shutdown(wait=True)
+        if self.executor:
+            self.executor.shutdown(wait=True)
 
 
 class EmptyAsyncIterator:
