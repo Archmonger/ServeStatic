@@ -83,7 +83,7 @@ class AsyncToSyncIterator:
 
 def open_lazy(f):
     """Decorator that ensures the file is open before calling a function.
-    Needs to be external to `AsyncFile` for Python 3.9 compatibility."""
+    This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility."""
 
     @functools.wraps(f)
     async def wrapper(self: "AsyncFile", *args, **kwargs):
@@ -97,7 +97,8 @@ def open_lazy(f):
 
 
 class AsyncFile:
-    """A class that wraps a file object and provides async methods for reading and writing.
+    """An async clone of the Python `open` function that utilizes threads for async file IO.
+
     This currently only covers the file operations needed by ServeStatic, but could be expanded
     in the future."""
 
@@ -187,9 +188,9 @@ class AsyncFileIterator:
         self.async_file = async_file
 
     async def __aiter__(self):
-        async with self.async_file as async_file:
+        async with self.async_file as file:
             while True:
-                chunk = await async_file.read(get_block_size())
+                chunk = await file.read(get_block_size())
                 if not chunk:
                     break
                 yield chunk

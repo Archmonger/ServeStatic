@@ -277,8 +277,10 @@ class AsyncServeStaticFileResponse(FileResponse):
                 value = ()
             elif isinstance(value, AsyncSlicedFile):
                 value = SlicedFile(value.fileobj.open_raw(), value.start, value.end)
-        # Django 4.2+ supports async file responses, but they need to be wrapped in
-        # an iterator for compatibility.
+
+        # Django 4.2+ supports async file responses, but they need to be converted from
+        # a file-like object to an iterator, otherwise Django will assume the content is
+        # a traditional (sync) file object.
         elif isinstance(value, (AsyncFile, AsyncSlicedFile)):
             value = AsyncFileIterator(value)
 
