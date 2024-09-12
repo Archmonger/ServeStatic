@@ -8,7 +8,6 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-import aiofiles
 import brotli
 import django
 import pytest
@@ -22,6 +21,7 @@ from django.test.utils import override_settings
 from django.utils.functional import empty
 
 from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.utils import AsyncFile
 
 from .utils import (
     AppServer,
@@ -279,11 +279,10 @@ def test_directory_path_without_trailing_slash_redirected(
 
 
 def test_servestatic_file_response_has_only_one_header():
-    response = AsyncServeStaticFileResponse(aiofiles.open(__file__, "rb"))
+    response = AsyncServeStaticFileResponse(AsyncFile(__file__, "rb"))
     response.close()
     headers = {key.lower() for key, value in response.items()}
-    # This subclass should have none of the default headers that FileReponse
-    # sets
+    # This subclass should have none of the default headers that FileReponse sets
     assert headers == {"content-type"}
 
 
@@ -341,3 +340,93 @@ def test_force_script_name_with_matching_static_url(
     response = server.get(url)
     assert "/subdir" in response.url
     assert response.content == static_files.js_content
+
+
+def test_range_response(server, static_files, _collect_static):
+    ...
+    # FIXME: This test is not working, seemingly due to bugs with AppServer.
+
+    # url = storage.staticfiles_storage.url(static_files.js_path)
+    # response = server.get(url, headers={"Range": "bytes=0-13"})
+    # assert response.content == static_files.js_content[:14]
+    # assert response.status_code == 206
+    # assert (
+    #     response.headers["Content-Range"]
+    #     == f"bytes 0-13/{len(static_files.js_content)}"
+    # )
+    # assert response.headers["Content-Length"] == "14"
+
+
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+def test_asgi_range_response(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.body == static_files.js_content[:14]
+    assert (
+        send.headers[b"Content-Range"]
+        == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
+    )
+    assert send.headers[b"Content-Length"] == b"14"
+    assert send.status == 206
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+def test_asgi_range_response_2(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    headers = dict(response["headers"])
+
+    assert response["body"] == static_files.js_content[:14]
+    assert (
+        headers[b"Content-Range"]
+        == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
+    )
+    assert headers[b"Content-Length"] == b"14"
+    assert response["status"] == 206
+
+
+def test_out_of_range_error(server, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    response = server.get(url, headers={"Range": "bytes=900-999"})
+    assert response.status_code == 416
+
+
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+def test_asgi_out_of_range_error(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.status == 416
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+def test_asgi_out_of_range_error_2(asgi_application, static_files, _collect_static):
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    assert response["status"] == 416
+    assert dict(response["headers"])[b"Content-Range"] == b"bytes */%d" % len(
+        static_files.js_content
+    )

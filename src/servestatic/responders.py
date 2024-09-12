@@ -12,9 +12,7 @@ from time import mktime
 from urllib.parse import quote
 from wsgiref.headers import Headers
 
-import aiofiles
-from aiofiles.base import AiofilesContextManager
-from aiofiles.threadpool.binary import AsyncBufferedIOBase
+from servestatic.utils import AsyncFile
 
 
 class Response:
@@ -55,6 +53,7 @@ class SlicedFile(BufferedIOBase):
         self.fileobj = fileobj
         self.seeked = False
         self.start = start
+        self.end = end
         self.remaining = end - start + 1
 
     def read(self, size=-1):
@@ -74,22 +73,17 @@ class SlicedFile(BufferedIOBase):
 
 class AsyncSlicedFile:
     """
-    Variant of `SlicedFile` that works as an async context manager for `aiofiles`.
-
-    This class does not need a `close` or `__await__` method, since we always open
-    async file handle via context managers (`async with`).
+    Variant of `SlicedFile` that works on async files.
     """
 
-    def __init__(self, context_manager: AiofilesContextManager, start: int, end: int):
-        self.fileobj: AsyncBufferedIOBase  # This is populated during `__aenter__`
+    def __init__(self, fileobj: AsyncFile, start: int, end: int):
+        self.fileobj = fileobj
         self.seeked = False
         self.start = start
+        self.end = end
         self.remaining = end - start + 1
-        self.context_manager = context_manager
 
     async def read(self, size=-1):
-        if not self.fileobj:  # pragma: no cover
-            raise RuntimeError("Async file objects need to be open via `async with`.")
         if not self.seeked:
             await self.fileobj.seek(self.start)
             self.seeked = True
@@ -100,12 +94,14 @@ class AsyncSlicedFile:
         self.remaining -= len(data)
         return data
 
+    async def close(self):
+        await self.fileobj.close()
+
     async def __aenter__(self):
-        self.fileobj = await self.context_manager.__aenter__()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
-        return await self.context_manager.__aexit__(exc_type, exc, tb)
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
 
 
 class StaticFile:
@@ -143,7 +139,7 @@ class StaticFile:
         path, headers = self.get_path_and_headers(request_headers)
         # We do not await this async file handle to allow us the option of opening
         # it in a thread later
-        file_handle = aiofiles.open(path, "rb") if method != "HEAD" else None
+        file_handle = AsyncFile(path, "rb") if method != "HEAD" else None
         range_header = request_headers.get("HTTP_RANGE")
         if range_header:
             # If we can't interpret the Range request for any reason then

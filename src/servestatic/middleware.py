@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 import django
-from aiofiles.base import AiofilesContextManager
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
@@ -15,22 +14,28 @@ from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
     staticfiles_storage,
 )
-from django.http import FileResponse
+from django.http import FileResponse, HttpRequest
 
-from servestatic.responders import MissingFileError
+from servestatic.responders import (
+    AsyncSlicedFile,
+    MissingFileError,
+    SlicedFile,
+    StaticFile,
+)
 from servestatic.utils import (
+    AsyncFile,
     AsyncFileIterator,
     AsyncToSyncIterator,
     EmptyAsyncIterator,
     ensure_leading_trailing_slash,
     stat_files,
 )
-from servestatic.wsgi import ServeStatic
+from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
 
-class ServeStaticMiddleware(ServeStatic):
+class ServeStaticMiddleware(ServeStaticBase):
     """
     Wrap ServeStatic to allow it to function as Django middleware, rather
     than ASGI/WSGI middleware.
@@ -133,7 +138,7 @@ class ServeStaticMiddleware(ServeStatic):
         return await self.get_response(request)
 
     @staticmethod
-    async def aserve(static_file, request):
+    async def aserve(static_file: StaticFile, request: HttpRequest):
         response = await static_file.aget_response(request.method, request.META)
         status = int(response.status)
         http_response = AsyncServeStaticFileResponse(
@@ -263,12 +268,21 @@ class AsyncServeStaticFileResponse(FileResponse):
         pass
 
     def _set_streaming_content(self, value):
-        if isinstance(value, AiofilesContextManager):
-            value = AsyncFileIterator(value)
+        # Django < 4.2 doesn't support async file responses, so we must perform
+        # some conversions to ensure compatibility.
+        if django.VERSION < (4, 2):
+            if isinstance(value, AsyncFile):
+                value = value.open_raw()
+            elif isinstance(value, EmptyAsyncIterator):
+                value = ()
+            elif isinstance(value, AsyncSlicedFile):
+                value = SlicedFile(value.fileobj.open_raw(), value.start, value.end)
 
-        # Django < 4.2 doesn't support async file responses, so we convert to sync
-        if django.VERSION < (4, 2) and hasattr(value, "__aiter__"):
-            value = AsyncToSyncIterator(value)
+        # Django 4.2+ supports async file responses, but they need to be converted from
+        # a file-like object to an iterator, otherwise Django will assume the content is
+        # a traditional (sync) file object.
+        elif isinstance(value, (AsyncFile, AsyncSlicedFile)):
+            value = AsyncFileIterator(value)
 
         super()._set_streaming_content(value)
 

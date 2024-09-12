@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from wsgiref.util import FileWrapper
 
-from servestatic.base import BaseServeStatic
+from servestatic.base import ServeStaticBase
 from servestatic.utils import decode_path_info
 
 
-class ServeStatic(BaseServeStatic):
+class ServeStatic(ServeStaticBase):
     def __call__(self, environ, start_response):
         path = decode_path_info(environ.get("PATH_INFO", ""))
         if self.autorefresh:

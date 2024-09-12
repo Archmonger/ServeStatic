@@ -18,7 +18,7 @@ from servestatic.responders import (
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 
-class BaseServeStatic:
+class ServeStaticBase:
     # Ten years is what nginx sets a max age if you use 'expires max;'
     # so we'll follow its lead
     FOREVER = 10 * 365 * 24 * 60 * 60

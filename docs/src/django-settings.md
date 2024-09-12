@@ -1,6 +1,6 @@
 !!! Note
 
-    The `ServeStaticMiddleware` class takes all the same configuration options as the `ServeStatic` base class, but rather than accepting keyword arguments to its constructor it uses Django settings. The setting names are just the keyword arguments upper-cased with a `SERVESTATIC_` prefix.
+    The `ServeStaticMiddleware` class can take the same configuration options as the `ServeStatic` base class, but rather than accepting keyword arguments to its constructor it uses Django settings. The setting names are just the keyword arguments upper-cased with a `SERVESTATIC_` prefix.
 
 ---
 
