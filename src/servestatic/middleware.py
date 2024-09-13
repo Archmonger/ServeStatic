@@ -97,6 +97,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         if self.static_root:
+            self.static_root = os.path.abspath(self.static_root)
             self.insert_directory(self.static_root, self.static_prefix)
 
         if self.static_root and not self.use_manifest and not self.use_finders:
