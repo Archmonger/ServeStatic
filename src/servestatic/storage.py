@@ -113,6 +113,9 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         if static_root is None:
             return {}
 
+        # If static root is a Path object, convert it to a string
+        static_root = os.path.abspath(static_root)
+
         file_paths = []
         for root, _, files in os.walk(static_root):
             file_paths.extend(

@@ -41,12 +41,12 @@ def scantree(root):
             yield entry.path, entry.stat()
 
 
-def stat_files(paths) -> dict:
-    """Stat all files in `relative_paths` via threads."""
+def stat_files(paths: list[str]) -> dict:
+    """Stat a list of file paths via threads."""
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {rel_path: executor.submit(os.stat, rel_path) for rel_path in paths}
-        return {rel_path: future.result() for rel_path, future in futures.items()}
+        futures = {abs_path: executor.submit(os.stat, abs_path) for abs_path in paths}
+        return {abs_path: future.result() for abs_path, future in futures.items()}
 
 
 class AsyncToSyncIterator:
@@ -78,7 +78,7 @@ class AsyncToSyncIterator:
                     loop.run_until_complete, generator.__anext__()
                 ).result()
         loop.close()
-        thread_executor.shutdown(wait=False)
+        thread_executor.shutdown(wait=True)
 
 
 def open_lazy(f):
@@ -182,11 +182,12 @@ class AsyncFileIterator:
 
     def __init__(self, async_file: AsyncFile):
         self.async_file = async_file
+        self.block_size = get_block_size()
 
     async def __aiter__(self):
         async with self.async_file as file:
             while True:
-                chunk = await file.read(get_block_size())
+                chunk = await file.read(self.block_size)
                 if not chunk:
                     break
                 yield chunk
