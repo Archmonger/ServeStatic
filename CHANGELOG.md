@@ -32,11 +32,15 @@ Using the following categories, list your changes in this order:
 
 <!--changelog-start-->
 
-## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.0...HEAD)
+## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
+
+-   Nothing (yet)!
+
+## [2.0.1](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1) - 2024-09-13
 
 ### Fixed
 
--   Fix crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
+-   Fix crash when running `manage.py collectstatic` if Django's `settings.py:STATIC_ROOT` is a `Path` object.
 
 ## [2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0) - 2024-09-12
 
