@@ -41,12 +41,12 @@ def scantree(root):
             yield entry.path, entry.stat()
 
 
-def stat_files(paths) -> dict:
-    """Stat all files in `relative_paths` via threads."""
+def stat_files(paths: list[str]) -> dict:
+    """Stat a list of file paths via threads."""
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {rel_path: executor.submit(os.stat, rel_path) for rel_path in paths}
-        return {rel_path: future.result() for rel_path, future in futures.items()}
+        futures = {abs_path: executor.submit(os.stat, abs_path) for abs_path in paths}
+        return {abs_path: future.result() for abs_path, future in futures.items()}
 
 
 class AsyncToSyncIterator:
