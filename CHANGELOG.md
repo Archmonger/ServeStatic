@@ -36,7 +36,7 @@ Using the following categories, list your changes in this order:
 
 ### Fixed
 
--   Fixed crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
+-   Fix crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
 
 ## [2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0) - 2024-09-12
 
