@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 from posixpath import basename, normpath
 from urllib.parse import urlparse
@@ -74,6 +75,8 @@ class ServeStaticMiddleware(ServeStaticBase):
         self.keep_only_hashed_files = getattr(
             django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False
         )
+        force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
+        static_url = getattr(settings, "STATIC_URL", None)
         root = getattr(settings, "SERVESTATIC_ROOT", None)
 
         super().__init__(
@@ -89,9 +92,9 @@ class ServeStaticMiddleware(ServeStaticBase):
         )
 
         if self.static_prefix is None:
-            self.static_prefix = urlparse(settings.STATIC_URL or "").path
-            if settings.FORCE_SCRIPT_NAME:
-                script_name = settings.FORCE_SCRIPT_NAME.rstrip("/")
+            self.static_prefix = urlparse(static_url or "").path
+            if force_script_name:
+                script_name = force_script_name.rstrip("/")
                 if self.static_prefix.startswith(script_name):
                     self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
@@ -252,10 +255,8 @@ class ServeStaticMiddleware(ServeStaticBase):
         return name + ext
 
     def get_static_url(self, name):
-        try:
+        with contextlib.suppress(ValueError):
             return staticfiles_storage.url(name)
-        except ValueError:
-            return None
 
 
 class AsyncServeStaticFileResponse(FileResponse):

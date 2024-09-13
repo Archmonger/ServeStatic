@@ -78,7 +78,7 @@ class AsyncToSyncIterator:
                     loop.run_until_complete, generator.__anext__()
                 ).result()
         loop.close()
-        thread_executor.shutdown(wait=False)
+        thread_executor.shutdown(wait=True)
 
 
 def open_lazy(f):
@@ -182,11 +182,12 @@ class AsyncFileIterator:
 
     def __init__(self, async_file: AsyncFile):
         self.async_file = async_file
+        self.block_size = get_block_size()
 
     async def __aiter__(self):
         async with self.async_file as file:
             while True:
-                chunk = await file.read(get_block_size())
+                chunk = await file.read(self.block_size)
                 if not chunk:
                     break
                 yield chunk
