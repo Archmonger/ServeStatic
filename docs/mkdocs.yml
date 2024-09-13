@@ -101,7 +101,7 @@ watch:
 
 site_name: ServeStatic
 site_author: Archmonger
-site_description: Simplified static file serving for Python web apps.
+site_description: Production-grade static file server for Python web apps.
 copyright: '&copy;<div id="year"></div> <script>document.getElementById("year").innerHTML = new Date().getFullYear();</script> Archmonger'
 repo_url: https://github.com/Archmonger/ServeStatic
 site_url: https://archmonger.github.io/ServeStatic/

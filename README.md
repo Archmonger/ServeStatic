@@ -17,7 +17,7 @@
     </a>
 </p>
 
-_Simplified static file serving for Python web apps._
+_Production-grade static file server for Python web apps._
 
 ---
 
