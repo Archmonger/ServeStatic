@@ -1,15 +1,202 @@
 [build-system]
-build-backend = "setuptools.build_meta"
-requires = ["setuptools"]
+build-backend = "hatchling.build"
+requires = [
+  "hatchling",
+]
+
+[project]
+name = "servestatic"
+description = "Production-grade static file server for Python web apps."
+readme = "README.md"
+keywords = [
+  "Django",
+]
+license = "MIT"
+authors = [
+  { name = "Mark Bakhit" },
+]
+requires-python = ">=3.9"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: Django",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Communications :: File Sharing",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "django",
+]
+optional-dependencies.brotli = [
+  "brotli",
+]
+urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
+urls.Documentation = "https://archmonger.github.io/ServeStatic/"
+urls.Homepage = "https://github.com/Archmonger/ServeStatic"
+
+[tool.hatch.version]
+path = "src/servestatic/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+]
+
+[tool.hatch.build.targets.wheel]
+nclude = [
+  "/src",
+  "/tests",
+]
+
+[tool.hatch.metadata]
+license-files = { paths = [ "LICENSE" ] }
+
+[tool.hatch.envs.default]
+installer = "uv"
+
+#
+# Testing
+#
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  "pytest-sugar",
+  "requests",
+  "brotli",
+]
+randomize = true
+matrix-name-format = "{variable}-{value}"
+
+# Django 3.2 LTS
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.8", "3.9", "3.10"]
+django = [ "3.2" ]
+
+# Django 4.0
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.8", "3.9", "3.10" ]
+django = [ "4.0" ]
+
+# Django 4.1
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.8", "3.9", "3.10", "3.11"]
+django = [ "4.1" ]
+
+# Django 4.2
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.8", "3.9", "3.10", "3.11", "3.12"]
+django = [ "4.2" ]
+
+# Django 5.0
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.10", "3.11", "3.12"]
+django = [ "5.0" ]
+
+# Django 5.1
+[[tool.hatch.envs.hatch-test.matrix]]
+python = [ "3.10", "3.11", "3.12"]
+django = [ "5.1" ]
+
+[tool.hatch.envs.hatch-test.overrides]
+matrix.django.dependencies = [
+  { if = [ "3.2" ], value = "Django~=3.2" },
+  { if = [ "4.0" ], value = "Django~=4.0" },
+  { if = [ "4.1" ], value = "Django~=4.1" },
+  { if = [ "4.2" ], value = "Django~=4.2" },
+  { if = [ "5.0" ], value = "Django~=5.0" },
+  { if = [ "5.1" ], value = "Django~=5.1" },
+]
+
+#
+# Documentation
+#
+[tool.hatch.envs.docs]
+template = "docs"
+detached = true
+dependencies = [
+  "mkdocs",
+  "mkdocs-git-revision-date-localized-plugin",
+  "mkdocs-material",
+  "mkdocs-include-markdown-plugin",
+  "linkcheckmd",
+  "mkdocs-spellcheck[all]",
+  "mkdocs-git-authors-plugin",
+  "mkdocs-minify-plugin",
+  "mike",
+]
+
+[tool.hatch.envs.docs.scripts]
+linkcheck = [
+  "linkcheckMarkdown docs/ -v -r",
+  "linkcheckMarkdown README.md -v -r",
+  "linkcheckMarkdown CHANGELOG.md -v -r",
+]
+build = [ "cd docs && mkdocs build --strict" ]
+deploy = [
+  "cd docs && mike deploy --push --update-aliases {args} latest",
+]
+develop = [
+  "cd docs && mike deploy --push develop",
+]
+
+#
+# Linting
+#
+[tool.hatch.envs.lint]
+template = "lint"
+detached = true
+dependencies = [
+  "isort",
+  "flake8",
+  "flake8-bugbear",
+  "flake8-comprehensions",
+  "flake8-logging",
+  "flake8-tidy-imports"
+]
+
+[tool.hatch.envs.lint.scripts]
+check = [
+  "flake8 .",
+]
+
+#
+# Tools
+#
 
 [tool.black]
-target-version = ['py39']
+target-version = [ 'py39' ]
 
 [tool.pytest.ini_options]
 addopts = """\
     --strict-config
     --strict-markers
     """
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = [
+  "src/",
+  "tests/",
+]
+
+[tool.coverage.paths]
+source = [
+  "src/",
+]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.rstcheck]
 report_level = "ERROR"
