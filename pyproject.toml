@@ -170,6 +170,20 @@ check = [
 ]
 
 #
+# pre-commit
+#
+[tool.hatch.envs.pre-commit]
+template = "pre-commit"
+detached = true
+dependencies = [
+  "pre-commit>=3,<4",
+]
+
+[tool.hatch.envs.pre-commit.scripts]
+check = ["pre-commit run --all-files"]
+update = ["pre-commit autoupdate"]
+
+#
 # Tools
 #
 
