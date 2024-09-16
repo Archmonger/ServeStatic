@@ -109,12 +109,12 @@ django = [ "5.1" ]
 
 [tool.hatch.envs.hatch-test.overrides]
 matrix.django.dependencies = [
-  { if = [ "3.2" ], value = "Django~=3.2" },
-  { if = [ "4.0" ], value = "Django~=4.0" },
-  { if = [ "4.1" ], value = "Django~=4.1" },
-  { if = [ "4.2" ], value = "Django~=4.2" },
-  { if = [ "5.0" ], value = "Django~=5.0" },
-  { if = [ "5.1" ], value = "Django~=5.1" },
+  { if = [ "3.2" ], value = "django~=3.2" },
+  { if = [ "4.0" ], value = "django~=4.0" },
+  { if = [ "4.1" ], value = "django~=4.1" },
+  { if = [ "4.2" ], value = "django~=4.2" },
+  { if = [ "5.0" ], value = "django~=5.0" },
+  { if = [ "5.1" ], value = "django~=5.1" },
 ]
 
 #
@@ -142,10 +142,10 @@ linkcheck = [
   "linkcheckMarkdown CHANGELOG.md -v -r",
 ]
 build = [ "cd docs && mkdocs build --strict" ]
-deploy = [
+deploy_latest = [
   "cd docs && mike deploy --push --update-aliases {args} latest",
 ]
-develop = [
+deploy_develop = [
   "cd docs && mike deploy --push develop",
 ]
 

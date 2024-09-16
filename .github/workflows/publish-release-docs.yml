@@ -22,6 +22,6 @@ jobs:
               run: |
                   git config user.name github-actions
                   git config user.email github-actions@github.com
-                  hatch run docs:deploy ${{ github.event.release.name }}
+                  hatch run docs:deploy_latest ${{ github.event.release.name }}
         concurrency:
             group: publish-docs
