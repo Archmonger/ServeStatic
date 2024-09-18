@@ -73,6 +73,9 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# Linter cache
+.ruff_cache/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -96,6 +99,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/docs/site/
 
 # mypy
 .mypy_cache/
