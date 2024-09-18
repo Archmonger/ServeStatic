@@ -148,6 +148,9 @@ deploy_latest = [
 deploy_develop = [
   "cd docs && mike deploy --push develop",
 ]
+serve = [
+  "cd docs && mkdocs serve"
+]
 
 #
 # Linting
@@ -156,6 +159,7 @@ deploy_develop = [
 template = "lint"
 detached = true
 dependencies = [
+  "black",
   "isort",
   "flake8",
   "flake8-bugbear",
@@ -167,6 +171,17 @@ dependencies = [
 [tool.hatch.envs.lint.scripts]
 check = [
   "flake8 .",
+  "isort .",
+  "black ."
+]
+flake8 = [
+  "flake8 .",
+]
+isort = [
+  "isort ."
+]
+fmt = [
+  "black ."
 ]
 
 #

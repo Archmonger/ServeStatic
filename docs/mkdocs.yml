@@ -15,9 +15,7 @@ nav:
                 - FAQ: django-faq.md
     - About:
           - Changelog: changelog.md
-          #   - Contributor Guide:
-          #         - Code: about/code.md
-          #         - Docs: about/docs.md
+          - Contributor Guide: contributing.md
           - Community:
                 - GitHub Discussions: https://github.com/Archmonger/ServeStatic/discussions
           - License: license.md
