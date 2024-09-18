@@ -31,11 +31,11 @@ git clone https://github.com/Archmonger/ServeStatic.git
 cd ServeStatic
 ```
 
-All example commands are exected to be run from the `ServeStatic` folder.
+All example commands are expected to be run from the `ServeStatic` folder.
 
 ## Code Contributions
 
-Ensure you have followed the [tool setup](tools.md) instructions before following the instructions below.
+Ensure you have followed the [tool setup](#tool-setup) instructions before following the instructions below.
 
 ### Development
 
@@ -59,7 +59,7 @@ hatch run lint:flake8
 
 ### Testing
 
-Tests are run aross a matrix of Python and Django versions to ensure full compatibility with all supported versions.
+Tests are run across a matrix of Python and Django versions to ensure full compatibility with all supported versions.
 
 #### Full Test Suite
 
@@ -103,10 +103,10 @@ hatch test -k test_get_js_static_file
 
 ## Documentation Contributions
 
-Ensure you have followed the [tool setup](tools.md) instructions before following the instructions below.
+Ensure you have followed the [tool setup](#tool-setup) instructions before following the instructions below.
 
 ### Modifying Documentation
 
 1. Start the `mkdocs` server by running `hatch run docs:serve`
-1. Visit http://localhost:8000/ in your preferred browser
+1. Visit [the documentation site](http://localhost:8000/) in your preferred browser
 1. Edit the documentation.  The site will load change as documentation files change.
