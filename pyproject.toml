@@ -1,33 +1,43 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = [
+  "hatchling",
+]
 
 [project]
 name = "servestatic"
 description = "Production-grade static file server for Python web apps."
 readme = "README.md"
-keywords = ["Django"]
+keywords = [
+  "Django",
+]
 license = "MIT"
 authors = [{ name = "Mark Bakhit" }]
 requires-python = ">=3.9"
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Framework :: Django",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Communications :: File Sharing",
-    "Topic :: Internet :: WWW/HTTP",
-    "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: Django",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Communications :: File Sharing",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
 ]
-dynamic = ["version"]
-dependencies = ["django"]
-optional-dependencies.brotli = ["brotli"]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "django",
+]
+optional-dependencies.brotli = [
+  "brotli",
+]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Homepage = "https://github.com/Archmonger/ServeStatic"
@@ -156,6 +166,25 @@ update = ["pre-commit autoupdate"]
 [tool.black]
 target-version = ['py39']
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-ignore = [
+    "FBT001",  # Boolean-typed positional argument in function definition
+    "FBT002",  # Boolean default positional argument in function definition
+    "ARG001",  # Unused function argument
+    "ARG002",  # Unused method argument
+    "ARG004",  # Unused static method argument
+    "SLF001",  # Private member accessed
+    "PLR2004", # Magic value used in comparison
+    "SIM115",  # Use context handler for opening files
+]
+preview = true
+
+[tool.ruff.format]
+preview = true
+
 [tool.pytest.ini_options]
 addopts = """\
     --strict-config
@@ -175,22 +204,3 @@ show_missing = true
 
 [tool.rstcheck]
 report_level = "ERROR"
-
-[tool.ruff]
-line-length = 120
-
-[tool.ruff.lint]
-extend-ignore = [
-    "FBT001",  # Boolean-typed positional argument in function definition
-    "FBT002",  # Boolean default positional argument in function definition
-    "ARG001",  # Unused function argument
-    "ARG002",  # Unused method argument
-    "ARG004",  # Unused static method argument
-    "SLF001",  # Private member accessed
-    "PLR2004", # Magic value used in comparison
-    "SIM115",  # Use context handler for opening files
-]
-preview = true
-
-[tool.ruff.format]
-preview = true
