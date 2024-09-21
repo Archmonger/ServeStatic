@@ -98,9 +98,9 @@ watch:
     - ../LICENSE.md
 
 site_name: ServeStatic
-site_author: Archmonger
+site_author: Mark Bakhit (Archmonger)
 site_description: Production-grade static file server for Python web apps.
-copyright: '&copy;<div id="year"></div> <script>document.getElementById("year").innerHTML = new Date().getFullYear();</script> Archmonger'
+copyright: '&copy;<div id="year"></div> <script>document.getElementById("year").innerHTML = new Date().getFullYear();</script> Mark Bakhit (Archmonger)'
 repo_url: https://github.com/Archmonger/ServeStatic
 site_url: https://archmonger.github.io/ServeStatic/
 repo_name: ServeStatic (GitHub)

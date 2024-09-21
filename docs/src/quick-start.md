@@ -16,7 +16,6 @@ Edit your `settings.py` file and add `ServeStatic` to the `MIDDLEWARE` list, abo
 
 ```python linenums="0"
 MIDDLEWARE = [
-    # ...
     "django.middleware.security.SecurityMiddleware",
     "servestatic.middleware.ServeStaticMiddleware",
     # ...
