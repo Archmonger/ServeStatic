@@ -24,14 +24,6 @@ repos:
       hooks:
           - id: pycln
             args: [--all]
-    - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
-      rev: v1.0.1
-      hooks:
-          - id: rst-linter
-    - repo: https://github.com/adrienverge/yamllint
-      rev: "v1.35.1"
-      hooks:
-          - id: yamllint
     - repo: https://github.com/adamchainz/django-upgrade
       rev: 1.16.0
       hooks:
