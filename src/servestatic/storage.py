@@ -7,19 +7,18 @@ import json
 import os
 import re
 import textwrap
-from typing import Any, Iterator, Tuple, Union
+from collections.abc import Iterator
+from typing import Any, Tuple, Union
 
 from django.conf import settings
-from django.contrib.staticfiles.storage import (
-    ManifestStaticFilesStorage,
-    StaticFilesStorage,
-)
+from django.contrib.staticfiles.storage import (ManifestStaticFilesStorage,
+                                                StaticFilesStorage)
 from django.core.files.base import ContentFile
 
 from servestatic.compress import Compressor
 from servestatic.utils import stat_files
 
-_PostProcessT = Iterator[Union[Tuple[str, str, bool], Tuple[str, None, RuntimeError]]]
+_PostProcessT = Iterator[Union[tuple[str, str, bool], tuple[str, None, RuntimeError]]]
 
 
 class CompressedStaticFilesStorage(StaticFilesStorage):

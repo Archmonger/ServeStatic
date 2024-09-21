@@ -11,26 +11,15 @@ import django
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
-from django.contrib.staticfiles.storage import (
-    ManifestStaticFilesStorage,
-    staticfiles_storage,
-)
+from django.contrib.staticfiles.storage import (ManifestStaticFilesStorage,
+                                                staticfiles_storage)
 from django.http import FileResponse, HttpRequest
 
-from servestatic.responders import (
-    AsyncSlicedFile,
-    MissingFileError,
-    SlicedFile,
-    StaticFile,
-)
-from servestatic.utils import (
-    AsyncFile,
-    AsyncFileIterator,
-    AsyncToSyncIterator,
-    EmptyAsyncIterator,
-    ensure_leading_trailing_slash,
-    stat_files,
-)
+from servestatic.responders import (AsyncSlicedFile, MissingFileError,
+                                    SlicedFile, StaticFile)
+from servestatic.utils import (AsyncFile, AsyncFileIterator,
+                               AsyncToSyncIterator, EmptyAsyncIterator,
+                               ensure_leading_trailing_slash, stat_files)
 from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]

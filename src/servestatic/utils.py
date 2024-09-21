@@ -6,9 +6,10 @@ import contextlib
 import functools
 import os
 import threading
+from collections.abc import AsyncIterable
 from concurrent.futures import ThreadPoolExecutor
 from io import IOBase
-from typing import AsyncIterable, Callable
+from typing import Callable
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
@@ -83,10 +84,11 @@ class AsyncToSyncIterator:
 
 def open_lazy(f):
     """Decorator that ensures the file is open before calling a function.
-    This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility."""
+    This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility.
+    """
 
     @functools.wraps(f)
-    async def wrapper(self: "AsyncFile", *args, **kwargs):
+    async def wrapper(self: AsyncFile, *args, **kwargs):
         if self.closed:
             raise ValueError("I/O operation on closed file.")
         if self.file_obj is None:

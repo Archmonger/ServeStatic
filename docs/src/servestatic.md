@@ -58,7 +58,7 @@ If you want to something other than `index.html` as the index file, then you can
 A dictionary mapping file extensions (lowercase) to the mimetype for that extension. For example:
 
 ```python linenums="0"
-{'.foo': 'application/x-foo'}
+{".foo": "application/x-foo"}
 ```
 
 Note that ServeStatic ships with its own default set of mimetypes and does not use the system-supplied ones (e.g. `/etc/mime.types`). This ensures that it behaves consistently regardless of the environment in which it's run. View the defaults in the `media_types.py` file.
@@ -114,13 +114,14 @@ def force_download_pdfs(headers, path, url):
         None. Changes should be made by modifying the headers \
         dictionary directly.
     """
-    if path.endswith('.pdf'):
-        headers['Content-Disposition'] = 'attachment'
+    if path.endswith(".pdf"):
+        headers["Content-Disposition"] = "attachment"
+
 
 application = ServeStatic(
     application,
     add_headers_function=force_download_pdfs,
-    )
+)
 ```
 
 ---
@@ -151,7 +152,7 @@ def immutable_file_test(path, url):
     """
     # Match filename with 12 hex digits before the extension
     # e.g. app.db8f2edc0c8a.js
-    return re.match(r'^.+\.[0-9a-f]{12}\..+$', url)
+    return re.match(r"^.+\.[0-9a-f]{12}\..+$", url)
 ```
 
 ## Compression Support

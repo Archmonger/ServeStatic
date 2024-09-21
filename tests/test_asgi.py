@@ -7,7 +7,8 @@ import pytest
 
 from servestatic.asgi import ServeStaticASGI
 
-from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
+from .utils import (AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator,
+                    Files)
 
 
 @pytest.fixture()

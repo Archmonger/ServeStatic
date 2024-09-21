@@ -20,17 +20,12 @@ from django.core.wsgi import get_wsgi_application
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
-from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.middleware import (AsyncServeStaticFileResponse,
+                                    ServeStaticMiddleware)
 from servestatic.utils import AsyncFile
 
-from .utils import (
-    AppServer,
-    AsgiAppServer,
-    AsgiReceiveEmulator,
-    AsgiScopeEmulator,
-    AsgiSendEmulator,
-    Files,
-)
+from .utils import (AppServer, AsgiAppServer, AsgiReceiveEmulator,
+                    AsgiScopeEmulator, AsgiSendEmulator, Files)
 
 
 def reset_lazy_object(obj):
