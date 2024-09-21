@@ -287,7 +287,7 @@ class StaticFile:
             headers["Content-Length"] = str(file_entry.size)
             if encoding:
                 headers["Content-Encoding"] = encoding
-                encoding_re = re.compile(r"\b%s\b" % encoding)
+                encoding_re = re.compile(rf"\b{encoding}\b")
             else:
                 encoding_re = re.compile("")
             alternatives.append((encoding_re, file_entry.path, headers.items()))
@@ -313,9 +313,14 @@ class StaticFile:
         if accept_encoding == "*":
             accept_encoding = ""
         # These are sorted by size so first match is the best
-        for encoding_re, path, headers in self.alternatives:
-            if encoding_re.search(accept_encoding):
-                return path, headers
+        return next(
+            (
+                (path, headers)
+                for encoding_re, path, headers in self.alternatives
+                if encoding_re.search(accept_encoding)
+            ),
+            None,
+        )
 
 
 class Redirect:
@@ -369,6 +374,8 @@ class FileEntry:
             raise
         if not stat.S_ISREG(stat_result.st_mode):
             if stat.S_ISDIR(stat_result.st_mode):
-                raise IsDirectoryError(f"Path is a directory: {path}")
-            raise NotARegularFileError(f"Not a regular file: {path}")
+                msg = f"Path is a directory: {path}"
+                raise IsDirectoryError(msg)
+            msg = f"Not a regular file: {path}"
+            raise NotARegularFileError(msg)
         return stat_result

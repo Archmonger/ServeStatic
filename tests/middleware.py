@@ -4,8 +4,7 @@ from django.utils.decorators import async_only_middleware, sync_only_middleware
 @sync_only_middleware
 def sync_middleware_1(get_response):
     def middleware(request):
-        response = get_response(request)
-        return response
+        return get_response(request)
 
     return middleware
 
@@ -13,8 +12,7 @@ def sync_middleware_1(get_response):
 @async_only_middleware
 def async_middleware_1(get_response):
     async def middleware(request):
-        response = await get_response(request)
-        return response
+        return await get_response(request)
 
     return middleware
 
@@ -22,8 +20,7 @@ def async_middleware_1(get_response):
 @sync_only_middleware
 def sync_middleware_2(get_response):
     def middleware(request):
-        response = get_response(request)
-        return response
+        return get_response(request)
 
     return middleware
 
@@ -31,7 +28,6 @@ def sync_middleware_2(get_response):
 @async_only_middleware
 def async_middleware_2(get_response):
     async def middleware(request):
-        response = await get_response(request)
-        return response
+        return await get_response(request)
 
     return middleware

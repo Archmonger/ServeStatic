@@ -54,7 +54,8 @@ class AsgiAppServer:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
-            raise RuntimeError("Incorrect response type!")
+            msg = "Incorrect response type!"
+            raise RuntimeError(msg)
 
         # Remove the prefix from the path
         scope["path"] = scope["path"].replace(f"/{AppServer.PREFIX}", "", 1)
@@ -132,7 +133,7 @@ class AsgiReceiveEmulator:
     be emulate HTTP events."""
 
     def __init__(self, *events):
-        self.events = [{"type": "http.connect"}] + list(events)
+        self.events = [{"type": "http.connect"}, *list(events)]
 
     async def __call__(self):
         return self.events.pop(0) if self.events else {"type": "http.disconnect"}

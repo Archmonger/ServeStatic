@@ -9,14 +9,11 @@ from servestatic.utils import decode_path_info
 class ServeStatic(ServeStaticBase):
     def __call__(self, environ, start_response):
         path = decode_path_info(environ.get("PATH_INFO", ""))
-        if self.autorefresh:
-            static_file = self.find_file(path)
-        else:
-            static_file = self.files.get(path)
+        static_file = self.find_file(path) if self.autorefresh else self.files.get(path)
         if static_file is None:
             return self.application(environ, start_response)
-        else:
-            return self.serve(static_file, environ, start_response)
+
+        return self.serve(static_file, environ, start_response)
 
     @staticmethod
     def serve(static_file, environ, start_response):

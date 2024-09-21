@@ -129,6 +129,7 @@ class ServeStaticBase:
         for path in self.candidate_paths_for_url(url):
             with contextlib.suppress(MissingFileError):
                 return self.find_file_at_path(path, url)
+        return None
 
     def candidate_paths_for_url(self, url):
         for root, prefix in self.directories:
@@ -201,10 +202,9 @@ class ServeStaticBase:
 
     def add_mime_headers(self, headers, path, url):
         media_type = self.media_types.get_type(path)
-        if media_type.startswith("text/"):
-            params = {"charset": str(self.charset)}
-        else:
-            params = {}
+        params = (
+            {"charset": str(self.charset)} if media_type.startswith("text/") else {}
+        )
         headers.add_header("Content-Type", str(media_type), **params)
 
     def add_cache_headers(self, headers, path, url):
@@ -236,9 +236,11 @@ class ServeStaticBase:
         elif from_url == to_url + self.index_file:
             relative_url = "./"
         else:
-            raise ValueError(f"Cannot handle redirect: {from_url} > {to_url}")
-        if self.max_age is not None:
-            headers = {"Cache-Control": f"max-age={self.max_age}, public"}
-        else:
-            headers = {}
+            msg = f"Cannot handle redirect: {from_url} > {to_url}"
+            raise ValueError(msg)
+        headers = (
+            {"Cache-Control": f"max-age={self.max_age}, public"}
+            if self.max_age is not None
+            else {}
+        )
         return Redirect(relative_url, headers=headers)

@@ -6,10 +6,12 @@ import contextlib
 import functools
 import os
 import threading
-from collections.abc import AsyncIterable
 from concurrent.futures import ThreadPoolExecutor
-from io import IOBase
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterable
+    from io import IOBase
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
@@ -90,7 +92,8 @@ def open_lazy(f):
     @functools.wraps(f)
     async def wrapper(self: AsyncFile, *args, **kwargs):
         if self.closed:
-            raise ValueError("I/O operation on closed file.")
+            msg = "I/O operation on closed file."
+            raise ValueError(msg)
         if self.file_obj is None:
             self.file_obj = await self._execute(open, *self.open_args)
         return await f(self, *args, **kwargs)

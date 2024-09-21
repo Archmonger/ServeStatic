@@ -135,7 +135,8 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         with contextlib.suppress(json.JSONDecodeError):
             stored = json.loads(content)
             return stored.get("stats", {})
-        raise ValueError(f"Couldn't load stats from manifest '{self.manifest_name}'")
+        msg = f"Couldn't load stats from manifest '{self.manifest_name}'"
+        raise ValueError(msg)
 
     def post_process_with_compression(self, files):
         # Files may get hashed multiple times, we want to keep track of all the

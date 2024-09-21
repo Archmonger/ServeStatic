@@ -47,9 +47,10 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     def __init__(self, get_response=None, settings=django_settings):
         if not iscoroutinefunction(get_response):
-            raise ValueError(
+            msg = (
                 "ServeStaticMiddleware requires an async compatible version of Django."
             )
+            raise ValueError(msg)
         markcoroutinefunction(self)
 
         self.get_response = get_response
@@ -135,9 +136,8 @@ class ServeStaticMiddleware(ServeStaticBase):
                 for storage in finder.storages.values()
             ]
             app_dirs = "\n• ".join(sorted(app_dirs))
-            raise MissingFileError(
-                f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
-            )
+            msg = f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
+            raise MissingFileError(msg)
 
         return await self.get_response(request)
 
@@ -178,10 +178,11 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
-            raise ValueError(
+            msg = (
                 "SERVESTATIC_USE_MANIFEST is set to True but "
                 "staticfiles storage is not using a manifest."
             )
+            raise ValueError(msg)
         staticfiles: dict = staticfiles_storage.hashed_files
         stat_cache = None
 

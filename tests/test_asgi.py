@@ -23,7 +23,8 @@ def application(request, test_files):
 
     async def asgi_app(scope, receive, send):
         if scope["type"] != "http":
-            raise RuntimeError("Incorrect response type!")
+            msg = "Incorrect response type!"
+            raise RuntimeError(msg)
 
         await send(
             {
