@@ -7,8 +7,11 @@ import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from io import IOBase
-from typing import AsyncIterable, Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterable
+    from io import IOBase
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
@@ -65,30 +68,28 @@ class AsyncToSyncIterator:
     def __iter__(self):
         # Create a dedicated event loop to run the async iterator on.
         loop = asyncio.new_event_loop()
-        thread_executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="ServeStatic"
-        )
+        thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic")
 
         # Convert from async to sync by stepping through the async iterator and yielding
         # the result of each step.
         generator = self.iterator.__aiter__()
         with contextlib.suppress(GeneratorExit, StopAsyncIteration):
             while True:
-                yield thread_executor.submit(
-                    loop.run_until_complete, generator.__anext__()
-                ).result()
+                yield thread_executor.submit(loop.run_until_complete, generator.__anext__()).result()
         loop.close()
         thread_executor.shutdown(wait=True)
 
 
 def open_lazy(f):
     """Decorator that ensures the file is open before calling a function.
-    This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility."""
+    This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility.
+    """
 
     @functools.wraps(f)
-    async def wrapper(self: "AsyncFile", *args, **kwargs):
+    async def wrapper(self: AsyncFile, *args, **kwargs):
         if self.closed:
-            raise ValueError("I/O operation on closed file.")
+            msg = "I/O operation on closed file."
+            raise ValueError(msg)
         if self.file_obj is None:
             self.file_obj = await self._execute(open, *self.open_args)
         return await f(self, *args, **kwargs)
@@ -124,9 +125,7 @@ class AsyncFile:
             opener,
         )
         self.loop: asyncio.AbstractEventLoop | None = None
-        self.executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile"
-        )
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic-AsyncFile")
         self.lock = threading.Lock()
         self.file_obj: None | IOBase = None
         self.closed = False

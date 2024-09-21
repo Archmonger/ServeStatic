@@ -20,9 +20,7 @@ class AppServer:
 
     def __init__(self, application):
         self.application = application
-        self.server = make_server(
-            "127.0.0.1", 0, self.serve_under_prefix, handler_class=WSGIRequestHandler
-        )
+        self.server = make_server("127.0.0.1", 0, self.serve_under_prefix, handler_class=WSGIRequestHandler)
 
     def serve_under_prefix(self, environ, start_response):
         prefix = shift_path_info(environ)
@@ -54,7 +52,8 @@ class AsgiAppServer:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
-            raise RuntimeError("Incorrect response type!")
+            msg = "Incorrect response type!"
+            raise RuntimeError(msg)
 
         # Remove the prefix from the path
         scope["path"] = scope["path"].replace(f"/{AppServer.PREFIX}", "", 1)
@@ -132,7 +131,7 @@ class AsgiReceiveEmulator:
     be emulate HTTP events."""
 
     def __init__(self, *events):
-        self.events = [{"type": "http.connect"}] + list(events)
+        self.events = [{"type": "http.connect"}, *list(events)]
 
     async def __call__(self):
         return self.events.pop(0) if self.events else {"type": "http.disconnect"}
@@ -153,9 +152,7 @@ class AsgiSendEmulator:
     @property
     def body(self):
         """Combine all HTTP body messages into a single bytestring."""
-        return b"".join(
-            [message["body"] for message in self.message if message.get("body")]
-        )
+        return b"".join([message["body"] for message in self.message if message.get("body")])
 
     @property
     def headers(self):

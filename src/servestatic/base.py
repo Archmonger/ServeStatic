@@ -129,6 +129,7 @@ class ServeStaticBase:
         for path in self.candidate_paths_for_url(url):
             with contextlib.suppress(MissingFileError):
                 return self.find_file_at_path(path, url)
+        return None
 
     def candidate_paths_for_url(self, url):
         for root, prefix in self.directories:
@@ -145,7 +146,7 @@ class ServeStaticBase:
             if url.endswith("/"):
                 path = os.path.join(path, self.index_file)
                 return self.get_static_file(path, url)
-            elif url.endswith(f"/{self.index_file}"):
+            if url.endswith(f"/{self.index_file}"):
                 if os.path.isfile(path):
                     return self.redirect(url, url[: -len(self.index_file)])
             else:
@@ -173,12 +174,11 @@ class ServeStaticBase:
 
     @staticmethod
     def is_compressed_variant(path, stat_cache=None):
-        if path[-3:] in (".gz", ".br"):
+        if path[-3:] in {".gz", ".br"}:
             uncompressed_path = path[:-3]
             if stat_cache is None:
                 return os.path.isfile(uncompressed_path)
-            else:
-                return uncompressed_path in stat_cache
+            return uncompressed_path in stat_cache
         return False
 
     def get_static_file(self, path, url, stat_cache=None):
@@ -201,10 +201,7 @@ class ServeStaticBase:
 
     def add_mime_headers(self, headers, path, url):
         media_type = self.media_types.get_type(path)
-        if media_type.startswith("text/"):
-            params = {"charset": str(self.charset)}
-        else:
-            params = {}
+        params = {"charset": str(self.charset)} if media_type.startswith("text/") else {}
         headers.add_header("Content-Type", str(media_type), **params)
 
     def add_cache_headers(self, headers, path, url):
@@ -236,9 +233,7 @@ class ServeStaticBase:
         elif from_url == to_url + self.index_file:
             relative_url = "./"
         else:
-            raise ValueError(f"Cannot handle redirect: {from_url} > {to_url}")
-        if self.max_age is not None:
-            headers = {"Cache-Control": f"max-age={self.max_age}, public"}
-        else:
-            headers = {}
+            msg = f"Cannot handle redirect: {from_url} > {to_url}"
+            raise ValueError(msg)
+        headers = {"Cache-Control": f"max-age={self.max_age}, public"} if self.max_age is not None else {}
         return Redirect(relative_url, headers=headers)

@@ -30,7 +30,7 @@ Find and serve files using Django's manifest file.
 
 This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
 
-When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup which improves startup speeds.
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
 
 ---
 
@@ -138,8 +138,9 @@ def force_download_pdfs(headers, path, url):
         url: The host-relative URL of the file e.g. `/static/styles/app.css`
 
     """
-    if path.endswith('.pdf'):
-        headers['Content-Disposition'] = 'attachment'
+    if path.endswith(".pdf"):
+        headers["Content-Disposition"] = "attachment"
+
 
 SERVESTATIC_ADD_HEADERS_FUNCTION = force_download_pdfs
 ```
@@ -167,7 +168,8 @@ def immutable_file_test(path, url):
     """
     # Match filename with 12 hex digits before the extension
     # e.g. app.db8f2edc0c8a.js
-    return re.match(r'^.+\.[0-9a-f]{12}\..+$', url)
+    return re.match(r"^.+\.[0-9a-f]{12}\..+$", url)
+
 
 SERVESTATIC_IMMUTABLE_FILE_TEST = immutable_file_test
 ```

@@ -16,7 +16,7 @@ from servestatic.utils import AsyncFile
 
 
 class Response:
-    __slots__ = ("status", "headers", "file")
+    __slots__ = ("file", "headers", "status")
 
     def __init__(self, status, headers, file):
         self.status = status
@@ -114,7 +114,7 @@ class StaticFile:
         self.alternatives = self.get_alternatives(headers, files)
 
     def get_response(self, method, request_headers):
-        if method not in ("GET", "HEAD"):
+        if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
             return self.not_modified_response
@@ -132,7 +132,7 @@ class StaticFile:
     async def aget_response(self, method, request_headers):
         """Variant of `get_response` that works with async HTTP requests.
         To minimize code duplication, `request_headers` conforms to WSGI header spec."""
-        if method not in ("GET", "HEAD"):
+        if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
             return self.not_modified_response
@@ -146,9 +146,7 @@ class StaticFile:
             # just ignore it and return the standard response (this
             # behaviour is allowed by the spec)
             with contextlib.suppress(ValueError):
-                return await self.aget_range_response(
-                    range_header, headers, file_handle
-                )
+                return await self.aget_range_response(range_header, headers, file_handle)
         return Response(HTTPStatus.OK, headers, file_handle)
 
     def get_range_response(self, range_header, base_headers, file_handle):
@@ -163,12 +161,10 @@ class StaticFile:
             return self.get_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = SlicedFile(file_handle, start, end)
-        headers.extend(
-            (
-                ("Content-Range", f"bytes {start}-{end}/{size}"),
-                ("Content-Length", str(end - start + 1)),
-            )
-        )
+        headers.extend((
+            ("Content-Range", f"bytes {start}-{end}/{size}"),
+            ("Content-Length", str(end - start + 1)),
+        ))
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     async def aget_range_response(self, range_header, base_headers, file_handle):
@@ -184,12 +180,10 @@ class StaticFile:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = AsyncSlicedFile(file_handle, start, end)
-        headers.extend(
-            (
-                ("Content-Range", f"bytes {start}-{end}/{size}"),
-                ("Content-Length", str(end - start + 1)),
-            )
-        )
+        headers.extend((
+            ("Content-Range", f"bytes {start}-{end}/{size}"),
+            ("Content-Length", str(end - start + 1)),
+        ))
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     def get_byte_range(self, range_header, size):
@@ -203,12 +197,12 @@ class StaticFile:
     def parse_byte_range(range_header):
         units, _, range_spec = range_header.strip().partition("=")
         if units != "bytes":
-            raise ValueError()
+            raise ValueError
         # Only handle a single range spec. Multiple ranges will trigger a
         # ValueError below which will result in the Range header being ignored
         start_str, sep, end_str = range_spec.strip().partition("-")
         if not sep:
-            raise ValueError()
+            raise ValueError
         if not start_str:
             start = -int(end_str)
             end = None
@@ -250,7 +244,8 @@ class StaticFile:
                     continue
         return files
 
-    def get_headers(self, headers_list, files):
+    @staticmethod
+    def get_headers(headers_list, files):
         headers = Headers(headers_list)
         main_file = files[None]
         if len(files) > 1:
@@ -270,12 +265,8 @@ class StaticFile:
 
     @staticmethod
     def get_not_modified_response(headers):
-        not_modified_headers = [
-            (key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers
-        ]
-        return Response(
-            status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None
-        )
+        not_modified_headers = [(key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers]
+        return Response(status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None)
 
     @staticmethod
     def get_alternatives(base_headers, files):
@@ -287,7 +278,7 @@ class StaticFile:
             headers["Content-Length"] = str(file_entry.size)
             if encoding:
                 headers["Content-Encoding"] = encoding
-                encoding_re = re.compile(r"\b%s\b" % encoding)
+                encoding_re = re.compile(rf"\b{encoding}\b")
             else:
                 encoding_re = re.compile("")
             alternatives.append((encoding_re, file_entry.path, headers.items()))
@@ -313,9 +304,14 @@ class StaticFile:
         if accept_encoding == "*":
             accept_encoding = ""
         # These are sorted by size so first match is the best
-        for encoding_re, path, headers in self.alternatives:
-            if encoding_re.search(accept_encoding):
-                return path, headers
+        return next(
+            (
+                (path, headers)
+                for encoding_re, path, headers in self.alternatives
+                if encoding_re.search(accept_encoding)
+            ),
+            None,
+        )
 
 
 class Redirect:
@@ -344,7 +340,7 @@ class IsDirectoryError(MissingFileError):
 
 
 class FileEntry:
-    __slots__ = ("path", "size", "mtime")
+    __slots__ = ("mtime", "path", "size")
 
     def __init__(self, path, stat_cache=None):
         self.path = path
@@ -364,11 +360,13 @@ class FileEntry:
         except KeyError as exc:
             raise MissingFileError(path) from exc
         except OSError as exc:
-            if exc.errno in (errno.ENOENT, errno.ENAMETOOLONG):
+            if exc.errno in {errno.ENOENT, errno.ENAMETOOLONG}:
                 raise MissingFileError(path) from exc
             raise
         if not stat.S_ISREG(stat_result.st_mode):
             if stat.S_ISDIR(stat_result.st_mode):
-                raise IsDirectoryError(f"Path is a directory: {path}")
-            raise NotARegularFileError(f"Not a regular file: {path}")
+                msg = f"Path is a directory: {path}"
+                raise IsDirectoryError(msg)
+            msg = f"Not a regular file: {path}"
+            raise NotARegularFileError(msg)
         return stat_result

@@ -9,6 +9,7 @@ have to determine this dynamically.
 
 from __future__ import annotations
 
+import contextlib
 from importlib import import_module
 
 from django.apps import apps
@@ -19,11 +20,10 @@ def get_next_runserver_command():
     Return the next highest priority "runserver" command class
     """
     for app_name in get_lower_priority_apps():
-        module_path = "%s.management.commands.runserver" % app_name
-        try:
+        module_path = f"{app_name}.management.commands.runserver"
+        with contextlib.suppress(ImportError, AttributeError):
             return import_module(module_path).Command
-        except (ImportError, AttributeError):
-            pass
+    return None
 
 
 def get_lower_priority_apps():
@@ -48,7 +48,4 @@ class Command(RunserverCommand):
         super().add_arguments(parser)
         if parser.get_default("use_static_handler") is True:
             parser.set_defaults(use_static_handler=False)
-            parser.description += (
-                "\n(Wrapped by 'servestatic.runserver_nostatic' to always"
-                " enable '--nostatic')"
-            )
+            parser.description += "\n(Wrapped by 'servestatic.runserver_nostatic' to always" " enable '--nostatic')"

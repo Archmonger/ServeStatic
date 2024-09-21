@@ -45,25 +45,22 @@ class FileServerASGI:
         # Convert ASGI headers into WSGI headers. Allows us to reuse all of our WSGI
         # header logic inside of aget_response().
         wsgi_headers = {
-            "HTTP_" + key.decode().upper().replace("-", "_"): value.decode()
-            for key, value in scope["headers"]
+            "HTTP_" + key.decode().upper().replace("-", "_"): value.decode() for key, value in scope["headers"]
         }
 
         # Get the ServeStatic file response
         response = await self.static_file.aget_response(scope["method"], wsgi_headers)
 
         # Start a new HTTP response for the file
-        await send(
-            {
-                "type": "http.response.start",
-                "status": response.status,
-                "headers": [
-                    # Convert headers back to ASGI spec
-                    (key.lower().encode(), value.encode())
-                    for key, value in response.headers
-                ],
-            }
-        )
+        await send({
+            "type": "http.response.start",
+            "status": response.status,
+            "headers": [
+                # Convert headers back to ASGI spec
+                (key.lower().encode(), value.encode())
+                for key, value in response.headers
+            ],
+        })
 
         # Head responses have no body, so we terminate early
         if response.file is None:
@@ -75,12 +72,10 @@ class FileServerASGI:
             while True:
                 chunk = await async_file.read(self.block_size)
                 more_body = bool(chunk)
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": chunk,
-                        "more_body": more_body,
-                    }
-                )
+                await send({
+                    "type": "http.response.body",
+                    "body": chunk,
+                    "more_body": more_body,
+                })
                 if not more_body:
                     break

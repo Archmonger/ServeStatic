@@ -1,112 +1,59 @@
-# Contributing
+## Creating a development environment
 
-## Tool Setup
+If you plan to make code changes to this repository, you will need to install the following dependencies first:
 
-### `python`
+-   [Git](https://git-scm.com/downloads)
+-   [Python 3.9+](https://www.python.org/downloads/)
+-   [Hatch](https://hatch.pypa.io/latest/)
 
-To contribute code or documentation updates, an installation of Python 3 is required.
+Once you finish installing these dependencies, you can clone this repository:
 
-### `hatch`
-
-This project utilizes [`hatch`](https://hatch.pypa.io/latest/) to manage Python environments for development and testing.  Follow
-[the `hatch` installation instructions](https://hatch.pypa.io/latest/install/) before continuing through this document.
-
-### `pre-commit`
-
-Additionally, this project uses [`pre-commit`](https://pre-commit.com/) Git hooks to run linting and formatting checks against each commit.  See [the `pre-commit` installation instructions](https://pre-commit.com/#install) for how to install this tool.
-
-Once installed, run `pre-commit install` to set up the git hook scripts:
-
-``` shell
-$ pre-commit install
-pre-commit installed at .git/hooks/pre-commit
-```
-
-### Git
-
-Clone the repository using:
-
-``` shell
+```shell
 git clone https://github.com/Archmonger/ServeStatic.git
 cd ServeStatic
 ```
 
-All example commands are expected to be run from the `ServeStatic` folder.
+## Executing test environment commands
 
-## Code Contributions
+By utilizing `hatch`, the following commands are available to manage the development environment.
 
-Ensure you have followed the [tool setup](#tool-setup) instructions before following the instructions below.
+### Tests
 
-### Development
+| Command | Description |
+| --- | --- |
+| `hatch test` | Run Python tests using the current environment's Python version |
+| `hatch test --all` | Run tests using all compatible Python and Django versions |
+| `hatch test --python 3.9` | Run tests using a specific Python version |
+| `hatch test --include "django=5.1"` | Run tests using a specific Django version |
+| `hatch test -k test_get_js_static_file` | Run only a specific test |
 
-#### Linting
+??? question "What other arguments are available to me?"
 
-The project uses `flake8` and `isort` for linting and uses `black` to format code.  To run the all linters:
+    The `hatch test` command is a wrapper for `pytest`. Hatch "intercepts" a handful of arguments, which can be previewed by typing `hatch test --help`.
 
-``` shell
-hatch run lint:check
-```
+    Any additional arguments in the `test` command are directly passed on to pytest. See the [pytest documentation](https://docs.pytest.org/en/8.3.x/reference/reference.html#command-line-flags) for what additional arguments are available.
 
-Or select a specific linter:
+### Linting and Formatting
 
-``` shell
-hatch run lint:flake8
-```
+| Command | Description |
+| --- | --- |
+| `hatch fmt` | Run all linters and formatters |
+| `hatch fmt --check` | Run all linters and formatters, but do not save fixes to the disk |
+| `hatch fmt --linter` | Run only linters |
+| `hatch fmt --formatter` | Run only formatters |
+| `hatch run precommit:check` | Run all [`pre-commit`](https://pre-commit.com/) checks configured within this repository |
+| `hatch run precommit:update` | Update the [`pre-commit`](https://pre-commit.com/) hooks configured within this repository |
 
-!!! tip
+### Documentation
 
-    Linting is likely to see an update in the near future to use `ruff` for linting and formatting.
+| Command | Description |
+| --- | --- |
+| `hatch run docs:serve` | Start the `mkdocs` server to view documentation locally |
+| `hatch run docs:build` | Build the documentation |
+| `hatch run docs:linkcheck` | Check for broken links in the documentation |
 
-### Testing
+??? tip "Configure your IDE for linting"
 
-Tests are run across a matrix of Python and Django versions to ensure full compatibility with all supported versions.
+    This repository uses `hatch fmt` for linting and formatting, which is a [modestly customized](https://hatch.pypa.io/latest/config/internal/static-analysis/#default-settings) version of [`ruff`](https://github.com/astral-sh/ruff).
 
-#### Full Test Suite
-
-To run the full test suite, using the system Python:
-
-``` shell
-hatch test
-```
-
-To select a particular Python version:
-
-``` shell
-hatch test --python 3.9
-```
-
-!!! tip
-
-    `hatch` can manage Python versions for you, for example installing Python 3.9: `hatch python install 3.9`
-
-    See the [hatch documentation](https://hatch.pypa.io/latest/tutorials/python/manage/)
-
-To select a particular Django version:
-
-``` shell
-hatch test --include "django=5.1"
-```
-
-#### Specific Test(s)
-
-To run only a specific test:
-
-``` shell
-hatch test -k test_get_js_static_file
-```
-
-!!! tip
-
-    Additional arguments are passed on to pytest.
-
-    See the [pytest documentation](https://docs.pytest.org/en/8.3.x/reference/reference.html#command-line-flags) for options
-
-## Documentation Contributions
-
-Ensure you have followed the [tool setup](#tool-setup) instructions before following the instructions below.
-
-### Modifying Documentation
-
-1. Start the `mkdocs` server by running `hatch run docs:serve`
-1. Visit [the documentation site](http://localhost:8000/) in your preferred browser
-1. Edit the documentation.  The site will load change as documentation files change.
+    You can install `ruff` as a plugin to your preferred code editor to create a similar environment.

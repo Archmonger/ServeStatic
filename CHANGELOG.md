@@ -40,13 +40,13 @@ Using the following categories, list your changes in this order:
 
 ### Fixed
 
--   Fix crash when running `manage.py collectstatic` if Django's `settings.py:STATIC_ROOT` is a `Path` object.
+-   Fix crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
 
 ## [2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0) - 2024-09-12
 
 ### Added
 
--   Django `settings.py:SERVESTATIC_USE_MANIFEST` utilize the Django manifest rather than scanning the filesystem.
+-   Django `settings.py:SERVESTATIC_USE_MANIFEST` will allow ServeStatic to use the Django manifest rather than scanning the filesystem.
     -   When also using ServeStatic's `CompressedManifestStaticFilesStorage` backend, ServeStatic will no longer need to call `os.stat`.
 
 ### Changed

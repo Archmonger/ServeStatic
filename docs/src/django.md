@@ -10,10 +10,9 @@ Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list. The S
 
 ```python linenums="0"
 MIDDLEWARE = [
-    ...,
     "django.middleware.security.SecurityMiddleware",
     "servestatic.middleware.ServeStaticMiddleware",
-    ...,
+    # ...
 ]
 ```
 
@@ -29,7 +28,7 @@ ServeStatic comes with a storage backend which compresses your files and hashes 
 
 ```python linenums="0"
 STORAGES = {
-    ...,
+    # ...
     "staticfiles": {
         "BACKEND": "servestatic.storage.CompressedManifestStaticFilesStorage",
     },
@@ -146,9 +145,9 @@ You can disable Django's static file handling and allow ServeStatic to take over
 
 ```python linenums="0"
 INSTALLED_APPS = [
-    ...,
+    # ...
     "servestatic.runserver_nostatic",
     "django.contrib.staticfiles",
-    ...,
+    # ...
 ]
 ```
