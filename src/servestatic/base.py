@@ -9,8 +9,12 @@ from typing import Callable
 from wsgiref.headers import Headers
 
 from servestatic.media_types import MediaTypes
-from servestatic.responders import (IsDirectoryError, MissingFileError,
-                                    Redirect, StaticFile)
+from servestatic.responders import (
+    IsDirectoryError,
+    MissingFileError,
+    Redirect,
+    StaticFile,
+)
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 

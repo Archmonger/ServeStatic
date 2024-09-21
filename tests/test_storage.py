@@ -9,14 +9,12 @@ from posixpath import basename
 import django
 import pytest
 from django.conf import settings
-from django.contrib.staticfiles.storage import (HashedFilesMixin,
-                                                staticfiles_storage)
+from django.contrib.staticfiles.storage import HashedFilesMixin, staticfiles_storage
 from django.core.management import call_command
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
-from servestatic.storage import (CompressedManifestStaticFilesStorage,
-                                 MissingFileError)
+from servestatic.storage import CompressedManifestStaticFilesStorage, MissingFileError
 
 from .utils import Files
 
