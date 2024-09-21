@@ -52,7 +52,7 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
         )
         return compressed
 
-    def create_compressor(self, **kwargs: Any) -> Compressor:
+    def create_compressor(self, **kwargs: Any) -> Compressor:  # noqa: PLR6301
         return Compressor(**kwargs)
 
 
@@ -85,7 +85,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         # Make exception messages helpful
         for name, hashed_name, processed in files:
             if isinstance(processed, Exception):
-                processed = self.make_helpful_exception(processed, name)
+                processed = self.make_helpful_exception(processed, name)  # noqa: PLW2901
             yield name, hashed_name, processed
 
         self.add_stats_to_manifest()
@@ -181,7 +181,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
                 if e.errno != errno.ENOENT:
                     raise
 
-    def create_compressor(self, **kwargs):
+    def create_compressor(self, **kwargs):  # noqa: PLR6301
         return Compressor(**kwargs)
 
     def compress_files(self, names):

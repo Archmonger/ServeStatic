@@ -8,6 +8,7 @@ import sys
 import tempfile
 import warnings
 from contextlib import closing
+from pathlib import Path
 from urllib.parse import urljoin
 from wsgiref.headers import Headers
 from wsgiref.simple_server import demo_app
@@ -99,7 +100,7 @@ def test_get_accept_star(server, files):
 def test_get_accept_missing(server, files):
     response = server.get(
         files.gzip_url,
-        # Using None is required to override requests’ default Accept-Encoding
+        # Using None is required to override requests default Accept-Encoding
         headers={"Accept-Encoding": None},
     )
     assert response.content == files.gzip_content
@@ -296,7 +297,7 @@ def test_warn_about_missing_directories(application):
 
 
 def test_handles_missing_path_info_key(application):
-    response = application(environ={}, start_response=lambda *args: None)
+    response = application(environ={}, start_response=lambda *_args: None)
     assert response
 
 
@@ -328,28 +329,24 @@ def test_immutable_file_test_accepts_regex():
 
 @pytest.mark.skipif(sys.version_info < (3, 4), reason="Pathlib was added in Python 3.4")
 def test_directory_path_can_be_pathlib_instance():
-    from pathlib import Path
-
     root = Path(Files("root").directory)
     # Check we can construct instance without it blowing up
     ServeStatic(None, root=root, autorefresh=True)
 
 
 def fake_stat_entry(st_mode: int = stat.S_IFREG, st_size: int = 1024, st_mtime: int = 0) -> os.stat_result:
-    return os.stat_result(
-        (
-            st_mode,
-            0,  # st_ino
-            0,  # st_dev
-            0,  # st_nlink
-            0,  # st_uid
-            0,  # st_gid
-            st_size,
-            0,  # st_atime
-            st_mtime,
-            0,  # st_ctime
-        )
-    )
+    return os.stat_result((
+        st_mode,
+        0,  # st_ino
+        0,  # st_dev
+        0,  # st_nlink
+        0,  # st_uid
+        0,  # st_gid
+        st_size,
+        0,  # st_atime
+        st_mtime,
+        0,  # st_ctime
+    ))
 
 
 def test_last_modified_not_set_when_mtime_is_zero():

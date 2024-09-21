@@ -28,9 +28,8 @@ def main() -> int:
         if args.check:
             print("Would write changes")
             return 1
-        else:
-            print(f"Writing {media_types_py}")
-            media_types_py.write_text(new_text)
+        print(f"Writing {media_types_py}")
+        media_types_py.write_text(new_text)
     return 0
 
 
@@ -93,7 +92,8 @@ def get_nginx_data() -> str:
     with closing(conn):
         conn.request("GET", "/nginx/nginx/master/conf/mime.types")
         response = conn.getresponse()
-        assert response.status == 200
+        if response.status != 200:
+            raise AssertionError
         return response.read().decode()
 
 

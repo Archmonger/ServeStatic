@@ -148,14 +148,12 @@ class ServeStaticMiddleware(ServeStaticBase):
         for finder in finders.get_finders():
             for path, storage in finder.list(None):
                 prefix = (getattr(storage, "prefix", None) or "").strip("/")
-                url = "".join(
-                    (
-                        self.static_prefix,
-                        prefix,
-                        "/" if prefix else "",
-                        path.replace("\\", "/"),
-                    )
-                )
+                url = "".join((
+                    self.static_prefix,
+                    prefix,
+                    "/" if prefix else "",
+                    path.replace("\\", "/"),
+                ))
                 # Use setdefault as only first matching file should be used
                 files.setdefault(url, storage.path(path))
                 self.insert_directory(storage.location, self.static_prefix)
@@ -166,8 +164,8 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
-            msg = "SERVESTATIC_USE_MANIFEST is set to True but " "staticfiles storage is not using a manifest."
-            raise ValueError(msg)
+            msg = "SERVESTATIC_USE_MANIFEST is set to True but staticfiles storage is not using a manifest."
+            raise TypeError(msg)
         staticfiles: dict = staticfiles_storage.hashed_files
         stat_cache = None
 
@@ -224,7 +222,8 @@ class ServeStaticMiddleware(ServeStaticBase):
         # versioned filename
         return bool(static_url and basename(static_url) == basename(url))
 
-    def get_name_without_hash(self, filename):
+    @staticmethod
+    def get_name_without_hash(filename):
         """
         Removes the version hash from a filename e.g, transforms
         'css/application.f3ea4bcc2.css' into 'css/application.css'
@@ -237,7 +236,8 @@ class ServeStaticMiddleware(ServeStaticBase):
         name = os.path.splitext(name_with_hash)[0]
         return name + ext
 
-    def get_static_url(self, name):
+    @staticmethod
+    def get_static_url(name):
         with contextlib.suppress(ValueError):
             return staticfiles_storage.url(name)
 

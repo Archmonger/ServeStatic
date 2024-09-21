@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from servestatic import utils as servestatic_utils
 from servestatic.asgi import ServeStaticASGI
 
 from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
@@ -26,13 +27,11 @@ def application(request, test_files):
             msg = "Incorrect response type!"
             raise RuntimeError(msg)
 
-        await send(
-            {
-                "type": "http.response.start",
-                "status": 404,
-                "headers": [[b"content-type", b"text/plain"]],
-            }
-        )
+        await send({
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [[b"content-type", b"text/plain"]],
+        })
         await send({"type": "http.response.body", "body": b"Not Found"})
 
     return ServeStaticASGI(asgi_app, root=test_files.directory, autorefresh=request.param)
@@ -81,13 +80,12 @@ def test_small_block_size(application, test_files):
     scope = AsgiScopeEmulator({"path": "/static/app.js"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
-    from servestatic import utils
 
-    default_block_size = utils.ASGI_BLOCK_SIZE
-    utils.ASGI_BLOCK_SIZE = 10
+    default_block_size = servestatic_utils.ASGI_BLOCK_SIZE
+    servestatic_utils.ASGI_BLOCK_SIZE = 10
     asyncio.run(application(scope, receive, send))
     assert send[1]["body"] == test_files.js_content[:10]
-    utils.ASGI_BLOCK_SIZE = default_block_size
+    servestatic_utils.ASGI_BLOCK_SIZE = default_block_size
 
 
 def test_request_range_response(application, test_files):

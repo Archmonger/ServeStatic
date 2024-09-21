@@ -67,7 +67,8 @@ def _compressed_manifest_storage(setup):
         call_command("collectstatic", verbosity=0, interactive=False)
 
 
-def test_compressed_static_files_storage(_compressed_storage):
+@pytest.mark.usefixtures("_compressed_storage")
+def test_compressed_static_files_storage():
     call_command("collectstatic", verbosity=0, interactive=False)
 
     for name in ["styles.css.gz", "styles.css.br"]:
@@ -75,7 +76,8 @@ def test_compressed_static_files_storage(_compressed_storage):
         assert os.path.exists(path)
 
 
-def test_compressed_static_files_storage_dry_run(_compressed_storage):
+@pytest.mark.usefixtures("_compressed_storage")
+def test_compressed_static_files_storage_dry_run():
     call_command("collectstatic", "--dry-run", verbosity=0, interactive=False)
 
     for name in ["styles.css.gz", "styles.css.br"]:
@@ -83,7 +85,8 @@ def test_compressed_static_files_storage_dry_run(_compressed_storage):
         assert not os.path.exists(path)
 
 
-def test_make_helpful_exception(_compressed_manifest_storage):
+@pytest.mark.usefixtures("_compressed_manifest_storage")
+def test_make_helpful_exception():
     class TriggerException(HashedFilesMixin):
         def exists(self, path):
             return False
@@ -97,7 +100,8 @@ def test_make_helpful_exception(_compressed_manifest_storage):
     assert isinstance(helpful_exception, MissingFileError)
 
 
-def test_unversioned_files_are_deleted(_compressed_manifest_storage):
+@pytest.mark.usefixtures("_compressed_manifest_storage")
+def test_unversioned_files_are_deleted():
     name = "styles.css"
     versioned_url = staticfiles_storage.url(name)
     versioned_name = basename(versioned_url)
@@ -106,7 +110,8 @@ def test_unversioned_files_are_deleted(_compressed_manifest_storage):
     assert [versioned_name] == remaining_files
 
 
-def test_manifest_file_is_left_in_place(_compressed_manifest_storage):
+@pytest.mark.usefixtures("_compressed_manifest_storage")
+def test_manifest_file_is_left_in_place():
     manifest_file = os.path.join(settings.STATIC_ROOT, "staticfiles.json")
     assert os.path.exists(manifest_file)
 

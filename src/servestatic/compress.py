@@ -115,7 +115,8 @@ class Compressor:
             self.log(f"Skipping {path} ({encoding_name} compression not effective)")
         return is_effective
 
-    def write_data(self, path, data, suffix, stat_result):
+    @staticmethod
+    def write_data(path, data, suffix, stat_result):
         filename = path + suffix
         with open(filename, "wb") as f:
             f.write(data)

@@ -86,18 +86,21 @@ def server(application):
         yield app_server
 
 
-def test_get_root_file(server, root_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_get_root_file(server, root_files):
     response = server.get(root_files.robots_url)
     assert response.content == root_files.robots_content
 
 
 @override_settings(SERVESTATIC_USE_MANIFEST=False)
-def test_get_root_file_no_manifest(server, root_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_get_root_file_no_manifest(server, root_files):
     response = server.get(root_files.robots_url)
     assert response.content == root_files.robots_content
 
 
-def test_versioned_file_cached_forever(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_versioned_file_cached_forever(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url)
     assert response.content == static_files.js_content
@@ -105,7 +108,8 @@ def test_versioned_file_cached_forever(server, static_files, _collect_static):
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
-def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
     receive = AsgiReceiveEmulator()
@@ -121,7 +125,8 @@ def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_file
 
 
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
-def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
 
@@ -144,14 +149,16 @@ def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_fi
     assert headers.get(b"Vary") == b"Accept-Encoding"
 
 
-def test_unversioned_file_not_cached_forever(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_unversioned_file_not_cached_forever(server, static_files):
     url = settings.STATIC_URL + static_files.js_path
     response = server.get(url)
     assert response.content == static_files.js_content
     assert response.headers.get("Cache-Control") == "max-age=60, public"
 
 
-def test_get_gzip(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_get_gzip(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url, headers={"Accept-Encoding": "gzip"})
     assert response.content == static_files.js_content
@@ -159,7 +166,8 @@ def test_get_gzip(server, static_files, _collect_static):
     assert response.headers["Vary"] == "Accept-Encoding"
 
 
-def test_get_brotli(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_get_brotli(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url, headers={"Accept-Encoding": "gzip, br"})
     assert response.content == static_files.js_content
@@ -167,14 +175,16 @@ def test_get_brotli(server, static_files, _collect_static):
     assert response.headers["Vary"] == "Accept-Encoding"
 
 
-def test_no_content_type_when_not_modified(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_no_content_type_when_not_modified(server, static_files):
     last_mod = "Fri, 11 Apr 2100 11:47:06 GMT"
     url = settings.STATIC_URL + static_files.js_path
     response = server.get(url, headers={"If-Modified-Since": last_mod})
     assert "Content-Type" not in response.headers
 
 
-def test_get_nonascii_file(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_get_nonascii_file(server, static_files):
     url = settings.STATIC_URL + static_files.nonascii_path
     response = server.get(url)
     assert response.content == static_files.nonascii_content
@@ -194,7 +204,8 @@ def finder_static_files(request):
         yield files
 
 
-def test_no_content_disposition_header(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_no_content_disposition_header(server, static_files):
     url = settings.STATIC_URL + static_files.js_path
     response = server.get(url)
     assert response.headers.get("content-disposition") is None
@@ -276,7 +287,8 @@ def test_servestatic_file_response_has_only_one_header():
 
 
 @override_settings(STATIC_URL="static/")
-def test_relative_static_url(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_relative_static_url(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url)
     assert response.content == static_files.js_content
@@ -306,7 +318,8 @@ def test_error_message(server):
 
 
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="static/")
-def test_force_script_name(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_force_script_name(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     assert url.startswith("/subdir/static/")
     response = server.get(url)
@@ -315,7 +328,8 @@ def test_force_script_name(server, static_files, _collect_static):
 
 
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="/subdir/static/")
-def test_force_script_name_with_matching_static_url(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_force_script_name_with_matching_static_url(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     assert url.startswith("/subdir/static/")
     response = server.get(url)
@@ -323,7 +337,8 @@ def test_force_script_name_with_matching_static_url(server, static_files, _colle
     assert response.content == static_files.js_content
 
 
-def test_range_response(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_range_response(server, static_files):
     ...
     # FIXME: This test is not working, seemingly due to bugs with AppServer.
 
@@ -339,7 +354,8 @@ def test_range_response(server, static_files, _collect_static):
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
-def test_asgi_range_response(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_range_response(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
     receive = AsgiReceiveEmulator()
@@ -352,7 +368,8 @@ def test_asgi_range_response(asgi_application, static_files, _collect_static):
 
 
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
-def test_asgi_range_response_2(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_range_response_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
 
@@ -372,14 +389,16 @@ def test_asgi_range_response_2(asgi_application, static_files, _collect_static):
     assert response["status"] == 206
 
 
-def test_out_of_range_error(server, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_out_of_range_error(server, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url, headers={"Range": "bytes=900-999"})
     assert response.status_code == 416
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
-def test_asgi_out_of_range_error(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_out_of_range_error(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
     receive = AsgiReceiveEmulator()
@@ -389,7 +408,8 @@ def test_asgi_out_of_range_error(asgi_application, static_files, _collect_static
 
 
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
-def test_asgi_out_of_range_error_2(asgi_application, static_files, _collect_static):
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_out_of_range_error_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
 

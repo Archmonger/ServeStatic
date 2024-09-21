@@ -24,12 +24,12 @@ def files_dir():
     tmp = tempfile.mkdtemp()
     timestamp = 1498579535
     for path, contents in TEST_FILES.items():
-        path = os.path.join(tmp, path.lstrip("/"))
+        current_path = os.path.join(tmp, path.lstrip("/"))
         with contextlib.suppress(FileExistsError):
-            os.makedirs(os.path.dirname(path))
-        with open(path, "wb") as f:
+            os.makedirs(os.path.dirname(current_path))
+        with open(current_path, "wb") as f:
             f.write(contents)
-        os.utime(path, (timestamp, timestamp))
+        os.utime(current_path, (timestamp, timestamp))
     compress_main([tmp, "--quiet"])
     yield tmp
     shutil.rmtree(tmp)
@@ -72,7 +72,7 @@ def test_custom_log():
 
 def test_compress():
     compressor = Compressor(use_brotli=False, use_gzip=False)
-    assert [] == list(compressor.compress("tests/test_files/static/styles.css"))
+    assert list(compressor.compress("tests/test_files/static/styles.css")) == []
 
 
 def test_compressed_effectively_no_orig_size():

@@ -16,7 +16,7 @@ from servestatic.utils import AsyncFile
 
 
 class Response:
-    __slots__ = ("status", "headers", "file")
+    __slots__ = ("file", "headers", "status")
 
     def __init__(self, status, headers, file):
         self.status = status
@@ -114,7 +114,7 @@ class StaticFile:
         self.alternatives = self.get_alternatives(headers, files)
 
     def get_response(self, method, request_headers):
-        if method not in ("GET", "HEAD"):
+        if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
             return self.not_modified_response
@@ -132,7 +132,7 @@ class StaticFile:
     async def aget_response(self, method, request_headers):
         """Variant of `get_response` that works with async HTTP requests.
         To minimize code duplication, `request_headers` conforms to WSGI header spec."""
-        if method not in ("GET", "HEAD"):
+        if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
             return self.not_modified_response
@@ -161,12 +161,10 @@ class StaticFile:
             return self.get_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = SlicedFile(file_handle, start, end)
-        headers.extend(
-            (
-                ("Content-Range", f"bytes {start}-{end}/{size}"),
-                ("Content-Length", str(end - start + 1)),
-            )
-        )
+        headers.extend((
+            ("Content-Range", f"bytes {start}-{end}/{size}"),
+            ("Content-Length", str(end - start + 1)),
+        ))
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     async def aget_range_response(self, range_header, base_headers, file_handle):
@@ -182,12 +180,10 @@ class StaticFile:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = AsyncSlicedFile(file_handle, start, end)
-        headers.extend(
-            (
-                ("Content-Range", f"bytes {start}-{end}/{size}"),
-                ("Content-Length", str(end - start + 1)),
-            )
-        )
+        headers.extend((
+            ("Content-Range", f"bytes {start}-{end}/{size}"),
+            ("Content-Length", str(end - start + 1)),
+        ))
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
     def get_byte_range(self, range_header, size):
@@ -248,7 +244,8 @@ class StaticFile:
                     continue
         return files
 
-    def get_headers(self, headers_list, files):
+    @staticmethod
+    def get_headers(headers_list, files):
         headers = Headers(headers_list)
         main_file = files[None]
         if len(files) > 1:
@@ -343,7 +340,7 @@ class IsDirectoryError(MissingFileError):
 
 
 class FileEntry:
-    __slots__ = ("path", "size", "mtime")
+    __slots__ = ("mtime", "path", "size")
 
     def __init__(self, path, stat_cache=None):
         self.path = path
@@ -363,7 +360,7 @@ class FileEntry:
         except KeyError as exc:
             raise MissingFileError(path) from exc
         except OSError as exc:
-            if exc.errno in (errno.ENOENT, errno.ENAMETOOLONG):
+            if exc.errno in {errno.ENOENT, errno.ENAMETOOLONG}:
                 raise MissingFileError(path) from exc
             raise
         if not stat.S_ISREG(stat_result.st_mode):
