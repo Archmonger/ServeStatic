@@ -48,7 +48,4 @@ class Command(RunserverCommand):
         super().add_arguments(parser)
         if parser.get_default("use_static_handler") is True:
             parser.set_defaults(use_static_handler=False)
-            parser.description += (
-                "\n(Wrapped by 'servestatic.runserver_nostatic' to always"
-                " enable '--nostatic')"
-            )
+            parser.description += "\n(Wrapped by 'servestatic.runserver_nostatic' to always" " enable '--nostatic')"

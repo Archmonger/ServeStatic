@@ -146,9 +146,7 @@ class StaticFile:
             # just ignore it and return the standard response (this
             # behaviour is allowed by the spec)
             with contextlib.suppress(ValueError):
-                return await self.aget_range_response(
-                    range_header, headers, file_handle
-                )
+                return await self.aget_range_response(range_header, headers, file_handle)
         return Response(HTTPStatus.OK, headers, file_handle)
 
     def get_range_response(self, range_header, base_headers, file_handle):
@@ -270,12 +268,8 @@ class StaticFile:
 
     @staticmethod
     def get_not_modified_response(headers):
-        not_modified_headers = [
-            (key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers
-        ]
-        return Response(
-            status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None
-        )
+        not_modified_headers = [(key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers]
+        return Response(status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None)
 
     @staticmethod
     def get_alternatives(base_headers, files):

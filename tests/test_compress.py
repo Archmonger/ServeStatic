@@ -36,9 +36,7 @@ def files_dir():
 
 
 def test_compresses_file(files_dir):
-    with contextlib.closing(
-        gzip.open(os.path.join(files_dir, f"{COMPRESSABLE_FILE}.gz"), "rb")
-    ) as f:
+    with contextlib.closing(gzip.open(os.path.join(files_dir, f"{COMPRESSABLE_FILE}.gz"), "rb")) as f:
         contents = f.read()
     assert TEST_FILES[COMPRESSABLE_FILE] == contents
 
@@ -79,6 +77,4 @@ def test_compress():
 
 def test_compressed_effectively_no_orig_size():
     compressor = Compressor(quiet=True)
-    assert not compressor.is_compressed_effectively(
-        "test_encoding", "test_path", 0, "test_data"
-    )
+    assert not compressor.is_compressed_effectively("test_encoding", "test_path", 0, "test_data")

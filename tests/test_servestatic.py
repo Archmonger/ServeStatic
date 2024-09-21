@@ -335,9 +335,7 @@ def test_directory_path_can_be_pathlib_instance():
     ServeStatic(None, root=root, autorefresh=True)
 
 
-def fake_stat_entry(
-    st_mode: int = stat.S_IFREG, st_size: int = 1024, st_mtime: int = 0
-) -> os.stat_result:
+def fake_stat_entry(st_mode: int = stat.S_IFREG, st_size: int = 1024, st_mtime: int = 0) -> os.stat_result:
     return os.stat_result(
         (
             st_mode,

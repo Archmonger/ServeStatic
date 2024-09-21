@@ -52,9 +52,7 @@ class Compressor:
         "wmv",
     )
 
-    def __init__(
-        self, extensions=None, use_gzip=True, use_brotli=True, log=print, quiet=False
-    ):
+    def __init__(self, extensions=None, use_gzip=True, use_brotli=True, log=print, quiet=False):
         if extensions is None:
             extensions = self.SKIP_COMPRESS_EXTENSIONS
         self.extension_re = self.get_extension_re(extensions)
@@ -66,9 +64,7 @@ class Compressor:
     def get_extension_re(extensions):
         if not extensions:
             return re.compile("^$")
-        return re.compile(
-            rf'\.({"|".join(map(re.escape, extensions))})$', re.IGNORECASE
-        )
+        return re.compile(rf'\.({"|".join(map(re.escape, extensions))})$', re.IGNORECASE)
 
     def should_compress(self, filename):
         return not self.extension_re.search(filename)
@@ -98,9 +94,7 @@ class Compressor:
         output = BytesIO()
         # Explicitly set mtime to 0 so gzip content is fully determined
         # by file content (0 = "no timestamp" according to gzip spec)
-        with gzip.GzipFile(
-            filename="", mode="wb", fileobj=output, compresslevel=9, mtime=0
-        ) as gz_file:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=output, compresslevel=9, mtime=0) as gz_file:
             gz_file.write(data)
         return output.getvalue()
 
@@ -116,9 +110,7 @@ class Compressor:
             ratio = compressed_size / orig_size
             is_effective = ratio <= 0.95
         if is_effective:
-            self.log(
-                f"{encoding_name} compressed {path} ({orig_size // 1024}K -> {compressed_size // 1024}K)"
-            )
+            self.log(f"{encoding_name} compressed {path} ({orig_size // 1024}K -> {compressed_size // 1024}K)")
         else:
             self.log(f"Skipping {path} ({encoding_name} compression not effective)")
         return is_effective
@@ -144,9 +136,7 @@ def main(argv=None):
         "'.gz' and '.br' suffixes (as long as this results in a "
         "smaller file)"
     )
-    parser.add_argument(
-        "-q", "--quiet", help="Don't produce log output", action="store_true"
-    )
+    parser.add_argument("-q", "--quiet", help="Don't produce log output", action="store_true")
     parser.add_argument(
         "--no-gzip",
         help="Don't produce gzip '.gz' files",
@@ -164,10 +154,7 @@ def main(argv=None):
     parser.add_argument(
         "extensions",
         nargs="*",
-        help=(
-            "File extensions to exclude from compression "
-            + f"(default: {default_exclude})"
-        ),
+        help=("File extensions to exclude from compression " + f"(default: {default_exclude})"),
         default=Compressor.SKIP_COMPRESS_EXTENSIONS,
     )
     args = parser.parse_args(argv)

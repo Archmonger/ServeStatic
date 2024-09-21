@@ -45,8 +45,7 @@ class FileServerASGI:
         # Convert ASGI headers into WSGI headers. Allows us to reuse all of our WSGI
         # header logic inside of aget_response().
         wsgi_headers = {
-            "HTTP_" + key.decode().upper().replace("-", "_"): value.decode()
-            for key, value in scope["headers"]
+            "HTTP_" + key.decode().upper().replace("-", "_"): value.decode() for key, value in scope["headers"]
         }
 
         # Get the ServeStatic file response

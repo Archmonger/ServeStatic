@@ -93,9 +93,7 @@ def test_make_helpful_exception(_compressed_manifest_storage):
         TriggerException().hashed_name("/missing/file.png")
     except ValueError as e:
         exception = e
-    helpful_exception = CompressedManifestStaticFilesStorage().make_helpful_exception(
-        exception, "styles/app.css"
-    )
+    helpful_exception = CompressedManifestStaticFilesStorage().make_helpful_exception(exception, "styles/app.css")
     assert isinstance(helpful_exception, MissingFileError)
 
 
@@ -104,9 +102,7 @@ def test_unversioned_files_are_deleted(_compressed_manifest_storage):
     versioned_url = staticfiles_storage.url(name)
     versioned_name = basename(versioned_url)
     name_pattern = re.compile("^" + name.replace(".", r"\.([0-9a-f]+\.)?") + "$")
-    remaining_files = [
-        f for f in os.listdir(settings.STATIC_ROOT) if name_pattern.match(f)
-    ]
+    remaining_files = [f for f in os.listdir(settings.STATIC_ROOT) if name_pattern.match(f)]
     assert [versioned_name] == remaining_files
 
 

@@ -202,9 +202,7 @@ class ServeStaticBase:
 
     def add_mime_headers(self, headers, path, url):
         media_type = self.media_types.get_type(path)
-        params = (
-            {"charset": str(self.charset)} if media_type.startswith("text/") else {}
-        )
+        params = {"charset": str(self.charset)} if media_type.startswith("text/") else {}
         headers.add_header("Content-Type", str(media_type), **params)
 
     def add_cache_headers(self, headers, path, url):
@@ -238,9 +236,5 @@ class ServeStaticBase:
         else:
             msg = f"Cannot handle redirect: {from_url} > {to_url}"
             raise ValueError(msg)
-        headers = (
-            {"Cache-Control": f"max-age={self.max_age}, public"}
-            if self.max_age is not None
-            else {}
-        )
+        headers = {"Cache-Control": f"max-age={self.max_age}, public"} if self.max_age is not None else {}
         return Redirect(relative_url, headers=headers)

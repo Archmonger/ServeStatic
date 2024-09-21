@@ -30,9 +30,7 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
 
     compressor: Compressor | None
 
-    def post_process(
-        self, paths: dict[str, Any], dry_run: bool = False, **options: Any
-    ) -> _PostProcessT:
+    def post_process(self, paths: dict[str, Any], dry_run: bool = False, **options: Any) -> _PostProcessT:
         if dry_run:
             return
 
@@ -41,9 +39,7 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
 
         to_compress = (path for path in paths if self.compressor.should_compress(path))
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = (
-                executor.submit(self._compress_one, path) for path in to_compress
-            )
+            futures = (executor.submit(self._compress_one, path) for path in to_compress)
             for compressed_paths in concurrent.futures.as_completed(futures):
                 yield from compressed_paths.result()
 
@@ -52,8 +48,7 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
         full_path = self.path(path)
         prefix_len = len(full_path) - len(path)
         compressed.extend(
-            (path, compressed_path[prefix_len:], True)
-            for compressed_path in self.compressor.compress(full_path)
+            (path, compressed_path[prefix_len:], True) for compressed_path in self.compressor.compress(full_path)
         )
         return compressed
 
@@ -119,9 +114,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
         file_paths = []
         for root, _, files in os.walk(static_root):
-            file_paths.extend(
-                os.path.join(root, f) for f in files if f != self.manifest_name
-            )
+            file_paths.extend(os.path.join(root, f) for f in files if f != self.manifest_name)
         stats = stat_files(file_paths)
 
         # Remove the static root folder from the path
@@ -197,9 +190,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
         to_compress = (name for name in names if self.compressor.should_compress(name))
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = (
-                executor.submit(self._compress_one, name) for name in to_compress
-            )
+            futures = (executor.submit(self._compress_one, name) for name in to_compress)
             for compressed_paths in concurrent.futures.as_completed(futures):
                 yield from compressed_paths.result()
 
@@ -207,10 +198,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         compressed: list[tuple[str, str]] = []
         path = self.path(name)
         prefix_len = len(path) - len(name)
-        compressed.extend(
-            (name, compressed_path[prefix_len:])
-            for compressed_path in self.compressor.compress(path)
-        )
+        compressed.extend((name, compressed_path[prefix_len:]) for compressed_path in self.compressor.compress(path))
         return compressed
 
     def make_helpful_exception(self, exception, name):

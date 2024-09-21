@@ -101,16 +101,11 @@ def test_versioned_file_cached_forever(server, static_files, _collect_static):
     url = storage.staticfiles_storage.url(static_files.js_path)
     response = server.get(url)
     assert response.content == static_files.js_content
-    assert (
-        response.headers.get("Cache-Control")
-        == f"max-age={ServeStaticMiddleware.FOREVER}, public, immutable"
-    )
+    assert response.headers.get("Cache-Control") == f"max-age={ServeStaticMiddleware.FOREVER}, public, immutable"
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
-def test_asgi_versioned_file_cached_forever_brotli(
-    asgi_application, static_files, _collect_static
-):
+def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_files, _collect_static):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
     receive = AsgiReceiveEmulator()
@@ -126,9 +121,7 @@ def test_asgi_versioned_file_cached_forever_brotli(
 
 
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
-def test_asgi_versioned_file_cached_forever_brotli_2(
-    asgi_application, static_files, _collect_static
-):
+def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_files, _collect_static):
     url = storage.staticfiles_storage.url(static_files.js_path)
     scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
 
@@ -250,9 +243,7 @@ def test_index_file_served_at_directory_path(finder_static_files, finder_server)
 
 
 @override_settings(SERVESTATIC_USE_MANIFEST=False)
-def test_index_file_served_at_directory_path_no_manifest(
-    finder_static_files, finder_server
-):
+def test_index_file_served_at_directory_path_no_manifest(finder_static_files, finder_server):
     path = finder_static_files.index_path.rpartition("/")[0] + "/"
     response = finder_server.get(settings.STATIC_URL + path)
     assert response.content == finder_static_files.index_content
@@ -267,9 +258,7 @@ def test_index_file_path_redirected(finder_static_files, finder_server):
     assert location == settings.STATIC_URL + directory_path
 
 
-def test_directory_path_without_trailing_slash_redirected(
-    finder_static_files, finder_server
-):
+def test_directory_path_without_trailing_slash_redirected(finder_static_files, finder_server):
     directory_path = finder_static_files.index_path.rpartition("/")[0] + "/"
     directory_url = settings.STATIC_URL + directory_path.rstrip("/")
     response = finder_server.get(directory_url, allow_redirects=False)
@@ -299,10 +288,7 @@ def test_404_in_prod(server):
     response_content = html.unescape(response_content)
 
     assert response.status_code == 404
-    assert (
-        "ServeStatic did not find the file 'garbage' within the following paths:"
-        not in response_content
-    )
+    assert "ServeStatic did not find the file 'garbage' within the following paths:" not in response_content
 
 
 @override_settings(DEBUG=True)
@@ -314,10 +300,7 @@ def test_error_message(server):
     # Beautify for easier debugging
     response_content = response_content[response_content.index("ServeStatic") :]
 
-    assert (
-        "ServeStatic did not find the file 'garbage' within the following paths:"
-        in response_content
-    )
+    assert "ServeStatic did not find the file 'garbage' within the following paths:" in response_content
     assert "•" in response_content
     assert str(Path(__file__).parent / "test_files" / "static") in response_content
 
@@ -332,9 +315,7 @@ def test_force_script_name(server, static_files, _collect_static):
 
 
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="/subdir/static/")
-def test_force_script_name_with_matching_static_url(
-    server, static_files, _collect_static
-):
+def test_force_script_name_with_matching_static_url(server, static_files, _collect_static):
     url = storage.staticfiles_storage.url(static_files.js_path)
     assert url.startswith("/subdir/static/")
     response = server.get(url)
@@ -365,10 +346,7 @@ def test_asgi_range_response(asgi_application, static_files, _collect_static):
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
     assert send.body == static_files.js_content[:14]
-    assert (
-        send.headers[b"Content-Range"]
-        == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
-    )
+    assert send.headers[b"Content-Range"] == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
     assert send.headers[b"Content-Length"] == b"14"
     assert send.status == 206
 
@@ -389,10 +367,7 @@ def test_asgi_range_response_2(asgi_application, static_files, _collect_static):
     headers = dict(response["headers"])
 
     assert response["body"] == static_files.js_content[:14]
-    assert (
-        headers[b"Content-Range"]
-        == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
-    )
+    assert headers[b"Content-Range"] == b"bytes 0-13/" + str(len(static_files.js_content)).encode()
     assert headers[b"Content-Length"] == b"14"
     assert response["status"] == 206
 
@@ -427,6 +402,4 @@ def test_asgi_out_of_range_error_2(asgi_application, static_files, _collect_stat
 
     response = asyncio.run(executor())
     assert response["status"] == 416
-    assert dict(response["headers"])[b"Content-Range"] == b"bytes */%d" % len(
-        static_files.js_content
-    )
+    assert dict(response["headers"])[b"Content-Range"] == b"bytes */%d" % len(static_files.js_content)

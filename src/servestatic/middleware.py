@@ -47,9 +47,7 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     def __init__(self, get_response=None, settings=django_settings):
         if not iscoroutinefunction(get_response):
-            msg = (
-                "ServeStaticMiddleware requires an async compatible version of Django."
-            )
+            msg = "ServeStaticMiddleware requires an async compatible version of Django."
             raise ValueError(msg)
         markcoroutinefunction(self)
 
@@ -60,9 +58,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
         charset = getattr(settings, "SERVESTATIC_CHARSET", "utf-8")
         mimetypes = getattr(settings, "SERVESTATIC_MIMETYPES", None)
-        add_headers_function = getattr(
-            settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None
-        )
+        add_headers_function = getattr(settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None)
         self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
         self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", debug)
@@ -73,9 +69,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         )
         self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
         self.static_root = getattr(settings, "STATIC_ROOT", None)
-        self.keep_only_hashed_files = getattr(
-            django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False
-        )
+        self.keep_only_hashed_files = getattr(django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False)
         force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
         static_url = getattr(settings, "STATIC_URL", None)
         root = getattr(settings, "SERVESTATIC_ROOT", None)
@@ -126,15 +120,9 @@ class ServeStaticMiddleware(ServeStaticBase):
         if static_file is not None:
             return await self.aserve(static_file, request)
 
-        if django_settings.DEBUG and request.path.startswith(
-            django_settings.STATIC_URL
-        ):
+        if django_settings.DEBUG and request.path.startswith(django_settings.STATIC_URL):
             current_finders = finders.get_finders()
-            app_dirs = [
-                storage.location
-                for finder in current_finders
-                for storage in finder.storages.values()
-            ]
+            app_dirs = [storage.location for finder in current_finders for storage in finder.storages.values()]
             app_dirs = "\n• ".join(sorted(app_dirs))
             msg = f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
             raise MissingFileError(msg)
@@ -178,10 +166,7 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
-            msg = (
-                "SERVESTATIC_USE_MANIFEST is set to True but "
-                "staticfiles storage is not using a manifest."
-            )
+            msg = "SERVESTATIC_USE_MANIFEST is set to True but " "staticfiles storage is not using a manifest."
             raise ValueError(msg)
         staticfiles: dict = staticfiles_storage.hashed_files
         stat_cache = None
@@ -190,10 +175,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         if hasattr(staticfiles_storage, "load_manifest_stats"):
             manifest_stats: dict = staticfiles_storage.load_manifest_stats()
             if manifest_stats:
-                stat_cache = {
-                    staticfiles_storage.path(k): os.stat_result(v)
-                    for k, v in manifest_stats.items()
-                }
+                stat_cache = {staticfiles_storage.path(k): os.stat_result(v) for k, v in manifest_stats.items()}
 
         # Add files to ServeStatic
         for unhashed_name, hashed_name in staticfiles.items():

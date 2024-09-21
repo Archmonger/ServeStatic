@@ -35,9 +35,7 @@ def application(request, test_files):
         )
         await send({"type": "http.response.body", "body": b"Not Found"})
 
-    return ServeStaticASGI(
-        asgi_app, root=test_files.directory, autorefresh=request.param
-    )
+    return ServeStaticASGI(asgi_app, root=test_files.directory, autorefresh=request.param)
 
 
 def test_get_js_static_file(application, test_files):
@@ -93,9 +91,7 @@ def test_small_block_size(application, test_files):
 
 
 def test_request_range_response(application, test_files):
-    scope = AsgiScopeEmulator(
-        {"path": "/static/app.js", "headers": [(b"range", b"bytes=0-13")]}
-    )
+    scope = AsgiScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=0-13")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -103,9 +99,7 @@ def test_request_range_response(application, test_files):
 
 
 def test_out_of_range_error(application, test_files):
-    scope = AsgiScopeEmulator(
-        {"path": "/static/app.js", "headers": [(b"range", b"bytes=10000-11000")]}
-    )
+    scope = AsgiScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=10000-11000")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
