@@ -41,21 +41,21 @@ def get_url_path(base, url):
     return urlparse(urljoin(base, url)).path
 
 
-@pytest.fixture()
+@pytest.fixture
 def static_files():
     files = Files("static", js="app.js", nonascii="nonascii\u2713.txt")
     with override_settings(STATICFILES_DIRS=[files.directory]):
         yield files
 
 
-@pytest.fixture()
+@pytest.fixture
 def root_files():
     files = Files("root", robots="robots.txt")
     with override_settings(SERVESTATIC_ROOT=files.directory):
         yield files
 
 
-@pytest.fixture()
+@pytest.fixture
 def tmp():
     tmp_dir = tempfile.mkdtemp()
     with override_settings(STATIC_ROOT=tmp_dir):
@@ -63,23 +63,23 @@ def tmp():
     shutil.rmtree(tmp_dir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def _collect_static(static_files, root_files, tmp):
     reset_lazy_object(storage.staticfiles_storage)
     call_command("collectstatic", verbosity=0, interactive=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def application(_collect_static):
     return get_wsgi_application()
 
 
-@pytest.fixture()
+@pytest.fixture
 def asgi_application(_collect_static):
     return get_asgi_application()
 
 
-@pytest.fixture()
+@pytest.fixture
 def server(application):
     app_server = AppServer(application)
     with closing(app_server):
@@ -207,12 +207,12 @@ def test_no_content_disposition_header(server, static_files, _collect_static):
     assert response.headers.get("content-disposition") is None
 
 
-@pytest.fixture()
+@pytest.fixture
 def finder_application(finder_static_files, application):
     return application
 
 
-@pytest.fixture()
+@pytest.fixture
 def finder_server(finder_application):
     app_server = AppServer(finder_application)
     with closing(app_server):
@@ -234,13 +234,13 @@ def test_file_served_from_static_dir_no_manifest(finder_static_files, finder_ser
 
 def test_non_ascii_requests_safely_ignored(finder_server):
     response = finder_server.get(settings.STATIC_URL + "test\u263a")
-    assert 404 == response.status_code
+    assert response.status_code == 404
 
 
 def test_requests_for_directory_safely_ignored(finder_server):
     url = f"{settings.STATIC_URL}directory"
     response = finder_server.get(url)
-    assert 404 == response.status_code
+    assert response.status_code == 404
 
 
 def test_index_file_served_at_directory_path(finder_static_files, finder_server):

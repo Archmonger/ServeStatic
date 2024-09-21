@@ -10,7 +10,7 @@ from servestatic.asgi import ServeStaticASGI
 from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_files():
     return Files(
         js=str(Path("static") / "app.js"),

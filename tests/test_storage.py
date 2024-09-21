@@ -19,7 +19,7 @@ from servestatic.storage import CompressedManifestStaticFilesStorage, MissingFil
 from .utils import Files
 
 
-@pytest.fixture()
+@pytest.fixture
 def setup():
     staticfiles_storage._wrapped = empty
     files = Files("static")
@@ -33,7 +33,7 @@ def setup():
     shutil.rmtree(tmp)
 
 
-@pytest.fixture()
+@pytest.fixture
 def _compressed_storage(setup):
     backend = "servestatic.storage.CompressedStaticFilesStorage"
     if django.VERSION >= (4, 2):
@@ -50,7 +50,7 @@ def _compressed_storage(setup):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def _compressed_manifest_storage(setup):
     backend = "servestatic.storage.CompressedManifestStaticFilesStorage"
     if django.VERSION >= (4, 2):

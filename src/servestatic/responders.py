@@ -203,12 +203,12 @@ class StaticFile:
     def parse_byte_range(range_header):
         units, _, range_spec = range_header.strip().partition("=")
         if units != "bytes":
-            raise ValueError()
+            raise ValueError
         # Only handle a single range spec. Multiple ranges will trigger a
         # ValueError below which will result in the Range header being ignored
         start_str, sep, end_str = range_spec.strip().partition("-")
         if not sep:
-            raise ValueError()
+            raise ValueError
         if not start_str:
             start = -int(end_str)
             end = None

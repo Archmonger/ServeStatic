@@ -53,7 +53,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         markcoroutinefunction(self)
 
         self.get_response = get_response
-        debug = getattr(settings, "DEBUG")
+        debug = settings.DEBUG
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
