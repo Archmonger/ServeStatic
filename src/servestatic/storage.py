@@ -8,11 +8,13 @@ import os
 import re
 import textwrap
 from collections.abc import Iterator
-from typing import Any, Tuple, Union
+from typing import Any, Union
 
 from django.conf import settings
-from django.contrib.staticfiles.storage import (ManifestStaticFilesStorage,
-                                                StaticFilesStorage)
+from django.contrib.staticfiles.storage import (
+    ManifestStaticFilesStorage,
+    StaticFilesStorage,
+)
 from django.core.files.base import ContentFile
 
 from servestatic.compress import Compressor
