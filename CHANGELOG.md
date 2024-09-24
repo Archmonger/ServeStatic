@@ -32,17 +32,19 @@ Using the following categories, list your changes in this order:
 
 <!--changelog-start-->
 
-## [Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
+## [Unreleased]
+
 
 -   Nothing (yet)!
 
-## [2.0.1](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1) - 2024-09-13
+## [2.0.1] - 2024-09-13
+
 
 ### Fixed
 
 -   Fix crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
 
-## [2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0) - 2024-09-12
+## [2.0.0] - 2024-09-12
 
 ### Added
 
@@ -58,7 +60,8 @@ Using the following categories, list your changes in this order:
 -   `AsgiFileServer` has been renamed to `FileServerASGI`.
 -   Lots of internal refactoring to improve performance, code quality, and maintainability.
 
-## [1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0) - 2024-08-30
+## [1.2.0] - 2024-08-30
+
 
 ### Added
 
@@ -70,7 +73,8 @@ Using the following categories, list your changes in this order:
     -   ServeStatic Django middleware now only runs in async mode to avoid clashing with Django's internal usage of `asgiref.AsyncToSync`.
 -   Respect Django `settings.py:FORCE_SCRIPT_NAME` configuration value.
 
-## [1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0) - 2024-08-27
+## [1.1.0] - 2024-08-27
+
 
 ### Added
 
@@ -81,8 +85,17 @@ Using the following categories, list your changes in this order:
 -   Fix Django `StreamingHttpResponse must consume synchronous iterators` warning.
 -   Fix Django bug where file paths could fail to be followed on Windows.
 
-## [1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0) - 2024-05-08
+## [1.0.0] - 2024-05-08
+
 
 ### Changed
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
+
+
+[Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
+[2.0.1](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1)
+[2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0)
+[1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0)
+[1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0)
+[1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0)
