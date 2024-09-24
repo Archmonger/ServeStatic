@@ -34,21 +34,17 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
-[Full Changelog](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
 
 -   Nothing (yet)!
 
 ## [2.0.1] - 2024-09-13
 
-[Full Changelog](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1)
 
 ### Fixed
 
 -   Fix crash when running `manage.py collectstatic` when Django's `settings.py:STATIC_ROOT` is a `Path` object.
 
 ## [2.0.0] - 2024-09-12
-
-[Full Changelog](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0)
 
 ### Added
 
@@ -66,7 +62,6 @@ Using the following categories, list your changes in this order:
 
 ## [1.2.0] - 2024-08-30
 
-[Full Changelog](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0)
 
 ### Added
 
@@ -80,7 +75,6 @@ Using the following categories, list your changes in this order:
 
 ## [1.1.0] - 2024-08-27
 
-[Full Changelog](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0)
 
 ### Added
 
@@ -93,8 +87,15 @@ Using the following categories, list your changes in this order:
 
 ## [1.0.0] - 2024-05-08
 
-[Full Changelog](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0)
 
 ### Changed
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
+
+
+[Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
+[2.0.1](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1)
+[2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0)
+[1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0)
+[1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0)
+[1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0)

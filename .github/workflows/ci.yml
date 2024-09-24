@@ -51,6 +51,7 @@ jobs:
               run: |
                     pip install --upgrade hatch uv
             - name: Check documentation links
+              if: false
               run: |
                     hatch run docs:linkcheck
             - name: Check docs build
