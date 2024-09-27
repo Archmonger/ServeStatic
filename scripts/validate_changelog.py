@@ -25,7 +25,7 @@ HTML_COMMENT_RE = r"<!--.*?-->"
 def validate_changelog(changelog_path="CHANGELOG.md"):
     ERRORS = []
     # Read the contents of the changelog file
-    with open(changelog_path, "r", encoding="UTF-8") as file:
+    with open(changelog_path, encoding="UTF-8") as file:
         changelog = file.read()
 
     # Remove HTML comments
