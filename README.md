@@ -3,8 +3,8 @@
 # ServeStatic
 
 <p>
-    <a href="https://github.com/Archmonger/ServeStatic/actions?query=workflow%3ATest">
-        <img src="https://github.com/Archmonger/ServeStatic/actions/workflows/test-src.yml/badge.svg">
+    <a href="https://github.com/Archmonger/ServeStatic/actions?query=workflow%3ACI+branch%3Amain">
+        <img src="https://github.com/Archmonger/ServeStatic/actions/workflows/ci.yml/badge.svg">
     </a>
     <a href="https://pypi.python.org/pypi/servestatic">
         <img src="https://img.shields.io/pypi/v/servestatic.svg?label=PyPI">
