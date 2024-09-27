@@ -8,6 +8,7 @@
 # ruff: noqa: PERF401
 import re
 import sys
+from html.parser import HTMLParser
 
 GITHUB_COMPARE_URL_START_RE = r"https?://github.com/[^/]+/[^/]+/compare/"
 GITHUB_COMPARE_URL_RE = GITHUB_COMPARE_URL_START_RE + r"([\w.]+)\.\.\.([\w.]+)"
@@ -21,7 +22,25 @@ VERSION_HYPERLINK_START_RE = r"\[([\w.]+)\]: "
 VERSION_HYPERLINK_RE = VERSION_HYPERLINK_START_RE + GITHUB_COMPARE_URL_RE + r"\n"
 INITIAL_VERSION_RE = VERSION_HYPERLINK_START_RE + GITHUB_RELEASE_TAG_URL_RE + r"\n"
 SECTION_HEADER_RE = r"### ([^\n]+)\n"
-HTML_COMMENT_RE = r"<!--.*?-->"
+
+
+class CommentStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.fed = []
+
+    def handle_data(self, data):
+        self.fed.append(data)
+
+    def get_data(self):
+        return "".join(self.fed)
+
+
+def strip_html_comments(html):
+    s = CommentStripper()
+    s.feed(html)
+    return s.get_data()
 
 
 def validate_changelog(changelog_path="CHANGELOG.md"):
@@ -31,7 +50,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
         changelog = file.read()
 
     # Remove HTML comments
-    changelog = re.sub(HTML_COMMENT_RE, "", changelog)
+    changelog = strip_html_comments(changelog)
 
     # Replace duplicate newlines with a single newline
     changelog = re.sub(r"\n+", "\n", changelog)
