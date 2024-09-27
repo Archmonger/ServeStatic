@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  code-lint:
+  lint-python:
     name: Lint Python
     runs-on: ubuntu-latest
     permissions:
@@ -36,7 +36,7 @@ jobs:
       - name: Check files with pre-commit
         uses: pre-commit/action@v3.0.1
 
-  docs-lint:
+  lint-docs:
     name: Lint Documentation
     runs-on: ubuntu-latest
     permissions:
@@ -60,11 +60,11 @@ jobs:
         run: |
           hatch run docs:build
 
-  tests:
+  test-python:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs:
-      - code-lint
+      - lint-python
 
     strategy:
       matrix:
@@ -109,13 +109,13 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  build:
+  build-python:
     name: Build Python
     runs-on: ubuntu-latest
     permissions:
       contents: read
     needs:
-      - code-lint
+      - lint-python
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.x
@@ -138,11 +138,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  coverage:
-    name: Test Python Coverage
+  coverage-python:
+    name: Check Python Coverage
     runs-on: ubuntu-latest
     needs:
-      - tests
+      - test-python
     steps:
       - uses: actions/checkout@v4
 
@@ -171,12 +171,12 @@ jobs:
           name: html-report
           path: htmlcov
 
-  docs-deploy:
+  publish-docs:
     name: Publish Documentation
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/')
     needs:
-      - docs-lint
+      - lint-docs
     permissions:
       contents: write
     steps:
@@ -203,16 +203,16 @@ jobs:
         run: |
           hatch run docs:deploy_latest ${{ github.ref_name }}
 
-  create-release:
+  publish-github:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     needs:
-      - build
-      - coverage
-      - docs-deploy
+      - build-python
+      - coverage-python
+      - publish-docs
     steps:
       - uses: actions/checkout@v4
         with:
@@ -237,16 +237,16 @@ jobs:
           artifacts: "dist/*.tar.gz,dist/*.whl"
           body: ${{ steps.query-release-info.outputs.release-notes }}
 
-  pypi-publish:
+  publish-pypi:
     name: Publish PyPi Package
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     needs:
-      - build
-      - coverage
-      - docs-deploy
+      - build-python
+      - coverage-python
+      - publish-docs
     steps:
       - uses: actions/download-artifact@v4
         with:
