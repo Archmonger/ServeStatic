@@ -32,9 +32,10 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
 
     # Remove HTML comments
     changelog = re.sub(HTML_COMMENT_RE[0], "", changelog, flags=HTML_COMMENT_RE[1])
-
     # Replace duplicate newlines with a single newline
     changelog = re.sub(r"\n+", "\n", changelog)
+    # Replace duplicate spaces with a single space
+    changelog = re.sub(r" +", " ", changelog)
 
     # Ensure `## [Unreleased]\n` is present
     if changelog.find(UNRELEASED_HEADER) == -1:
@@ -61,11 +62,11 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
             )
 
     # Gather all version headers. Note that the 'Unreleased' hyperlink is validated separately.
-    version_headers = re.findall(VERSION_HEADER_START_RE, changelog)
-    version_headers = [header for header in version_headers if header != "Unreleased"]
+    versions_from_headers = re.findall(VERSION_HEADER_START_RE, changelog)
+    versions_from_headers = [header for header in versions_from_headers if header != "Unreleased"]
 
     # Ensure each version header has a hyperlink
-    for version in version_headers:
+    for version in versions_from_headers:
         if re.search(VERSION_HYPERLINK_START_RE.replace(r"[\w.]+", version), changelog) is None:
             errors.append(f"Version '{version}' does not have a URL")
 
@@ -75,7 +76,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
 
     # Ensure each hyperlink has a header
     for hyperlink in hyperlinks:
-        if hyperlink[0] not in version_headers:
+        if hyperlink[0] not in versions_from_headers:
             errors.append(f"Hyperlink '{hyperlink[0]}' does not have a version title '## [{hyperlink[0]}]'")
 
     # Ensure there is only one initial version
@@ -104,22 +105,43 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
 
     # Ensure all versions headers have dates
     full_version_headers = re.findall(VERSION_HEADER_FULL_RE, changelog)
-    if len(full_version_headers) != len(version_headers):
-        for version in version_headers:
+    if len(full_version_headers) != len(versions_from_headers):
+        for version in versions_from_headers:
             if re.search(VERSION_HEADER_FULL_RE.replace(r"([\w.]+)", rf"({version})"), changelog) is None:
                 errors.append(f"Version header '## [{version}]' does not have a date in the correct format")
 
     # Ensure version links always diff to the previous version
-    comparable_versions = [hyperlinks[0] for hyperlinks in hyperlinks]
-    comparable_versions.append(initial_version[0][0])
-    for position, version in enumerate(comparable_versions):
-        if position == len(comparable_versions) - 1:
+    versions_from_hyperlinks = [hyperlinks[0] for hyperlinks in hyperlinks]
+    versions_from_hyperlinks.append(initial_version[0][0])
+    for position, version in enumerate(versions_from_hyperlinks):
+        if position == len(versions_from_hyperlinks) - 1:
             break
 
-        pattern = rf"\[{version}\]: {GITHUB_COMPARE_URL_START_RE}{comparable_versions[position + 1]}\.\.\.{version}"
+        pattern = (
+            rf"\[{version}\]: {GITHUB_COMPARE_URL_START_RE}{versions_from_hyperlinks[position + 1]}\.\.\.{version}"
+        )
         if re.search(pattern, changelog) is None:
             errors.append(
-                f"URL for version '{version}' was expected to contain '.../compare/{comparable_versions[position + 1]}...{version}'"
+                f"Based on hyperlink order, the URL for version '{version}' was expected to contain '.../compare/{versions_from_hyperlinks[position + 1]}...{version}'"
+            )
+
+    # Ensure the versions in the headers are in descending order
+    for position, version in enumerate(versions_from_headers):
+        if position == len(versions_from_headers) - 1:
+            break
+
+        if version <= versions_from_headers[position + 1]:
+            errors.append(f"Version '{version}' should be listed before '{versions_from_headers[position + 1]}'")
+
+    # Ensure the order of versions from headers matches the hyperlinks
+    for position, version in enumerate(versions_from_headers):
+        if position == len(versions_from_headers) - 1:
+            break
+
+        if version != versions_from_hyperlinks[position]:
+            errors.append(
+                f"The order of the version headers does not match your hyperlinks. "
+                f"Found '{versions_from_hyperlinks[position]}' in hyperlinks but expected '{version}'"
             )
 
     # Check if the user is using something other than <Added||Changed||Deprecated||Removed||Fixed||Security>
@@ -127,6 +149,28 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     for header in section_headers:
         if header not in {"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}:
             errors.append(f"Using non-standard section header '{header}'")
+
+    # Check the order of the sections
+    # Simplify the changelog into a list of `##` and `###` headers
+    changelog_header_lines = [line for line in changelog.split("\n") if line.startswith("###") or line.startswith("##")]
+    order = ["### Added", "### Changed", "### Deprecated", "### Removed", "### Fixed", "### Security"]
+    current_position_in_order = -1
+    version_header = "UNKNOWN"
+    for line in changelog_header_lines:
+        # Reset current position if we are at a version header
+        if line.startswith("## "):
+            version_header = line
+            current_position_in_order = -1
+
+        # Check if the current section is in the correct order
+        if line in order:
+            section_position = order.index(line)
+            if section_position < current_position_in_order:
+                errors.append(
+                    f"Section '{line}' is out of order in version '{version_header}'. "
+                    "Expected section order: [Added, Changed, Deprecated, Removed, Fixed, Security]"
+                )
+            current_position_in_order = section_position
 
     return errors
 
