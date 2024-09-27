@@ -52,6 +52,7 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch run docs:serve` | Start the [`mkdocs`](https://www.mkdocs.org/) server to view documentation locally |
 | `hatch run docs:build` | Build the documentation |
 | `hatch run docs:linkcheck` | Check for broken links in the documentation |
+| `hatch run scripts\validate_changelog.py` | Check if the changelog meets the [Keep A Changelog](https://keepachangelog.com/en/1.1.0/) specification |
 
 ??? tip "Configure your IDE for linting"
 
