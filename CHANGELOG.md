@@ -72,7 +72,7 @@ Using the following categories, list your changes in this order:
 
 ## [1.1.0] - 2024-08-27
 
-### Aadded
+### Test
 
 -   Files are now compressed within a thread pool to increase performance.
 
