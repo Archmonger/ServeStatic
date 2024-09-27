@@ -25,25 +25,6 @@ SECTION_HEADER_RE = r"### ([^\n]+)\n"
 HTML_COMMENT_RE = r"<!--.*?-->", re.DOTALL
 
 
-class CommentStripper(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.reset()
-        self.fed = []
-
-    def handle_data(self, data):
-        self.fed.append(data)
-
-    def get_data(self):
-        return "".join(self.fed)
-
-
-def strip_html_comments(html):
-    s = CommentStripper()
-    s.feed(html)
-    return s.get_data()
-
-
 def validate_changelog(changelog_path="CHANGELOG.md"):
     errors = []
     # Read the contents of the changelog file
