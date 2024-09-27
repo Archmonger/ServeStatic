@@ -128,8 +128,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
         if header not in {"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}:
             errors.append(f"Using non-standard section header '{header}'")
 
-    if errors:
-        raise ValueError("\n".join(errors))
+    return errors
 
 
 if __name__ == "__main__":
@@ -138,6 +137,13 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         print("Usage: python validate_changelog.py [changelog_path]")
         sys.exit(1)
-    validate_changelog()
+
+    errors = validate_changelog()
+    if errors:
+        print("Changelog has formatting errors! ❌")
+        for error in errors:
+            print(f"  - {error}")
+        sys.exit(1)
+
     print("Changelog is valid! ✅")
     sys.exit(0)
