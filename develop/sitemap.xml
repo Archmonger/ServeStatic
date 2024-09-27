@@ -2,50 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/asgi/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/changelog/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/contributing/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/django-faq/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/django-settings/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/django/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/license/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/quick-start/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/servestatic-asgi/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/servestatic/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
     <url>
          <loc>https://archmonger.github.io/ServeStatic/develop/wsgi/</loc>
-         <lastmod>2024-09-24</lastmod>
+         <lastmod>2024-09-27</lastmod>
     </url>
 </urlset>
