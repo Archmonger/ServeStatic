@@ -22,6 +22,7 @@ VERSION_HYPERLINK_START_RE = r"\[([\w.]+)\]: "
 VERSION_HYPERLINK_RE = VERSION_HYPERLINK_START_RE + GITHUB_COMPARE_URL_RE + r"\n"
 INITIAL_VERSION_RE = VERSION_HYPERLINK_START_RE + GITHUB_RELEASE_TAG_URL_RE + r"\n"
 SECTION_HEADER_RE = r"### ([^\n]+)\n"
+HTML_COMMENT_RE = r"<!--.*?-->", re.DOTALL
 
 
 class CommentStripper(HTMLParser):
@@ -50,7 +51,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
         changelog = file.read()
 
     # Remove HTML comments
-    changelog = strip_html_comments(changelog)
+    changelog = re.sub(HTML_COMMENT_RE[0], "", changelog, flags=HTML_COMMENT_RE[1])
 
     # Replace duplicate newlines with a single newline
     changelog = re.sub(r"\n+", "\n", changelog)
