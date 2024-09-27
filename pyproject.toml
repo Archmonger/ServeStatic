@@ -1,16 +1,12 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [
-  "hatchling",
-]
+requires = [ "hatchling" ]
 
 [project]
 name = "servestatic"
 description = "Production-grade static file server for Python web apps."
 readme = "README.md"
-keywords = [
-  "Django",
-]
+keywords = [ "Django" ]
 license = "MIT"
 authors = [ { name = "Mark Bakhit" } ]
 requires-python = ">=3.9"
@@ -29,15 +25,9 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
 ]
-dynamic = [
-  "version",
-]
-dependencies = [
-  "django",
-]
-optional-dependencies.brotli = [
-  "brotli",
-]
+dynamic = [ "version" ]
+dependencies = [ "django" ]
+optional-dependencies.brotli = [ "brotli" ]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Homepage = "https://github.com/Archmonger/ServeStatic"
@@ -159,15 +149,25 @@ check = [ "pre-commit run --all-files" ]
 update = [ "pre-commit autoupdate" ]
 
 #
+# pyproject-format
+#
+[tool.hatch.envs.pyproject]
+template = "pyproject"
+detached = true
+dependencies = [ "pyproject-fmt" ]
+
+[tool.hatch.envs.pyproject.scripts]
+format = [ "pyproject-fmt pyproject.toml" ]
+
+#
 # Tools
 #
 
 [tool.black]
-target-version = [ 'py39' ]
+target-version = [ "py39" ]
 
 [tool.ruff]
 line-length = 120
-
 format.preview = true
 lint.extend-ignore = [
   "ARG001",  # Unused function argument
