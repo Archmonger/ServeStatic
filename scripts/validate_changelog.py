@@ -47,13 +47,18 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
 
     # Ensure UNRELEASED_URL_REGEX ends in "HEAD"
     if unreleased_url and unreleased_url[2] != "HEAD":
-        errors.append("The hyperlink for unreleased does not point the latest version to HEAD")
+        errors.append(
+            f"The hyperlink for [Unreleased] was expected to contain 'HEAD' but instead found '{unreleased_url[2]}'"
+        )
 
     # Ensure the unreleased URL's version is the previous version (version text proceeding [Unreleased])
-    previous_version_linked_in_unreleased = unreleased_url[1]
-    previous_version = re.search(r"\[([^\]]+)\] -", changelog)
-    if previous_version and previous_version[1] != previous_version_linked_in_unreleased:
-        errors.append("The hyperlink for unreleased does not point to the previous version")
+    if unreleased_url:
+        previous_version_linked_in_unreleased = unreleased_url[1]
+        previous_version = re.search(r"\[([^\]]+)\] -", changelog)
+        if previous_version and previous_version[1] != previous_version_linked_in_unreleased:
+            errors.append(
+                f"The hyperlink for [Unreleased] was expected to contain '{previous_version[1]}' but instead found '{previous_version_linked_in_unreleased}'"
+            )
 
     # Gather all version headers. Note that the 'Unreleased' hyperlink is validated separately.
     version_headers = re.findall(VERSION_HEADER_START_RE, changelog)
@@ -77,8 +82,8 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     initial_version = re.findall(INITIAL_VERSION_RE, changelog)
     if len(initial_version) > 1:
         errors.append(
-            "There is more than one link to a tagged version, "
-            "which is usually reserved only for the initial version."
+            "There is more than one link to a '.../releases/tag/' URL "
+            "when this is reserved for only the initial version."
         )
 
     # Ensure the initial version's tag name matches the version name
@@ -89,6 +94,13 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
                 f"The initial version tag name '{initial_version[0][1]}' does "
                 f"not match the version header '{initial_version[0][0]}'"
             )
+
+    # Ensure the initial version has a header
+    if (
+        initial_version
+        and re.search(VERSION_HEADER_START_RE.replace(r"[\w.]+", initial_version[0][0]), changelog) is None
+    ):
+        errors.append(f"Initial version '{initial_version[0][0]}' does not have a version header")
 
     # Ensure all versions headers have dates
     full_version_headers = re.findall(VERSION_HEADER_FULL_RE, changelog)
@@ -107,7 +119,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
         pattern = rf"\[{version}\]: {GITHUB_COMPARE_URL_START_RE}{comparable_versions[position + 1]}\.\.\.{version}"
         if re.search(pattern, changelog) is None:
             errors.append(
-                f"URL for version '{version}' does not diff to the previous version '{comparable_versions[position + 1]}'"
+                f"URL for version '{version}' was expected to contain '.../compare/{comparable_versions[position + 1]}...{version}'"
             )
 
     # Check if the user is using something other than <Added||Changed||Deprecated||Removed||Fixed||Security>
