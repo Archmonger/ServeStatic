@@ -157,6 +157,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     current_position_in_order = -1
     version_header = "UNKNOWN"
     for line in changelog_header_lines:
+        line = line.strip()
         # Reset current position if we are at a version header
         if line.startswith("## "):
             version_header = line
