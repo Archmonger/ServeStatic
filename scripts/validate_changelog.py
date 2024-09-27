@@ -8,7 +8,6 @@
 # ruff: noqa: PERF401
 import re
 import sys
-from html.parser import HTMLParser
 
 GITHUB_COMPARE_URL_START_RE = r"https?://github.com/[^/]+/[^/]+/compare/"
 GITHUB_COMPARE_URL_RE = GITHUB_COMPARE_URL_START_RE + r"([\w.]+)\.\.\.([\w.]+)"
