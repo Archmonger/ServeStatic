@@ -62,7 +62,7 @@ jobs:
           hatch run docs:build
       - name: Validate changelog format
         run: |
-          hatch run scripts\validate_changelog.py
+          hatch run scripts/validate_changelog.py
 
   test-python:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
