@@ -175,6 +175,7 @@ jobs:
   docs-deploy:
     name: Deploy Documentation
     runs-on: ubuntu-latest
+    if: github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/')
     needs:
       - docs-lint
     permissions:
