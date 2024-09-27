@@ -34,11 +34,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
-
 -   Nothing (yet)!
 
 ## [2.0.1] - 2024-09-13
-
 
 ### Fixed
 
@@ -62,7 +60,6 @@ Using the following categories, list your changes in this order:
 
 ## [1.2.0] - 2024-08-30
 
-
 ### Added
 
 -   Verbose Django `404` error page when `settings.py:DEBUG` is `True`
@@ -75,7 +72,6 @@ Using the following categories, list your changes in this order:
 
 ## [1.1.0] - 2024-08-27
 
-
 ### Added
 
 -   Files are now compressed within a thread pool to increase performance.
@@ -87,15 +83,13 @@ Using the following categories, list your changes in this order:
 
 ## [1.0.0] - 2024-05-08
 
-
 ### Changed
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-
-[Unreleased](https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD)
-[2.0.1](https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1)
-[2.0.0](https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0)
-[1.2.0](https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0)
-[1.1.0](https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0)
-[1.0.0](https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0)
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD
+[2.0.1]: https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1
+[2.0.0]: https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0
+[1.2.0]: https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0
+[1.1.0]: https://github.com/Archmonger/ServeStatic/compare/1.0.0...1.1.0
+[1.0.0]: https://github.com/Archmonger/ServeStatic/releases/tag/1.0.0
