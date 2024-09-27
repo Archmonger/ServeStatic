@@ -43,12 +43,13 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch fmt --formatter` | Run only formatters |
 | `hatch run precommit:check` | Run all [`pre-commit`](https://pre-commit.com/) checks configured within this repository |
 | `hatch run precommit:update` | Update the [`pre-commit`](https://pre-commit.com/) hooks configured within this repository |
+| `hatch run pyproject:format` | Format the `pyproject.toml` file using [`pyproject-fmt`](https://github.com/tox-dev/pyproject-fmt) |
 
 ### Documentation
 
 | Command | Description |
 | --- | --- |
-| `hatch run docs:serve` | Start the `mkdocs` server to view documentation locally |
+| `hatch run docs:serve` | Start the [`mkdocs`](https://www.mkdocs.org/) server to view documentation locally |
 | `hatch run docs:build` | Build the documentation |
 | `hatch run docs:linkcheck` | Check for broken links in the documentation |
 

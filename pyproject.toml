@@ -149,6 +149,17 @@ check = [ "pre-commit run --all-files" ]
 update = [ "pre-commit autoupdate" ]
 
 #
+# pyproject-format
+#
+[tool.hatch.envs.pyproject]
+template = "pyproject"
+detached = true
+dependencies = [ "pyproject-fmt" ]
+
+[tool.hatch.envs.pyproject.scripts]
+format = [ "pyproject-fmt pyproject.toml" ]
+
+#
 # Tools
 #
 
