@@ -152,7 +152,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
 
     # Check the order of the sections
     # Simplify the changelog into a list of `##` and `###` headers
-    changelog_header_lines = [line for line in changelog.split("\n") if line.startswith("###") or line.startswith("##")]
+    changelog_header_lines = [line for line in changelog.split("\n") if line.startswith(("###", "##"))]
     order = ["### Added", "### Changed", "### Deprecated", "### Removed", "### Fixed", "### Security"]
     current_position_in_order = -1
     version_header = "UNKNOWN"
