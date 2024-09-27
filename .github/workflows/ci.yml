@@ -110,7 +110,7 @@ jobs:
           retention-days: 7
 
   build:
-    name: Build Distributions
+    name: Build Python
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -173,7 +173,7 @@ jobs:
           path: htmlcov
 
   docs-deploy:
-    name: Deploy Documentation
+    name: Publish Documentation
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/')
     needs:
@@ -205,7 +205,7 @@ jobs:
           hatch run docs:deploy_latest ${{ github.ref_name }}
 
   create-release:
-    name: Create Release
+    name: Publish GitHub Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -239,7 +239,7 @@ jobs:
           body: ${{ steps.query-release-info.outputs.release-notes }}
 
   pypi-publish:
-    name: Publish to PyPi
+    name: Publish PyPi Package
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
