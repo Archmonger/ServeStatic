@@ -6,25 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 <!--
 Using the following categories, list your changes in this order:
-
-### Added
--   for new features.
-
-### Changed
--   for changes in existing functionality.
-
-### Deprecated
--   for soon-to-be removed features.
-
-### Removed
--   for removed features.
-
-### Fixed
--   for bug fixes.
-
-### Security
--   for vulnerability fixes.
- -->
+[Added, Changed, Deprecated, Removed, Fixed, Security]
+-->
 
 ## [Unreleased]
 
