@@ -49,9 +49,10 @@ jobs:
         with:
           python-version: 3.x
           cache: pip
-      - name: Install dependecies
+      - name: Install dependencies
         run: |
           pip install --upgrade hatch uv
+      # FIXME: Link checking temporarily disabled https://github.com/Archmonger/ServeStatic/issues/42
       - name: Check documentation links
         if: false
         run: |
@@ -59,6 +60,9 @@ jobs:
       - name: Check docs build
         run: |
           hatch run docs:build
+      - name: Validate changelog format
+        run: |
+          hatch run scripts/validate_changelog.py
 
   test-python:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
