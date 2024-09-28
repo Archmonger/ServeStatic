@@ -19,6 +19,8 @@
 
 _Production-grade static file server for Python web apps._
 
+_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for continued maintenance and feature updates._
+
 ---
 
 With a couple of lines of configuration `ServeStatic` allows your web app to serve its own static files, making it a self-contained unit that can be deployed anywhere without relying on nginx, Amazon S3, or any other external service. This is especially useful on Heroku, OpenShift, and other PaaS providers.
@@ -55,7 +57,3 @@ There are two answers here. One is that ServeStatic is designed to work in situa
 None of this is rocket science, but it's fiddly and annoying and `ServeStatic` takes care of all it for you.
 
 <!--desc-end-->
-
----
-
-_This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for continued maintenance and feature updates._

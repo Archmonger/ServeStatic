@@ -11,7 +11,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Added
+
+-   Support Python 3.13.
 
 ## [2.0.1] - 2024-09-13
 
