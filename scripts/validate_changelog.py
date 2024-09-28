@@ -156,8 +156,8 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     order = ["### Added", "### Changed", "### Deprecated", "### Removed", "### Fixed", "### Security"]
     current_position_in_order = -1
     version_header = "UNKNOWN"
-    for line in changelog_header_lines:
-        line = line.strip()
+    for _line in changelog_header_lines:
+        line = _line.strip()
         # Reset current position if we are at a version header
         if line.startswith("## "):
             version_header = line
