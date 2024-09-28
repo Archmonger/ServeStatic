@@ -10,7 +10,6 @@ on:
 
 concurrency:
   group: ci-${{ github.ref_name }}
-  cancel-in-progress: true
 
 jobs:
   lint-python:
@@ -184,8 +183,6 @@ jobs:
       - lint-docs
     permissions:
       contents: write
-    concurrency:
-      group: publish-docs
     steps:
       - uses: actions/checkout@v4
         with:
@@ -216,8 +213,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
-    concurrency:
-      group: publish-github
     needs:
       - build-python
       - coverage-python
@@ -252,8 +247,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
-    concurrency:
-      group: publish-pypi
     needs:
       - build-python
       - coverage-python
