@@ -82,7 +82,7 @@ django = [ "5.0" ]
 
 # Django 5.1
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.10", "3.11", "3.12" ]
+python = [ "3.10", "3.11", "3.12", "3.13" ]
 django = [ "5.1" ]
 
 [tool.hatch.envs.hatch-test.overrides]
