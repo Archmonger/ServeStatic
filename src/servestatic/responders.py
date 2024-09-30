@@ -315,12 +315,20 @@ class StaticFile:
 
 
 class Redirect:
-    def __init__(self, location, headers=None):
+    def __init__(self, location, headers=None, preserve_query_string=False):
         headers = list(headers.items()) if headers else []
         headers.append(("Location", quote(location.encode("utf8"))))
         self.response = Response(HTTPStatus.FOUND, headers, None)
+        self.preserve_query_string = preserve_query_string
 
     def get_response(self, method, request_headers):
+        query_string = request_headers.get("QUERY_STRING")
+        if query_string and self.preserve_query_string:
+            headers = list(self.response.headers)
+            name, value = headers[-1]
+            value = "{}?{}".format(value, query_string)
+            headers[-1] = (name, value)
+            return Response(self.response.status, headers, None)
         return self.response
 
     async def aget_response(self, method, request_headers):

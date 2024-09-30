@@ -204,6 +204,16 @@ This setting is only effective if the `ServeStatic` storage backend is being use
 
 ---
 
+## `SERVESTATIC_PRESERVE_QUERY_STRING_ON_REDIRECT`
+
+**Default:** `False`
+
+Set to `True` to preserve the request query string when issuing redirects.
+
+By default, ServeStatic will strip the query string when issuing a redirect. If this setting is enabled, the query string will instead be forwarded to the redirect location.
+
+---
+
 ## `SERVESTATIC_MANIFEST_STRICT`
 
 **Default:** `True`

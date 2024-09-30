@@ -73,6 +73,11 @@ class ServeStaticMiddleware(ServeStaticBase):
         force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
         static_url = getattr(settings, "STATIC_URL", None)
         root = getattr(settings, "SERVESTATIC_ROOT", None)
+        preserve_query_string_on_redirect = getattr(
+            django_settings,
+            "SERVESTATIC_PRESERVE_QUERY_STRING_ON_REDIRECT",
+            False,
+        )
 
         super().__init__(
             application=None,
@@ -84,6 +89,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             add_headers_function=add_headers_function,
             index_file=self.index_file,
             immutable_file_test=immutable_file_test,
+            preserve_query_string_on_redirect=preserve_query_string_on_redirect,
         )
 
         if self.static_prefix is None:

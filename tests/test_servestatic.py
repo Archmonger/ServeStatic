@@ -16,7 +16,7 @@ from wsgiref.simple_server import demo_app
 import pytest
 
 from servestatic import ServeStatic
-from servestatic.responders import StaticFile
+from servestatic.responders import Redirect, StaticFile
 
 from .utils import AppServer, Files
 
@@ -376,3 +376,15 @@ def test_chunked_file_size_matches_range_with_range_header():
     while response.file.read(1):
         file_size += 1
     assert file_size == 14
+
+
+def test_redirect_strips_query_string_by_default():
+    responder = Redirect("/redirect/to/here/")
+    response = responder.get_response("GET", {"QUERY_STRING": "foo=1&bar=2"})
+    assert response.headers[0] == ("Location", "/redirect/to/here/")
+
+
+def test_redirect_preserves_query_string_if_configured():
+    responder = Redirect("/redirect/to/here/", preserve_query_string=True)
+    response = responder.get_response("GET", {"QUERY_STRING": "foo=1&bar=2"})
+    assert response.headers[0] == ("Location", "/redirect/to/here/?foo=1&bar=2")

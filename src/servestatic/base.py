@@ -48,6 +48,7 @@ class ServeStaticBase:
         add_headers_function: Callable[[Headers, str, str], None] | None = None,
         index_file: str | bool | None = None,
         immutable_file_test: Callable | str | None = None,
+        preserve_query_string_on_redirect: bool | None = None,
     ):
         self.autorefresh = autorefresh
         self.max_age = max_age
@@ -60,6 +61,7 @@ class ServeStaticBase:
         self.application = application
         self.files = {}
         self.directories = []
+        self.preserve_query_string_on_redirect = preserve_query_string_on_redirect
 
         if index_file is True:
             self.index_file: str | None = "index.html"
@@ -236,4 +238,8 @@ class ServeStaticBase:
             msg = f"Cannot handle redirect: {from_url} > {to_url}"
             raise ValueError(msg)
         headers = {"Cache-Control": f"max-age={self.max_age}, public"} if self.max_age is not None else {}
-        return Redirect(relative_url, headers=headers)
+        return Redirect(
+            relative_url,
+            headers=headers,
+            preserve_query_string=self.preserve_query_string_on_redirect,
+        )
