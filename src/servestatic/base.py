@@ -236,7 +236,4 @@ class ServeStaticBase:
             msg = f"Cannot handle redirect: {from_url} > {to_url}"
             raise ValueError(msg)
         headers = {"Cache-Control": f"max-age={self.max_age}, public"} if self.max_age is not None else {}
-        return Redirect(
-            relative_url,
-            headers=headers,
-        )
+        return Redirect(relative_url, headers=headers)
