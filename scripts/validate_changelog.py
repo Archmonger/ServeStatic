@@ -30,7 +30,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     with open(changelog_path, encoding="UTF-8") as file:
         changelog = file.read()
 
-    # Remove comments
+    # Remove markdown comments
     changelog = re.sub(HTML_COMMENT_RE[0], "", changelog, flags=HTML_COMMENT_RE[1])
     # Replace duplicate newlines with a single newline
     changelog = re.sub(r"\n+", "\n", changelog)
@@ -176,7 +176,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
                 errors.append(f"Duplicate section '{line}' found in version '{version_header}'.")
             current_position_in_order = section_position
 
-    # Find sections for missing bullet points
+    # Find sections with missing bullet points
     changelog_header_and_bullet_lines = [
         line for line in changelog.split("\n") if line.startswith(("### ", "## ", "-"))
     ]
