@@ -9,7 +9,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Callable
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncIterable
     from io import IOBase
 
