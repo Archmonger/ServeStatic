@@ -1,4 +1,3 @@
-# pragma: no cover
 from __future__ import annotations
 
 import os
@@ -52,7 +51,7 @@ class AsgiAppServer:
         self.application = application
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
+        if scope["type"] != "http":  # pragma: no cover
             msg = "Incorrect response type!"
             raise RuntimeError(msg)
 
@@ -121,7 +120,7 @@ class AsgiScopeEmulator(dict):
             "type": "http",
         }
 
-        if scope_overrides:
+        if scope_overrides:  # pragma: no cover
             scope.update(scope_overrides)
 
         super().__init__(scope)
