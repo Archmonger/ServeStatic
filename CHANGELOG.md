@@ -14,7 +14,7 @@ Using the following categories, list your changes in this order:
 ### Added
 
 -   Support Python 3.13.
--   Django `settings.py:SERVESTATIC_PRESERVE_QUERY_STRING_ON_REDIRECT` will forward the request query string when issuing redirects.
+-   Query strings are now preserved and forwarded to the location when redirecting.
 
 ## [2.0.1] - 2024-09-13
 
