@@ -11,6 +11,10 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
+-   Nothing (yet)
+
+## [2.1.0] - 2024-10-02
+
 ### Added
 
 -   Support Python 3.13.
@@ -67,7 +71,8 @@ Using the following categories, list your changes in this order:
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...HEAD
+[2.1.0]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0
 [1.2.0]: https://github.com/Archmonger/ServeStatic/compare/1.1.0...1.2.0
