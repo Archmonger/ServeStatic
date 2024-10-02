@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # pragma: no cover
 from __future__ import annotations
 

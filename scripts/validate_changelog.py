@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # pragma: no cover
 # ruff: noqa: PERF401
 
