@@ -35,10 +35,10 @@ urls.Homepage = "https://github.com/Archmonger/ServeStatic"
 path = "src/servestatic/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = [ "/src", "tests" ]
+include = [ "/src", "/tests" ]
 
 [tool.hatch.build.targets.wheel]
-include = [ "/src", "tests" ]
+include = [ "/src", "/tests" ]
 
 [tool.hatch.metadata]
 license-files = { paths = [ "LICENSE.md" ] }
