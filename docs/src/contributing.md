@@ -26,6 +26,7 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch test --python 3.9` | Run tests using a specific Python version |
 | `hatch test --include "django=5.1"` | Run tests using a specific Django version |
 | `hatch test -k test_get_js_static_file` | Run only a specific test |
+| `hatch env prune` | Remove all virtual environments created by `hatch` |
 
 ??? question "What other arguments are available to me?"
 
