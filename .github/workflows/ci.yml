@@ -169,7 +169,7 @@ jobs:
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
         with:
-          name: html-report
+          name: coverage-report
           path: htmlcov
 
   publish-docs:
