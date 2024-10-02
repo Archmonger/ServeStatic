@@ -14,7 +14,7 @@ Using the following categories, list your changes in this order:
 ### Added
 
 -   Support Python 3.13.
--   Query strings are now preserved during HTTP redirections.
+-   Query strings are now preserved during HTTP redirection.
 
 ## [2.0.1] - 2024-09-13
 
