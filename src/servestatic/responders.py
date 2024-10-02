@@ -333,7 +333,7 @@ class Redirect:
         return self.response
 
     async def aget_response(self, method, request_headers):
-        return self.response
+        return self.get_response(method, request_headers)
 
 
 class NotARegularFileError(Exception):

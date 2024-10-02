@@ -15,6 +15,7 @@ from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Fil
 def test_files():
     return Files(
         js=str(Path("static") / "app.js"),
+        index=str(Path("static") / "with-index" / "index.html"),
     )
 
 
@@ -34,7 +35,12 @@ def application(request, test_files):
         })
         await send({"type": "http.response.body", "body": b"Not Found"})
 
-    return ServeStaticASGI(asgi_app, root=test_files.directory, autorefresh=request.param)
+    return ServeStaticASGI(
+        asgi_app,
+        root=test_files.directory,
+        autorefresh=request.param,
+        index_file=True,
+    )
 
 
 def test_get_js_static_file(application, test_files):
@@ -45,6 +51,14 @@ def test_get_js_static_file(application, test_files):
     assert send.body == test_files.js_content
     assert b"text/javascript" in send.headers[b"content-type"]
     assert send.headers[b"content-length"] == str(len(test_files.js_content)).encode()
+
+
+def test_redirect_preserves_query_string(application, test_files):
+    scope = AsgiScopeEmulator({"path": "/static/with-index", "query_string": b"v=1"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.headers[b"location"] == b"with-index/?v=1"
 
 
 def test_user_app(application):
