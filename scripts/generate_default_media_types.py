@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# pragma: no cover
 from __future__ import annotations
 
 import argparse
@@ -34,16 +34,14 @@ def main() -> int:
 
 
 EXTRA_MIMETYPES = {
-    # nginx file uses application/javascript, but HTML specification recommends
-    # text/javascript:
+    # Nginx uses application/javascript, but HTML specification recommends text/javascript:
     ".js": "text/javascript",
     ".md": "text/markdown",
     ".mjs": "text/javascript",
     ".woff": "application/font-woff",
     ".woff2": "font/woff2",
     "apple-app-site-association": "application/pkc7-mime",
-    # Adobe Products - see:
-    # https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/xdomain.html#policy-file-host-basics
+    # Adobe: https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/xdomain.html#policy-file-host-basics
     "crossdomain.xml": "text/x-cross-domain-policy",
 }
 
@@ -75,8 +73,7 @@ def get_types_map() -> dict[str, str]:
     types_map = {}
     for match in matches:
         media_type = match[0]
-        # This is the default media type anyway, no point specifying
-        # it explicitly
+        # This is the default media type anyway, no point specifying it explicitly
         if media_type == "application/octet-stream":
             continue
 

@@ -6,7 +6,7 @@ requires = [ "hatchling" ]
 name = "servestatic"
 description = "Production-grade static file server for Python web apps."
 readme = "README.md"
-keywords = [ "Django" ]
+keywords = [ "asgi", "django", "http", "server", "static", "staticfiles", "wsgi" ]
 license = "MIT"
 authors = [ { name = "Mark Bakhit" } ]
 requires-python = ">=3.9"
@@ -26,7 +26,6 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
 ]
 dynamic = [ "version" ]
-dependencies = [ "django" ]
 optional-dependencies.brotli = [ "brotli" ]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
@@ -36,26 +35,22 @@ urls.Homepage = "https://github.com/Archmonger/ServeStatic"
 path = "src/servestatic/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = [ "/src", "/tests" ]
-
-[tool.hatch.build.targets.wheel]
-nclude = [ "/src", "/tests" ]
+include = [ "/src" ]
 
 [tool.hatch.metadata]
-license-files = { paths = [ "LICENSE" ] }
+license-files = { paths = [ "LICENSE.md" ] }
 
 [tool.hatch.envs.default]
 installer = "uv"
 
-#
-# Testing
-#
+# >>> Hatch Tests <<<
+
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [ "pytest-sugar", "requests", "brotli" ]
 randomize = true
 matrix-name-format = "{variable}-{value}"
 
-# Django 3.2 LTS
+# Django 3.2
 [[tool.hatch.envs.hatch-test.matrix]]
 python = [ "3.9", "3.10" ]
 django = [ "3.2" ]
@@ -107,9 +102,8 @@ matrix.django.dependencies = [
   ], value = "django~=5.1" },
 ]
 
-#
-# Documentation
-#
+# >>> Hatch Documentation <<<
+
 [tool.hatch.envs.docs]
 template = "docs"
 detached = true
@@ -136,9 +130,8 @@ linkcheck = [
 deploy_latest = [ "cd docs && mike deploy --push --update-aliases {args} latest" ]
 deploy_develop = [ "cd docs && mike deploy --push develop" ]
 
-#
-# pre-commit
-#
+# >>> Hatch pre-commit <<<
+
 [tool.hatch.envs.precommit]
 template = "pre-commit"
 detached = true
@@ -148,9 +141,8 @@ dependencies = [ "pre-commit>=3,<4" ]
 check = [ "pre-commit run --all-files" ]
 update = [ "pre-commit autoupdate" ]
 
-#
-# pyproject-format
-#
+# >>> Hatch pyproject-format <<<
+
 [tool.hatch.envs.pyproject]
 template = "pyproject"
 detached = true
@@ -159,9 +151,7 @@ dependencies = [ "pyproject-fmt" ]
 [tool.hatch.envs.pyproject.scripts]
 format = [ "pyproject-fmt pyproject.toml" ]
 
-#
-# Tools
-#
+# >>> Generic Tools <<<
 
 [tool.black]
 target-version = [ "py39" ]
@@ -197,6 +187,3 @@ source = [ "src/" ]
 
 [tool.coverage.report]
 show_missing = true
-
-[tool.rstcheck]
-report_level = "ERROR"

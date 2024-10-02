@@ -45,6 +45,12 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch run precommit:update` | Update the [`pre-commit`](https://pre-commit.com/) hooks configured within this repository |
 | `hatch run pyproject:format` | Format the `pyproject.toml` file using [`pyproject-fmt`](https://github.com/tox-dev/pyproject-fmt) |
 
+??? tip "Configure your IDE for linting"
+
+    This repository uses `hatch fmt` for linting and formatting, which is a [modestly customized](https://hatch.pypa.io/latest/config/internal/static-analysis/#default-settings) version of [`ruff`](https://github.com/astral-sh/ruff).
+
+    You can install `ruff` as a plugin to your preferred code editor to create a similar environment.
+
 ### Documentation
 
 | Command | Description |
@@ -54,8 +60,16 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch run docs:linkcheck` | Check for broken links in the documentation |
 | `hatch run scripts\validate_changelog.py` | Check if the changelog meets the [Keep A Changelog](https://keepachangelog.com/en/1.1.0/) specification |
 
-??? tip "Configure your IDE for linting"
+### Environment Management
 
-    This repository uses `hatch fmt` for linting and formatting, which is a [modestly customized](https://hatch.pypa.io/latest/config/internal/static-analysis/#default-settings) version of [`ruff`](https://github.com/astral-sh/ruff).
+| Command | Description |
+| --- | --- |
+| `hatch build --clean` | Build the package from source |
+| `hatch env prune` | Delete all virtual environments created by `hatch` |
+| `hatch python install 3.12` | Install a specific Python version to your system |
 
-    You can install `ruff` as a plugin to your preferred code editor to create a similar environment.
+??? tip "Check out Hatch for all available commands!"
+
+    This documentation only covers commonly used commands for ServeStatic.
+
+    You can type `hatch --help` to see all available commands.

@@ -1,4 +1,4 @@
-# EditorConfig: http://EditorConfig.org
+# http://editorconfig.org
 
 root = true
 
@@ -7,8 +7,8 @@ indent_style = space
 indent_size = 2
 insert_final_newline = true
 trim_trailing_whitespace = true
-end_of_line = lf
 charset = utf-8
+end_of_line = lf
 
 [*.py]
 indent_size = 4
@@ -27,8 +27,6 @@ max_line_length = off
 indent_size = 4
 max_line_length = off
 
-# Tests don't get a line width restriction.  It's still a good idea to follow
-# the 99 character rule, but in the interests of clarity, tests often need to
-# violate it.
+# Tests can violate line width restrictions in the interest of clarity.
 [**/test_*.py]
 max_line_length = off

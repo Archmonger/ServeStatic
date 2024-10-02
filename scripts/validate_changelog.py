@@ -1,11 +1,11 @@
-"""Parses Keep a Changelog format and ensures it is valid"""
+# pragma: no cover
+# ruff: noqa: PERF401
 
 # /// script
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
 
-# ruff: noqa: PERF401
 import re
 import sys
 
@@ -30,7 +30,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
     with open(changelog_path, encoding="UTF-8") as file:
         changelog = file.read()
 
-    # Remove HTML comments
+    # Remove markdown comments
     changelog = re.sub(HTML_COMMENT_RE[0], "", changelog, flags=HTML_COMMENT_RE[1])
     # Replace duplicate newlines with a single newline
     changelog = re.sub(r"\n+", "\n", changelog)
@@ -171,8 +171,25 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
                     f"Section '{line}' is out of order in version '{version_header}'. "
                     "Expected section order: [Added, Changed, Deprecated, Removed, Fixed, Security]"
                 )
+            # Additional check for duplicate sections
+            if section_position == current_position_in_order:
+                errors.append(f"Duplicate section '{line}' found in version '{version_header}'.")
             current_position_in_order = section_position
 
+    # Find sections with missing bullet points
+    changelog_header_and_bullet_lines = [
+        line for line in changelog.split("\n") if line.startswith(("### ", "## ", "-"))
+    ]
+    current_version = "UNKNOWN"
+    for position, line in enumerate(changelog_header_and_bullet_lines):
+        if line.startswith("## "):
+            current_version = line
+        # If it's an h3 header, report an error if the next line is not a bullet point, or if there is no next line
+        if line.startswith("### ") and (
+            position + 1 == len(changelog_header_and_bullet_lines)
+            or not changelog_header_and_bullet_lines[position + 1].startswith("-")
+        ):
+            errors.append(f"Section '{line}' in version '{current_version}' is missing bullet points")
     return errors
 
 
