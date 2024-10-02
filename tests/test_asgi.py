@@ -54,11 +54,11 @@ def test_get_js_static_file(application, test_files):
 
 
 def test_redirect_preserves_query_string(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/with-index", "query_string": b"v=1"})
+    scope = AsgiScopeEmulator({"path": "/static/with-index", "query_string": b"v=1&x=2"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
-    assert send.headers[b"location"] == b"with-index/?v=1"
+    assert send.headers[b"location"] == b"with-index/?v=1&x=2"
 
 
 def test_user_app(application):
