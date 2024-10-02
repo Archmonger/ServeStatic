@@ -47,6 +47,7 @@ class FileServerASGI:
         wsgi_headers = {
             "HTTP_" + key.decode().upper().replace("-", "_"): value.decode() for key, value in scope["headers"]
         }
+        wsgi_headers["QUERY_STRING"] = scope["query_string"].decode()
 
         # Get the ServeStatic file response
         response = await self.static_file.aget_response(scope["method"], wsgi_headers)

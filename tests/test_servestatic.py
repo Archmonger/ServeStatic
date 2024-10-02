@@ -16,7 +16,7 @@ from wsgiref.simple_server import demo_app
 import pytest
 
 from servestatic import ServeStatic
-from servestatic.responders import StaticFile
+from servestatic.responders import Redirect, StaticFile
 
 from .utils import AppServer, Files
 
@@ -245,6 +245,15 @@ def test_index_file_path_redirected(server, files):
     assert location == directory_url
 
 
+def test_index_file_path_redirected_with_query_string(server, files):
+    directory_url = files.index_url.rpartition("/")[0] + "/"
+    query_string = "v=1"
+    response = server.get(f"{files.index_url}?{query_string}", allow_redirects=False)
+    location = urljoin(files.index_url, response.headers["Location"])
+    assert response.status_code == 302
+    assert location == f"{directory_url}?{query_string}"
+
+
 def test_directory_path_without_trailing_slash_redirected(server, files):
     directory_url = files.index_url.rpartition("/")[0] + "/"
     no_slash_url = directory_url.rstrip("/")
@@ -376,3 +385,9 @@ def test_chunked_file_size_matches_range_with_range_header():
     while response.file.read(1):
         file_size += 1
     assert file_size == 14
+
+
+def test_redirect_preserves_query_string():
+    responder = Redirect("/redirect/to/here/")
+    response = responder.get_response("GET", {"QUERY_STRING": "foo=1&bar=2"})
+    assert response.headers[0] == ("Location", "/redirect/to/here/?foo=1&bar=2")
