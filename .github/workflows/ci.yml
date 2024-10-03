@@ -243,6 +243,7 @@ jobs:
         with:
           artifacts: "dist/*.tar.gz,dist/*.whl"
           body: ${{ steps.query-release-info.outputs.release-notes }}
+          allowUpdates: true
 
   publish-pypi:
     name: Publish PyPi Package
@@ -253,9 +254,7 @@ jobs:
     concurrency:
       group: publish-pypi
     needs:
-      - build-python
-      - coverage-python
-      - publish-docs
+      - publish-github
     steps:
       - uses: actions/download-artifact@v4
         with:
