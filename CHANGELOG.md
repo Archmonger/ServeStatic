@@ -11,7 +11,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
--   Nothing (yet)
+### Fixed
+
+-   Make sure WSGI `SlicedFile` is closed properly to prevent memory leaks.
 
 ## [2.1.0] - 2024-10-02
 
