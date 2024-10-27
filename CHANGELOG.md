@@ -11,9 +11,13 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
+-   Nothing (yet)!
+
+## [2.1.1] - 2024-10-27
+
 ### Fixed
 
--   Make sure WSGI `SlicedFile` is closed properly to prevent memory leaks.
+-   Make sure WSGI `SlicedFile` is closed properly to prevent subtle bugs.
 
 ## [2.1.0] - 2024-10-02
 
@@ -76,7 +80,8 @@ Using the following categories, list your changes in this order:
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...HEAD
+[2.1.1]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/Archmonger/ServeStatic/compare/1.2.0...2.0.0
