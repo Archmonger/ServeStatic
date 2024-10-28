@@ -159,7 +159,8 @@ class StaticFile:
             else:
                 headers.append(item)
         if size is None:
-            raise ValueError("Content-Length header is required for range requests")
+            msg = "Content-Length header is required for range requests"
+            raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
         if start >= end:
             return self.get_range_not_satisfiable_response(file_handle, size)
@@ -181,7 +182,8 @@ class StaticFile:
             else:
                 headers.append(item)
         if size is None:
-            raise ValueError("Content-Length header is required for range requests")
+            msg = "Content-Length header is required for range requests"
+            raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
         if start >= end:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
