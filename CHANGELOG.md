@@ -11,7 +11,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Changed
+
+-   Any errors from threads in the `servestatic.compress` command are now raised.
 
 ## [2.1.1] - 2024-10-27
 
