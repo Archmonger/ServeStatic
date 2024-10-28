@@ -11,7 +11,9 @@ Using the following categories, list your changes in this order:
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Changed
+
+-   Drop Django 3.2 and 4.1 support.
 
 ## [2.1.1] - 2024-10-27
 

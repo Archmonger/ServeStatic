@@ -152,11 +152,14 @@ class StaticFile:
 
     def get_range_response(self, range_header, base_headers, file_handle):
         headers = []
+        size: int | None = None
         for item in base_headers:
             if item[0] == "Content-Length":
                 size = int(item[1])
             else:
                 headers.append(item)
+        if size is None:
+            raise ValueError("Content-Length header is required for range requests")
         start, end = self.get_byte_range(range_header, size)
         if start >= end:
             return self.get_range_not_satisfiable_response(file_handle, size)
@@ -171,11 +174,14 @@ class StaticFile:
     async def aget_range_response(self, range_header, base_headers, file_handle):
         """Variant of `get_range_response` that works with async file objects."""
         headers = []
+        size: int | None = None
         for item in base_headers:
             if item[0] == "Content-Length":
                 size = int(item[1])
             else:
                 headers.append(item)
+        if size is None:
+            raise ValueError("Content-Length header is required for range requests")
         start, end = self.get_byte_range(range_header, size)
         if start >= end:
             return await self.aget_range_not_satisfiable_response(file_handle, size)

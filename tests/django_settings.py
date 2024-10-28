@@ -19,14 +19,12 @@ STATIC_URL = f"{FORCE_SCRIPT_NAME}/static/"
 
 STATIC_ROOT = os.path.join(TEST_FILE_PATH, "root")
 
-if django.VERSION >= (4, 2):
-    STORAGES = {
-        "staticfiles": {
-            "BACKEND": "servestatic.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
-else:
-    STATICFILES_STORAGE = "servestatic.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "servestatic.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 
 MIDDLEWARE = [
     "tests.middleware.sync_middleware_1",
