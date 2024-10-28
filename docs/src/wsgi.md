@@ -14,7 +14,7 @@ application.add_files("/path/to/more/static/files", prefix="more-files/")
 
 <!--shared-desc-start-->
 
-On initialization, `ServeStatic` walks over all the files in the directories that have been added (descending into sub-directories) and builds a list of available static files. Any requests which match a static file get served by `ServeStatic`, all others are passed through to the original WSGI application.
+On initialization, `ServeStatic` walks over all the files in the directories that have been added (descending into sub-directories) and builds a list of available static files. Any requests which match a static file get served by `ServeStatic`, all others are passed through to the original application.
 
 <!--shared-desc-end-->
 

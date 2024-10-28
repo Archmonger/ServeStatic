@@ -1,14 +1,14 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [ "hatchling" ]
+requires = ["hatchling"]
 
 [project]
 name = "servestatic"
 description = "Production-grade static file server for Python web apps."
 readme = "README.md"
-keywords = [ "asgi", "django", "http", "server", "static", "staticfiles", "wsgi" ]
+keywords = ["asgi", "django", "http", "server", "static", "staticfiles", "wsgi"]
 license = "MIT"
-authors = [ { name = "Mark Bakhit" } ]
+authors = [{ name = "Mark Bakhit" }]
 requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -21,64 +21,65 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Communications :: File Sharing",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
 ]
-dynamic = [ "version" ]
-optional-dependencies.brotli = [ "brotli" ]
+dynamic = ["version"]
+optional-dependencies.brotli = ["brotli"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
-urls.Homepage = "https://github.com/Archmonger/ServeStatic"
+urls.Source = "https://github.com/Archmonger/ServeStatic"
 
 [tool.hatch.version]
 path = "src/servestatic/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = [ "/src" ]
+include = ["/src"]
 
 [tool.hatch.metadata]
-license-files = { paths = [ "LICENSE.md" ] }
+license-files = { paths = ["LICENSE.md"] }
 
 [tool.hatch.envs.default]
 installer = "uv"
 
-# >>> Hatch Tests <<<
+# >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = [ "pytest-sugar", "requests", "brotli" ]
+extra-dependencies = ["pytest-sugar", "requests", "brotli"]
 randomize = true
 matrix-name-format = "{variable}-{value}"
 
 # Django 3.2
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.9", "3.10" ]
-django = [ "3.2" ]
+python = ["3.9", "3.10"]
+django = ["3.2"]
 
 # Django 4.0
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.9", "3.10" ]
-django = [ "4.0" ]
+python = ["3.9", "3.10"]
+django = ["4.0"]
 
 # Django 4.1
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.9", "3.10", "3.11" ]
-django = [ "4.1" ]
+python = ["3.9", "3.10", "3.11"]
+django = ["4.1"]
 
 # Django 4.2
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.9", "3.10", "3.11", "3.12" ]
-django = [ "4.2" ]
+python = ["3.9", "3.10", "3.11", "3.12"]
+django = ["4.2"]
 
 # Django 5.0
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.10", "3.11", "3.12" ]
-django = [ "5.0" ]
+python = ["3.10", "3.11", "3.12"]
+django = ["5.0"]
 
 # Django 5.1
 [[tool.hatch.envs.hatch-test.matrix]]
-python = [ "3.10", "3.11", "3.12", "3.13" ]
-django = [ "5.1" ]
+python = ["3.10", "3.11", "3.12", "3.13"]
+django = ["5.1"]
 
 [tool.hatch.envs.hatch-test.overrides]
 matrix.django.dependencies = [
@@ -102,7 +103,7 @@ matrix.django.dependencies = [
   ], value = "django~=5.1" },
 ]
 
-# >>> Hatch Documentation <<<
+# >>> Hatch Documentation Scripts <<<
 
 [tool.hatch.envs.docs]
 template = "docs"
@@ -120,44 +121,33 @@ dependencies = [
 ]
 
 [tool.hatch.envs.docs.scripts]
-serve = [ "cd docs && mkdocs serve" ]
-build = [ "cd docs && mkdocs build --strict" ]
+serve = ["cd docs && mkdocs serve"]
+build = ["cd docs && mkdocs build --strict"]
 linkcheck = [
   "linkcheckMarkdown docs/ -v -r",
   "linkcheckMarkdown README.md -v -r",
   "linkcheckMarkdown CHANGELOG.md -v -r",
 ]
-deploy_latest = [ "cd docs && mike deploy --push --update-aliases {args} latest" ]
-deploy_develop = [ "cd docs && mike deploy --push develop" ]
+deploy_latest = ["cd docs && mike deploy --push --update-aliases {args} latest"]
+deploy_develop = ["cd docs && mike deploy --push develop"]
 
 # >>> Hatch pre-commit <<<
 
 [tool.hatch.envs.precommit]
 template = "pre-commit"
 detached = true
-dependencies = [ "pre-commit>=3,<4" ]
+dependencies = ["pre-commit>=3,<4"]
 
 [tool.hatch.envs.precommit.scripts]
-check = [ "pre-commit run --all-files" ]
-update = [ "pre-commit autoupdate" ]
-
-# >>> Hatch pyproject-format <<<
-
-[tool.hatch.envs.pyproject]
-template = "pyproject"
-detached = true
-dependencies = [ "pyproject-fmt" ]
-
-[tool.hatch.envs.pyproject.scripts]
-format = [ "pyproject-fmt pyproject.toml" ]
+check = ["pre-commit run --all-files"]
+update = ["pre-commit autoupdate"]
 
 # >>> Generic Tools <<<
 
-[tool.black]
-target-version = [ "py39" ]
-
 [tool.ruff]
 line-length = 120
+extend-exclude = [".eggs/*", ".nox/*", ".venv/*", "build/*"]
+
 format.preview = true
 lint.extend-ignore = [
   "ARG001",  # Unused function argument
@@ -180,10 +170,10 @@ addopts = """\
 [tool.coverage.run]
 branch = true
 parallel = true
-source = [ "src/", "tests/" ]
+source = ["src/", "tests/"]
 
 [tool.coverage.paths]
-source = [ "src/" ]
+source = ["src/"]
 
 [tool.coverage.report]
 show_missing = true
