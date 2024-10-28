@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import tempfile
+from unittest import mock
 
 import pytest
 
@@ -78,3 +79,13 @@ def test_compress():
 def test_compressed_effectively_no_orig_size():
     compressor = Compressor(quiet=True)
     assert not compressor.is_compressed_effectively("test_encoding", "test_path", 0, "test_data")
+
+
+def test_main_error(files_dir):
+    with (
+        pytest.raises(ValueError) as excinfo,
+        mock.patch.object(Compressor, "compress", side_effect=ValueError("woops")),
+    ):
+        compress_main([files_dir, "--quiet"])
+
+    assert excinfo.value.args == ("woops",)

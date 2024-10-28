@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
 import gzip
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 
 try:
@@ -123,12 +123,6 @@ class Compressor:
         os.utime(filename, (stat_result.st_atime, stat_result.st_mtime))
         return filename
 
-    def files_to_compress(self, root):
-        for dirpath, _dirs, files in os.walk(root):
-            for filename in files:
-                if self.should_compress(filename):
-                    yield os.path.join(dirpath, filename)
-
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
@@ -167,8 +161,17 @@ def main(argv=None):
         quiet=args.quiet,
     )
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        executor.map(compressor.compress, compressor.files_to_compress(args.root))
+    futures = []
+    with ThreadPoolExecutor() as executor:
+        for dirpath, _dirs, files in os.walk(args.root):
+            futures.extend(
+                executor.submit(compressor.compress, os.path.join(dirpath, filename))
+                for filename in files
+                if compressor.should_compress(filename)
+            )
+        # Trigger any errors
+        for future in as_completed(futures):
+            future.result()
 
     return 0
 
