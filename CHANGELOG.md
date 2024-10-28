@@ -13,6 +13,7 @@ Using the following categories, list your changes in this order:
 
 ### Changed
 
+-   Drop Django 3.2 and 4.1 support.
 -   Any errors from threads in the `servestatic.compress` command are now raised.
 
 ## [2.1.1] - 2024-10-27

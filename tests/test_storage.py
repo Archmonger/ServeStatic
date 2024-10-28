@@ -6,7 +6,6 @@ import shutil
 import tempfile
 from posixpath import basename
 
-import django
 import pytest
 from django.conf import settings
 from django.contrib.staticfiles.storage import HashedFilesMixin, staticfiles_storage
@@ -36,15 +35,12 @@ def setup():
 @pytest.fixture
 def _compressed_storage(setup):
     backend = "servestatic.storage.CompressedStaticFilesStorage"
-    if django.VERSION >= (4, 2):
-        storages = {
-            "STORAGES": {
-                **settings.STORAGES,
-                "staticfiles": {"BACKEND": backend},
-            }
+    storages = {
+        "STORAGES": {
+            **settings.STORAGES,
+            "staticfiles": {"BACKEND": backend},
         }
-    else:
-        storages = {"STATICFILES_STORAGE": backend}
+    }
 
     with override_settings(**storages):
         yield
@@ -53,15 +49,12 @@ def _compressed_storage(setup):
 @pytest.fixture
 def _compressed_manifest_storage(setup):
     backend = "servestatic.storage.CompressedManifestStaticFilesStorage"
-    if django.VERSION >= (4, 2):
-        storages = {
-            "STORAGES": {
-                **settings.STORAGES,
-                "staticfiles": {"BACKEND": backend},
-            }
+    storages = {
+        "STORAGES": {
+            **settings.STORAGES,
+            "staticfiles": {"BACKEND": backend},
         }
-    else:
-        storages = {"STATICFILES_STORAGE": backend}
+    }
 
     with override_settings(**storages, SERVESTATIC_KEEP_ONLY_HASHED_FILES=True):
         call_command("collectstatic", verbosity=0, interactive=False)

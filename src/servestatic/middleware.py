@@ -7,7 +7,6 @@ from posixpath import basename, normpath
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-import django
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
@@ -17,12 +16,7 @@ from django.contrib.staticfiles.storage import (
 )
 from django.http import FileResponse, HttpRequest
 
-from servestatic.responders import (
-    AsyncSlicedFile,
-    MissingFileError,
-    SlicedFile,
-    StaticFile,
-)
+from servestatic.responders import AsyncSlicedFile, MissingFileError, StaticFile
 from servestatic.utils import (
     AsyncFile,
     AsyncFileIterator,
@@ -253,31 +247,19 @@ class AsyncServeStaticFileResponse(FileResponse):
         pass
 
     def _set_streaming_content(self, value):
-        # Django < 4.2 doesn't support async file responses, so we must perform
-        # some conversions to ensure compatibility.
-        if django.VERSION < (4, 2):
-            if isinstance(value, AsyncFile):
-                value = value.open_raw()
-            elif isinstance(value, EmptyAsyncIterator):
-                value = ()
-            elif isinstance(value, AsyncSlicedFile):
-                value = SlicedFile(value.fileobj.open_raw(), value.start, value.end)
-
         # Django 4.2+ supports async file responses, but they need to be converted from
         # a file-like object to an iterator, otherwise Django will assume the content is
         # a traditional (sync) file object.
-        elif isinstance(value, (AsyncFile, AsyncSlicedFile)):
+        if isinstance(value, (AsyncFile, AsyncSlicedFile)):
             value = AsyncFileIterator(value)
 
         super()._set_streaming_content(value)
 
-    if django.VERSION >= (4, 2):
-
-        def __iter__(self):
-            """The way that Django 4.2+ converts async to sync is inefficient, so
-            we override it with a better implementation. Django only uses this method
-            when running via WSGI."""
-            try:
-                return iter(self.streaming_content)
-            except TypeError:
-                return iter(AsyncToSyncIterator(self.streaming_content))
+    def __iter__(self):
+        """The way that Django 4.2+ converts async to sync is inefficient, so
+        we override it with a better implementation. Django only uses this method
+        when running via WSGI."""
+        try:
+            return iter(self.streaming_content)
+        except TypeError:
+            return iter(AsyncToSyncIterator(self.streaming_content))
