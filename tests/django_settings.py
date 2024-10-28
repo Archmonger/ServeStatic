@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os.path
 
-import django
 
 from .utils import TEST_FILE_PATH, AppServer
 

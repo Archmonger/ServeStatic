@@ -6,7 +6,6 @@ import shutil
 import tempfile
 from posixpath import basename
 
-import django
 import pytest
 from django.conf import settings
 from django.contrib.staticfiles.storage import HashedFilesMixin, staticfiles_storage
