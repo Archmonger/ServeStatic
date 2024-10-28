@@ -50,9 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade hatch uv
-      # FIXME: Link checking temporarily disabled https://github.com/Archmonger/ServeStatic/issues/42
       - name: Check documentation links
-        if: false
         run: |
           hatch run docs:linkcheck
       - name: Check docs build
@@ -192,7 +190,7 @@ jobs:
         with:
           python-version: 3.x
           cache: pip
-      - name: Install dependecies
+      - name: Install dependencies
         run: |
           pip install --upgrade hatch uv
       - name: Configure Git
@@ -208,6 +206,7 @@ jobs:
         run: |
           hatch run docs:deploy_latest ${{ github.ref_name }}
 
+  # This workflow relies on the user manually creating a "stub release" on GitHub with the correct version number in the tag.
   publish-github:
     name: Publish GitHub Release
     runs-on: ubuntu-latest

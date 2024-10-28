@@ -43,7 +43,6 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | `hatch fmt --formatter` | Run only formatters |
 | `hatch run precommit:check` | Run all [`pre-commit`](https://pre-commit.com/) checks configured within this repository |
 | `hatch run precommit:update` | Update the [`pre-commit`](https://pre-commit.com/) hooks configured within this repository |
-| `hatch run pyproject:format` | Format the `pyproject.toml` file using [`pyproject-fmt`](https://github.com/tox-dev/pyproject-fmt) |
 
 ??? tip "Configure your IDE for linting"
 
@@ -70,6 +69,6 @@ By utilizing `hatch`, the following commands are available to manage the develop
 
 ??? tip "Check out Hatch for all available commands!"
 
-    This documentation only covers commonly used commands for ServeStatic.
+    This documentation only covers commonly used commands.
 
     You can type `hatch --help` to see all available commands.

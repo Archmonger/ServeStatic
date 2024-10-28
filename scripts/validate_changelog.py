@@ -15,7 +15,7 @@ GITHUB_RELEASE_TAG_URL_START_RE = r"https?://github.com/[^/]+/[^/]+/releases/tag
 GITHUB_RELEASE_TAG_URL_RE = GITHUB_RELEASE_TAG_URL_START_RE + r"([\w.]+)"
 UNRELEASED_HEADER = "## [Unreleased]\n"
 VERSION_HEADER_START_RE = r"## \[([\w.]+)\]"
-VERSION_HEADER_FULL_RE = VERSION_HEADER_START_RE + r" - \d{4}-\d{2}-\d{2}\n"
+VERSION_HEADER_FULL_RE = VERSION_HEADER_START_RE + r" - (\d{4}-\d{2}-\d{2})\n"
 UNRELEASED_HYPERLINK_RE = r"\[Unreleased\]: " + GITHUB_COMPARE_URL_RE + r"\n"
 VERSION_HYPERLINK_START_RE = r"\[([\w.]+)\]: "
 VERSION_HYPERLINK_RE = VERSION_HYPERLINK_START_RE + GITHUB_COMPARE_URL_RE + r"\n"
@@ -61,9 +61,11 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
                 f"The hyperlink for [Unreleased] was expected to contain '{previous_version[1]}' but instead found '{previous_version_linked_in_unreleased}'"
             )
 
-    # Gather all version headers. Note that the 'Unreleased' hyperlink is validated separately.
+    # Gather info from version headers. Note that the 'Unreleased' hyperlink is validated separately.
     versions_from_headers = re.findall(VERSION_HEADER_START_RE, changelog)
     versions_from_headers = [header for header in versions_from_headers if header != "Unreleased"]
+    dates_from_headers = re.findall(VERSION_HEADER_FULL_RE, changelog)
+    dates_from_headers = [header[1] for header in dates_from_headers if header[0] != "Unreleased"]
 
     # Ensure each version header has a hyperlink
     for version in versions_from_headers:
@@ -144,6 +146,14 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
                 f"Found '{versions_from_hyperlinks[position]}' in hyperlinks but expected '{version}'"
             )
 
+    # Ensure the release dates are in descending order
+    for position, date in enumerate(dates_from_headers):
+        if position == len(dates_from_headers) - 1:
+            break
+
+        if date < dates_from_headers[position + 1]:
+            errors.append(f"Header with date '{date}' should be listed before '{dates_from_headers[position + 1]}'")
+
     # Check if the user is using something other than <Added||Changed||Deprecated||Removed||Fixed||Security>
     section_headers = re.findall(SECTION_HEADER_RE, changelog)
     for header in section_headers:
@@ -190,6 +200,7 @@ def validate_changelog(changelog_path="CHANGELOG.md"):
             or not changelog_header_and_bullet_lines[position + 1].startswith("-")
         ):
             errors.append(f"Section '{line}' in version '{current_version}' is missing bullet points")
+
     return errors
 
 
@@ -202,10 +213,10 @@ if __name__ == "__main__":
 
     errors = validate_changelog()
     if errors:
-        print("Changelog has formatting errors! ❌")
+        print("Changelog has formatting errors!")
         for error in errors:
             print(f"  - {error}")
         sys.exit(1)
 
-    print("Changelog is valid! ✅")
+    print("Changelog is valid!")
     sys.exit(0)
