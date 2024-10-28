@@ -83,7 +83,7 @@ def test_compressed_effectively_no_orig_size():
 
 def test_main_error(files_dir):
     with (
-        pytest.raises(ValueError) as excinfo,
+        pytest.raises(ValueError, match="woops") as excinfo,
         mock.patch.object(Compressor, "compress", side_effect=ValueError("woops")),
     ):
         compress_main([files_dir, "--quiet"])
