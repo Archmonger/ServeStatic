@@ -38,11 +38,13 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
         self.compressor = self.create_compressor(extensions=extensions, quiet=True)
 
         def _compress_path(path: str) -> Generator[tuple[str, str, bool]]:
+            compressed: list[tuple[str, str, bool]] = []
             full_path = self.path(path)
             prefix_len = len(full_path) - len(path)
             for compressed_path in self.compressor.compress(full_path):
                 compressed_name = compressed_path[prefix_len:]
-                yield (path, compressed_name, True)
+                compressed.append((path, compressed_name, True))
+            return compressed
 
         with ThreadPoolExecutor() as executor:
             futures = (executor.submit(_compress_path, path) for path in paths if self.compressor.should_compress(path))
@@ -185,24 +187,19 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         extensions = getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None)
         self.compressor = self.create_compressor(extensions=extensions, quiet=True)
 
-        def _compress_path(path: str) -> Generator[tuple[str, str]]:
+        def _compress_path(path: str) -> list[tuple[str, str]]:
+            compressed: list[tuple[str, str]] = []
             full_path = self.path(path)
             prefix_len = len(full_path) - len(path)
             for compressed_path in self.compressor.compress(full_path):
                 compressed_name = compressed_path[prefix_len:]
-                yield (path, compressed_name)
+                compressed.append((path, compressed_name))
+            return compressed
 
         with ThreadPoolExecutor() as executor:
             futures = (executor.submit(_compress_path, path) for path in paths if self.compressor.should_compress(path))
             for future in as_completed(futures):
                 yield from future.result()
-
-    def _compress_one(self, name: str) -> list[tuple[str, str]]:
-        compressed: list[tuple[str, str]] = []
-        path = self.path(name)
-        prefix_len = len(path) - len(name)
-        compressed.extend((name, compressed_path[prefix_len:]) for compressed_path in self.compressor.compress(path))
-        return compressed
 
     def make_helpful_exception(self, exception, name):
         """
