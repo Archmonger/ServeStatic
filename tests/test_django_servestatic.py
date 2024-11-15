@@ -451,7 +451,7 @@ def test_large_static_file_2(asgi_application, static_files):
         response_body = await communicator.receive_output()
         assert response_body["more_body"] is True
         response_body_2 = await communicator.receive_output()
-        response_body["body"] = response_body["body"] + response_body_2["body"]
+        response_body["body"] += response_body_2["body"]
         return response_start | response_body
 
     response = asyncio.run(executor())
