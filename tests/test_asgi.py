@@ -129,10 +129,7 @@ def test_wrong_method_type(application, test_files):
 
 
 def test_large_static_file(application, test_files):
-    scope = AsgiScopeEmulator({
-        "path": "/static/large-file.txt",
-        "headers": [],
-    })
+    scope = AsgiScopeEmulator({"path": "/static/large-file.txt", "headers": []})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
