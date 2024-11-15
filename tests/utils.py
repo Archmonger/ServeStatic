@@ -154,6 +154,11 @@ class AsgiSendEmulator:
         return b"".join([msg["body"] for msg in self.message if msg.get("body")])
 
     @property
+    def body_count(self):
+        """Return the number of body messages."""
+        return sum(bool(msg.get("body")) for msg in self.message)
+
+    @property
     def headers(self):
         """Return the headers from the first event."""
         return dict(self[0]["headers"])

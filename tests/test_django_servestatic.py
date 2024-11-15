@@ -434,6 +434,7 @@ def test_large_static_file(asgi_application, static_files):
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
     assert send.body == static_files.txt_content
+    assert send.body_count == 2
     assert send.headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
     assert b"text/plain" in send.headers[b"Content-Type"]
 
