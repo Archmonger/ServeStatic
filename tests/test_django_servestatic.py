@@ -43,7 +43,7 @@ def get_url_path(base, url):
 
 @pytest.fixture
 def static_files():
-    files = Files("static", js="app.js", nonascii="nonascii\u2713.txt")
+    files = Files("static", js="app.js", nonascii="nonascii\u2713.txt", txt="large-file.txt")
     with override_settings(STATICFILES_DIRS=[files.directory]):
         yield files
 
@@ -423,3 +423,15 @@ def test_asgi_out_of_range_error_2(asgi_application, static_files):
     response = asyncio.run(executor())
     assert response["status"] == 416
     assert dict(response["headers"])[b"Content-Range"] == b"bytes */%d" % len(static_files.js_content)
+
+
+@pytest.mark.usefixtures("_collect_static")
+def test_large_static_file(asgi_application, static_files):
+    url = storage.staticfiles_storage.url(static_files.txt_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": []})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.body == static_files.txt_content
+    assert send.headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
+    assert b"text/plain" in send.headers[b"Content-Type"]

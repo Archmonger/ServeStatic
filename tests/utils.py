@@ -98,8 +98,7 @@ class AsgiScopeEmulator(dict):
                 ),
                 (
                     b"accept",
-                    b"text/html,application/xhtml+xml,application/xml;q=0.9,image/"
-                    b"avif,image/webp,image/apng,*/*;q=0.8",
+                    b"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
                 ),
                 (b"sec-gpc", b"1"),
                 (b"sec-fetch-site", b"none"),
@@ -152,7 +151,7 @@ class AsgiSendEmulator:
     @property
     def body(self):
         """Combine all HTTP body messages into a single bytestring."""
-        return b"".join([message["body"] for message in self.message if message.get("body")])
+        return b"".join([msg["body"] for msg in self.message if msg.get("body")])
 
     @property
     def headers(self):

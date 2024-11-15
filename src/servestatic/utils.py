@@ -131,7 +131,7 @@ class AsyncFile:
         self.closed = False
 
     async def _execute(self, func, *args):
-        """Run a function in a dedicated thread, specific to this instance."""
+        """Run a function in a dedicated thread (specific to this class instance)."""
         if self.loop is None:
             self.loop = asyncio.get_event_loop()
         with self.lock:
