@@ -131,7 +131,7 @@ def test_wrong_method_type(application, test_files):
 def test_large_static_file(application, test_files):
     scope = AsgiScopeEmulator({
         "path": "/static/large-file.txt",
-        "headers": [(b"host", b"127.0.0.1:8000")],
+        "headers": [],
     })
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()

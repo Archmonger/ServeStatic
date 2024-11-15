@@ -155,7 +155,7 @@ class AsgiSendEmulator:
 
     @property
     def body_count(self):
-        """Return the number of body messages."""
+        """Return the number messages that contain body content."""
         return sum(bool(msg.get("body")) for msg in self.message)
 
     @property
