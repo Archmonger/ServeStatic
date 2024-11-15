@@ -17,6 +17,10 @@ Using the following categories, list your changes in this order:
 -   Any errors from threads in the `servestatic.compress` command are now raised.
 -   Compression code has been refactored to match upstream (WhiteNoise).
 
+### Fixed
+
+-   Add `asgiref` to dependencies to fix import error.
+
 ## [2.1.1] - 2024-10-27
 
 ### Fixed

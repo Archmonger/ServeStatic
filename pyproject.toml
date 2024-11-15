@@ -26,6 +26,7 @@ classifiers = [
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Internet :: WWW/HTTP :: WSGI :: Middleware",
 ]
+dependencies = ["asgiref"]
 dynamic = ["version"]
 optional-dependencies.brotli = ["brotli"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
