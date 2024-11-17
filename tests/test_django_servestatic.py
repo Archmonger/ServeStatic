@@ -458,6 +458,8 @@ def test_large_static_file_2(asgi_application, static_files):
     response = asyncio.run(executor())
     headers = dict(response["headers"])
 
+    assert len(response["body"]) == len(static_files.txt_content)
+    assert len(response["body"]) == 10001
     assert response["body"] == static_files.txt_content
     assert headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
     assert b"text/plain" in headers[b"Content-Type"]
