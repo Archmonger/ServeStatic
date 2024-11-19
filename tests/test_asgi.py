@@ -16,6 +16,7 @@ def test_files():
     return Files(
         js=str(Path("static") / "app.js"),
         index=str(Path("static") / "with-index" / "index.html"),
+        txt=str(Path("static") / "large-file.txt"),
     )
 
 
@@ -125,3 +126,16 @@ def test_wrong_method_type(application, test_files):
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
     assert send.status == 405
+
+
+def test_large_static_file(application, test_files):
+    scope = AsgiScopeEmulator({"path": "/static/large-file.txt", "headers": []})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert len(send.body) == len(test_files.txt_content)
+    assert len(send.body) == 10001
+    assert send.body == test_files.txt_content
+    assert send.body_count == 2
+    assert send.headers[b"content-length"] == str(len(test_files.txt_content)).encode()
+    assert b"text/plain" in send.headers[b"content-type"]

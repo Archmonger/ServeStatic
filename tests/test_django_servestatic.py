@@ -43,7 +43,7 @@ def get_url_path(base, url):
 
 @pytest.fixture
 def static_files():
-    files = Files("static", js="app.js", nonascii="nonascii\u2713.txt")
+    files = Files("static", js="app.js", nonascii="nonascii\u2713.txt", txt="large-file.txt")
     with override_settings(STATICFILES_DIRS=[files.directory]):
         yield files
 
@@ -423,3 +423,45 @@ def test_asgi_out_of_range_error_2(asgi_application, static_files):
     response = asyncio.run(executor())
     assert response["status"] == 416
     assert dict(response["headers"])[b"Content-Range"] == b"bytes */%d" % len(static_files.js_content)
+
+
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+@pytest.mark.usefixtures("_collect_static")
+def test_large_static_file(asgi_application, static_files):
+    url = storage.staticfiles_storage.url(static_files.txt_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": []})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert len(send.body) == len(static_files.txt_content)
+    assert len(send.body) == 10001
+    assert send.body == static_files.txt_content
+    assert send.body_count == 2
+    assert send.headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
+    assert b"text/plain" in send.headers[b"Content-Type"]
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+@pytest.mark.usefixtures("_collect_static")
+def test_large_static_file_2(asgi_application, static_files):
+    url = storage.staticfiles_storage.url(static_files.txt_path)
+    scope = AsgiScopeEmulator({"path": url, "headers": []})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        assert response_body["more_body"] is True
+        response_body_2 = await communicator.receive_output()
+        response_body["body"] += response_body_2["body"]
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    headers = dict(response["headers"])
+
+    assert len(response["body"]) == len(static_files.txt_content)
+    assert len(response["body"]) == 10001
+    assert response["body"] == static_files.txt_content
+    assert headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
+    assert b"text/plain" in headers[b"Content-Type"]
