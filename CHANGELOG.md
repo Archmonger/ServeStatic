@@ -7,9 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 <!--
 Using the following categories, list your changes in this order:
 [Added, Changed, Deprecated, Removed, Fixed, Security]
+
+Don't forget to remove deprecated code on each major release!
 -->
 
 ## [Unreleased]
+
+-   Nothing (yet)!
+
+## [3.0.0] - 2025-01-10
 
 ### Changed
 
@@ -88,7 +94,8 @@ Using the following categories, list your changes in this order:
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...HEAD
+[3.0.0]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...3.0.0
 [2.1.1]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...2.1.0
 [2.0.1]: https://github.com/Archmonger/ServeStatic/compare/2.0.0...2.0.1
