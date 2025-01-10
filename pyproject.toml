@@ -8,7 +8,7 @@ description = "Production-grade static file server for Python web apps."
 readme = "README.md"
 keywords = ["asgi", "django", "http", "server", "static", "staticfiles", "wsgi"]
 license = "MIT"
-authors = [{ name = "Mark Bakhit" }]
+authors = [{ name = "Mark Bakhit", email = "archiethemonger@gmail.com" }]
 requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -124,7 +124,6 @@ update = ["pre-commit autoupdate"]
 [tool.ruff]
 line-length = 120
 extend-exclude = [".eggs/*", ".nox/*", ".venv/*", "build/*"]
-
 format.preview = true
 lint.extend-ignore = [
   "ARG001",  # Unused function argument

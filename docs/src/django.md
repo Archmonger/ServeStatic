@@ -6,7 +6,11 @@ We mention Heroku in a few places, but there's nothing Heroku-specific about Ser
 
 ## Step 1: Enable ServeStatic
 
-Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list. The ServeStatic middleware should be placed directly after the Django [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security) (if you are using it) and before all other middleware:
+Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list.
+
+!!! warning "Middleware order is important!"
+
+    The ServeStatic middleware should be placed directly after the Django [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security) (if you are using it) and before all other middleware.
 
 ```python linenums="0"
 MIDDLEWARE = [
@@ -16,7 +20,7 @@ MIDDLEWARE = [
 ]
 ```
 
-That's it -- ServeStatic will now serve your static files. However, to get the best performance you should proceed to step 3 below and enable compression and caching.
+That's it! ServeStatic is now configured to serve your static files. For optimal performance, proceed to the next step to enable compression and caching.
 
 ??? question "How should I order my middleware?"
 
@@ -145,7 +149,6 @@ You can disable Django's static file handling and allow ServeStatic to take over
 
 ```python linenums="0"
 INSTALLED_APPS = [
-    # ...
     "servestatic.runserver_nostatic",
     "django.contrib.staticfiles",
     # ...
