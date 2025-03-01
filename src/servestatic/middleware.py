@@ -167,9 +167,9 @@ class ServeStaticMiddleware(ServeStaticBase):
             msg = "SERVESTATIC_USE_MANIFEST is set to True but staticfiles storage is not using a manifest."
             raise TypeError(msg)
         staticfiles: dict[str, str] = staticfiles_storage.hashed_files
-        stat_cache = None
 
-        # Fetch file stats from manifest if using ServeStatic's manifest storage
+        # Fetch `stat_cache` from the manifest file, if possible
+        stat_cache = None
         if isinstance(staticfiles_storage, CompressedManifestStaticFilesStorage):
             manifest_stats: dict = staticfiles_storage.load_manifest_stats()
             if manifest_stats:
