@@ -17,6 +17,7 @@ from django.contrib.staticfiles.storage import (
 from django.http import FileResponse, HttpRequest
 
 from servestatic.responders import AsyncSlicedFile, MissingFileError, StaticFile
+from servestatic.storage import CompressedManifestStaticFilesStorage
 from servestatic.utils import (
     AsyncFile,
     AsyncFileIterator,
@@ -80,6 +81,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             immutable_file_test=immutable_file_test,
         )
 
+        # Set the static prefix
         if self.static_prefix is None:
             self.static_prefix = urlparse(static_url or "").path
             if force_script_name:
@@ -88,19 +90,23 @@ class ServeStaticMiddleware(ServeStaticBase):
                     self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
+        # Add the files from STATIC_ROOT, if needed
         if self.static_root:
             self.static_root = os.path.abspath(self.static_root)
             self.insert_directory(self.static_root, self.static_prefix)
 
-        if self.static_root and not self.use_manifest and not self.use_finders:
-            self.add_files(self.static_root, prefix=self.static_prefix)
+            if not self.use_manifest and not self.use_finders:
+                self.add_files(self.static_root, prefix=self.static_prefix)
 
+        # Add files from the manifest, if needed
         if self.use_manifest:
             self.add_files_from_manifest()
 
+        # Add files from finders, if needed
         if self.use_finders:
             self.add_files_from_finders()
 
+        # Add files from the root dir, if needed
         if root:
             self.add_files(root)
 
@@ -160,27 +166,28 @@ class ServeStaticMiddleware(ServeStaticBase):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
             msg = "SERVESTATIC_USE_MANIFEST is set to True but staticfiles storage is not using a manifest."
             raise TypeError(msg)
-        staticfiles: dict = staticfiles_storage.hashed_files
+        staticfiles: dict[str, str] = staticfiles_storage.hashed_files
         stat_cache = None
 
-        # Fetch stats from manifest if using ServeStatic's manifest storage
-        if hasattr(staticfiles_storage, "load_manifest_stats"):
+        # Fetch file stats from manifest if using ServeStatic's manifest storage
+        if isinstance(staticfiles_storage, CompressedManifestStaticFilesStorage):
             manifest_stats: dict = staticfiles_storage.load_manifest_stats()
             if manifest_stats:
                 stat_cache = {staticfiles_storage.path(k): os.stat_result(v) for k, v in manifest_stats.items()}
 
         # Add files to ServeStatic
-        for unhashed_name, hashed_name in staticfiles.items():
-            file_path = staticfiles_storage.path(unhashed_name)
+        for original_name, hashed_name in staticfiles.items():
+            # Add the original file, if it exists
             if not self.keep_only_hashed_files:
                 self.add_file_to_dictionary(
-                    f"{self.static_prefix}{unhashed_name}",
-                    file_path,
+                    f"{self.static_prefix}{original_name}",
+                    staticfiles_storage.path(original_name),
                     stat_cache=stat_cache,
                 )
+            # Add the hashed file
             self.add_file_to_dictionary(
                 f"{self.static_prefix}{hashed_name}",
-                file_path,
+                staticfiles_storage.path(hashed_name),
                 stat_cache=stat_cache,
             )
 

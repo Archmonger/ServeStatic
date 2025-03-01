@@ -208,9 +208,9 @@ This setting is only effective if the `ServeStatic` storage backend is being use
 
 **Default:** `True`
 
-Set to `False` to prevent Django throwing an error if you reference a static file which doesn't exist in the manifest. Note, if the static file does not exist, it will still throw an error.
+Set to `False` to prevent Django throwing an error if you reference a static file which doesn't exist in the manifest.
 
-This works by setting the [`manifest_strict`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#django.contrib.staticfiles.storage.ManifestStaticFilesStorage.manifest_strict) option on the underlying Django storage instance, as described in the Django documentation:
+This works by setting the [`manifest_strict`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#django.contrib.staticfiles.storage.ManifestStaticFilesStorage.manifest_strict) option on the underlying Django storage instance, as described in the Django documentation.
 
 This setting is only effective if the `ServeStatic` storage backend is being used.
 
