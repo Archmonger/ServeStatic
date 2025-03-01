@@ -17,6 +17,7 @@ from django.contrib.staticfiles import finders, storage
 from django.core.asgi import get_asgi_application
 from django.core.management import call_command
 from django.core.wsgi import get_wsgi_application
+from django.templatetags.static import static
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
@@ -465,3 +466,79 @@ def test_large_static_file_2(asgi_application, static_files):
     assert response["body"] == static_files.txt_content
     assert headers[b"Content-Length"] == str(len(static_files.txt_content)).encode()
     assert b"text/plain" in headers[b"Content-Type"]
+
+
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+@pytest.mark.usefixtures("static_files")
+def test_manifest_with_keep_only_hashed(static_files):
+    with override_settings(SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=True):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            call_command("collectstatic", verbosity=0, interactive=False)
+
+            # Determine static URLs
+            hashed_path = static("app.js")
+            original_path = hashed_path.rsplit("/", 1)[0] + "/app.js"
+            assert not hashed_path.endswith("app.js")
+
+            # Check if SERVESTATIC_KEEP_ONLY_HASHED_FILES removed the original file
+            scope = AsgiScopeEmulator({"path": original_path, "headers": []})
+            receive = AsgiReceiveEmulator()
+            send = AsgiSendEmulator()
+            asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
+            assert send.status == 404
+
+            # Check if the hashed file can be served
+            scope = AsgiScopeEmulator({"path": hashed_path, "headers": []})
+            receive = AsgiReceiveEmulator()
+            send = AsgiSendEmulator()
+            asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
+            assert send.status == 200
+
+        finally:
+            static_root: Path = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+@pytest.mark.usefixtures("static_files")
+def test_manifest_with_keep_only_hashed_2():
+    with override_settings(SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=True):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            call_command("collectstatic", verbosity=0, interactive=False)
+
+            # Determine static URLs
+            hashed_path = static("app.js")
+            original_path = hashed_path.rsplit("/", 1)[0] + "/app.js"
+            assert not hashed_path.endswith("app.js")
+
+            # Check if SERVESTATIC_KEEP_ONLY_HASHED_FILES removed the original file
+            async def executor():
+                scope = AsgiScopeEmulator({"path": original_path, "headers": []})
+                communicator = ApplicationCommunicator(get_asgi_application(), scope)
+                await communicator.send_input(scope)
+                response_start = await communicator.receive_output()
+                response_body = await communicator.receive_output()
+                return response_start | response_body
+
+            response = asyncio.run(executor())
+            assert response["status"] == 404
+
+            # Check if the hashed file can be served
+            async def executor_2():
+                scope = AsgiScopeEmulator({"path": hashed_path, "headers": []})
+                communicator = ApplicationCommunicator(get_asgi_application(), scope)
+                await communicator.send_input(scope)
+                response_start = await communicator.receive_output()
+                response_body = await communicator.receive_output()
+                return response_start | response_body
+
+            response = asyncio.run(executor_2())
+            assert response["status"] == 200
+
+        finally:
+            static_root: Path = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
