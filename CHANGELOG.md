@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Fixed
+
+-   Fixed compatibility between the two following Django settings: `SERVESTATIC_KEEP_ONLY_HASHED_FILES` and `SERVESTATIC_USE_MANIFEST`
 
 ## [3.0.0] - 2025-01-10
 

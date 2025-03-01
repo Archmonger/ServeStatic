@@ -70,9 +70,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
     compressor: Compressor | None
 
     def __init__(self, *args, **kwargs):
-        manifest_strict = getattr(settings, "SERVESTATIC_MANIFEST_STRICT", None)
-        if manifest_strict is not None:
-            self.manifest_strict = manifest_strict
+        self.manifest_strict = getattr(settings, "SERVESTATIC_MANIFEST_STRICT", True)
         super().__init__(*args, **kwargs)
 
     def post_process(self, *args, **kwargs):
