@@ -7,11 +7,13 @@ import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Callable
+from io import IOBase
+from typing import TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncIterable
-    from io import IOBase
+    from collections.abc import AsyncIterable, Iterable
+
+    from servestatic.responders import AsyncSlicedFile
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
@@ -44,7 +46,7 @@ def scantree(root):
             yield entry.path, entry.stat()
 
 
-def stat_files(paths: list[str]) -> dict:
+def stat_files(paths: Iterable[str]) -> dict:
     """Stat a list of file paths via threads."""
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -127,7 +129,7 @@ class AsyncFile:
         self.loop: asyncio.AbstractEventLoop | None = None
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic-AsyncFile")
         self.lock = threading.Lock()
-        self.file_obj: None | IOBase = None
+        self.file_obj: IOBase = cast(IOBase, None)
         self.closed = False
 
     async def _execute(self, func, *args):
@@ -179,7 +181,7 @@ class EmptyAsyncIterator:
 class AsyncFileIterator:
     """Async iterator that yields chunks of data from the provided async file."""
 
-    def __init__(self, async_file: AsyncFile):
+    def __init__(self, async_file: AsyncFile | AsyncSlicedFile):
         self.async_file = async_file
         self.block_size = get_block_size()
 

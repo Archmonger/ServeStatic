@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import contextlib
 from importlib import import_module
+from typing import TYPE_CHECKING, cast
 
 from django.apps import apps
+
+if TYPE_CHECKING:
+    from django.core.management.base import BaseCommand
 
 
 def get_next_runserver_command():
@@ -40,12 +44,14 @@ def get_lower_priority_apps():
     yield "django.core"
 
 
-RunserverCommand = get_next_runserver_command()
+RunserverCommand = cast(type["BaseCommand"], get_next_runserver_command())
 
 
 class Command(RunserverCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
+        if not parser.description:
+            parser.description = ""
         if parser.get_default("use_static_handler") is True:
             parser.set_defaults(use_static_handler=False)
-            parser.description += "\n(Wrapped by 'servestatic.runserver_nostatic' to always" " enable '--nostatic')"
+            parser.description += "\n(Wrapped by 'servestatic.runserver_nostatic' to always enable '--nostatic')"

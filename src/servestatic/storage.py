@@ -6,7 +6,7 @@ import json
 import os
 import re
 import textwrap
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Union
 
@@ -35,19 +35,19 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
             return
 
         extensions = getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None)
-        self.compressor = self.create_compressor(extensions=extensions, quiet=True)
+        self.compressor = compressor = self.create_compressor(extensions=extensions, quiet=True)
 
-        def _compress_path(path: str) -> Generator[tuple[str, str, bool]]:
+        def _compress_path(path: str) -> list[tuple[str, str, bool]]:
             compressed: list[tuple[str, str, bool]] = []
             full_path = self.path(path)
             prefix_len = len(full_path) - len(path)
-            for compressed_path in self.compressor.compress(full_path):
+            for compressed_path in compressor.compress(full_path):
                 compressed_name = compressed_path[prefix_len:]
                 compressed.append((path, compressed_name, True))
             return compressed
 
         with ThreadPoolExecutor() as executor:
-            futures = (executor.submit(_compress_path, path) for path in paths if self.compressor.should_compress(path))
+            futures = (executor.submit(_compress_path, path) for path in paths if compressor.should_compress(path))
             for future in as_completed(futures):
                 yield from future.result()
 
@@ -73,7 +73,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         self.manifest_strict = getattr(settings, "SERVESTATIC_MANIFEST_STRICT", True)
         super().__init__(*args, **kwargs)
 
-    def post_process(self, *args, **kwargs):
+    def post_process(self, *args, **kwargs):  # pyright: ignore [reportIncompatibleMethodOverride]
         files = super().post_process(*args, **kwargs)
 
         if not kwargs.get("dry_run"):
@@ -98,7 +98,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         # Django < 3.2 doesn't have a manifest_storage attribute
         manifest_storage = getattr(self, "manifest_storage", self)
         manifest_storage.delete(self.manifest_name)
-        manifest_storage._save(self.manifest_name, ContentFile(new))
+        manifest_storage._save(self.manifest_name, ContentFile(new))  # pyright: ignore [reportAttributeAccessIssue]
 
     def stat_static_root(self):
         """Stats all the files within the static root folder."""
@@ -183,13 +183,13 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
     def compress_files(self, paths):
         extensions = getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None)
-        self.compressor = self.create_compressor(extensions=extensions, quiet=True)
+        self.compressor = compressor = self.create_compressor(extensions=extensions, quiet=True)
 
         def _compress_path(path: str) -> list[tuple[str, str]]:
             compressed: list[tuple[str, str]] = []
             full_path = self.path(path)
             prefix_len = len(full_path) - len(path)
-            for compressed_path in self.compressor.compress(full_path):
+            for compressed_path in compressor.compress(full_path):
                 compressed_name = compressed_path[prefix_len:]
                 compressed.append((path, compressed_name))
             return compressed
