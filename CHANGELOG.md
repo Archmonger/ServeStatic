@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+-   Nothing (yet)!
+
+## [3.0.1] - 2025-03-02
+
 ### Fixed
 
 -   Fixed compatibility between the two following Django settings: `SERVESTATIC_KEEP_ONLY_HASHED_FILES` and `SERVESTATIC_USE_MANIFEST`
@@ -96,7 +100,8 @@ Don't forget to remove deprecated code on each major release!
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...HEAD
+[3.0.1]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...3.0.0
 [2.1.1]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...2.1.1
 [2.1.0]: https://github.com/Archmonger/ServeStatic/compare/2.0.1...2.1.0
