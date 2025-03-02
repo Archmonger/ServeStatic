@@ -28,9 +28,12 @@ jobs:
           pip3 --quiet install --upgrade hatch uv
           hatch --version
           uv --version
-      - name: Lint project
+      - name: Run formatter
         run: |
           hatch fmt --check
+      - name: Run type checker
+        run: |
+          hatch run python:type_check
       - name: Check files with pre-commit
         uses: pre-commit/action@v3.0.1
 

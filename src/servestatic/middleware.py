@@ -16,7 +16,7 @@ from django.contrib.staticfiles.storage import (
 )
 from django.http import FileResponse, HttpRequest
 
-from servestatic.responders import AsyncSlicedFile, MissingFileError, StaticFile
+from servestatic.responders import AsyncSlicedFile, MissingFileError, Redirect, StaticFile
 from servestatic.storage import CompressedManifestStaticFilesStorage
 from servestatic.utils import (
     AsyncFile,
@@ -62,15 +62,13 @@ class ServeStaticMiddleware(ServeStaticBase):
             "SERVESTATIC_USE_MANIFEST",
             not debug and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
         )
-        self.static_prefix = getattr(settings, "SERVESTATIC_STATIC_PREFIX", None)
+        self.static_prefix: str = getattr(settings, "SERVESTATIC_STATIC_PREFIX", self.default_static_prefix(settings))
         self.static_root = getattr(settings, "STATIC_ROOT", None)
         self.keep_only_hashed_files = getattr(django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False)
-        force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
-        static_url = getattr(settings, "STATIC_URL", None)
         root = getattr(settings, "SERVESTATIC_ROOT", None)
 
         super().__init__(
-            application=None,
+            application=lambda *_: None,
             autorefresh=autorefresh,
             max_age=max_age,
             allow_all_origins=allow_all_origins,
@@ -82,12 +80,6 @@ class ServeStaticMiddleware(ServeStaticBase):
         )
 
         # Set the static prefix
-        if self.static_prefix is None:
-            self.static_prefix = urlparse(static_url or "").path
-            if force_script_name:
-                script_name = force_script_name.rstrip("/")
-                if self.static_prefix.startswith(script_name):
-                    self.static_prefix = self.static_prefix[len(script_name) :]
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
         # Add the files from STATIC_ROOT, if needed
@@ -122,7 +114,7 @@ class ServeStaticMiddleware(ServeStaticBase):
 
         if django_settings.DEBUG and request.path.startswith(django_settings.STATIC_URL):
             current_finders = finders.get_finders()
-            app_dirs = [storage.location for finder in current_finders for storage in finder.storages.values()]
+            app_dirs = [storage.location for finder in current_finders for storage in finder.storages.values()]  # pyright: ignore [reportAttributeAccessIssue]
             app_dirs = "\n• ".join(sorted(app_dirs))
             msg = f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
             raise MissingFileError(msg)
@@ -130,7 +122,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         return await self.get_response(request)
 
     @staticmethod
-    async def aserve(static_file: StaticFile, request: HttpRequest):
+    async def aserve(static_file: StaticFile | Redirect, request: HttpRequest):
         response = await static_file.aget_response(request.method, request.META)
         status = int(response.status)
         http_response = AsyncServeStaticFileResponse(
@@ -144,7 +136,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         return http_response
 
     def add_files_from_finders(self):
-        files = {}
+        files: dict[str, str] = {}
         for finder in finders.get_finders():
             for path, storage in finder.list(None):
                 prefix = (getattr(storage, "prefix", None) or "").strip("/")
@@ -242,6 +234,17 @@ class ServeStaticMiddleware(ServeStaticBase):
         with contextlib.suppress(ValueError):
             return staticfiles_storage.url(name)
 
+    @staticmethod
+    def default_static_prefix(settings) -> str:
+        force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
+        static_url = getattr(settings, "STATIC_URL", None)
+        static_prefix = urlparse(static_url or "").path
+        if force_script_name:
+            script_name = force_script_name.rstrip("/")
+            if static_prefix.startswith(script_name):
+                static_prefix = static_prefix[len(script_name) :]
+        return static_prefix
+
 
 class AsyncServeStaticFileResponse(FileResponse):
     """
@@ -260,13 +263,13 @@ class AsyncServeStaticFileResponse(FileResponse):
         if isinstance(value, (AsyncFile, AsyncSlicedFile)):
             value = AsyncFileIterator(value)
 
-        super()._set_streaming_content(value)
+        super()._set_streaming_content(value)  # pyright: ignore [reportAttributeAccessIssue]
 
     def __iter__(self):
         """The way that Django 4.2+ converts async to sync is inefficient, so
         we override it with a better implementation. Django only uses this method
         when running via WSGI."""
         try:
-            return iter(self.streaming_content)
+            return iter(self.streaming_content)  # pyright: ignore [reportCallIssue, reportArgumentType]
         except TypeError:
-            return iter(AsyncToSyncIterator(self.streaming_content))
+            return iter(AsyncToSyncIterator(self.streaming_content))  # pyright: ignore [reportCallIssue, reportArgumentType]

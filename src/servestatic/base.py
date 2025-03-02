@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 from wsgiref.headers import Headers
 
 from servestatic.media_types import MediaTypes
@@ -16,6 +16,9 @@ from servestatic.responders import (
     StaticFile,
 )
 from servestatic.utils import ensure_leading_trailing_slash, scantree
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class ServeStaticBase:
@@ -28,9 +31,9 @@ class ServeStaticBase:
 
     def __init__(
         self,
-        application,
-        root=None,
-        prefix=None,
+        application: Callable,
+        root: Path | str | None = None,
+        prefix: str | None = None,
         *,
         # Re-check the filesystem on every request so that any changes are
         # automatically picked up. NOTE: For use in development only, not supported

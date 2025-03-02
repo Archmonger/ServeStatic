@@ -56,7 +56,7 @@ class SlicedFile(BufferedIOBase):
         self.end = end
         self.remaining = end - start + 1
 
-    def read(self, size=-1):
+    def read(self, size=-1):  # pyright: ignore [reportIncompatibleMethodOverride]
         if not self.seeked:
             self.fileobj.seek(self.start)
             self.seeked = True
@@ -313,7 +313,7 @@ class StaticFile:
         if accept_encoding == "*":
             accept_encoding = ""
         # These are sorted by size so first match is the best
-        return next(
+        result = next(
             (
                 (path, headers)
                 for encoding_re, path, headers in self.alternatives
@@ -321,6 +321,10 @@ class StaticFile:
             ),
             None,
         )
+        if result is None:
+            msg = "No matching file found from path."
+            raise MissingFileError(msg)
+        return result
 
 
 class Redirect:

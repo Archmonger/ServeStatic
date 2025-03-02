@@ -9,10 +9,8 @@ from io import BytesIO
 
 try:
     import brotli
-
-    brotli_installed = True
 except ImportError:  # pragma: no cover
-    brotli_installed = False
+    brotli = None
 
 
 class Compressor:
@@ -57,14 +55,14 @@ class Compressor:
             extensions = self.SKIP_COMPRESS_EXTENSIONS
         self.extension_re = self.get_extension_re(extensions)
         self.use_gzip = use_gzip
-        self.use_brotli = use_brotli and brotli_installed
+        self.use_brotli = use_brotli and (brotli is not None)
         self.log = (lambda _: None) if quiet else log
 
     @staticmethod
     def get_extension_re(extensions):
         if not extensions:
             return re.compile("^$")
-        return re.compile(rf'\.({"|".join(map(re.escape, extensions))})$', re.IGNORECASE)
+        return re.compile(rf"\.({'|'.join(map(re.escape, extensions))})$", re.IGNORECASE)
 
     def should_compress(self, filename):
         return not self.extension_re.search(filename)
@@ -99,6 +97,9 @@ class Compressor:
 
     @staticmethod
     def compress_brotli(data):
+        if brotli is None:
+            msg = "Brotli is not installed"
+            raise RuntimeError(msg)
         return brotli.compress(data)
 
     def is_compressed_effectively(self, encoding_name, path, orig_size, data):

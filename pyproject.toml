@@ -119,6 +119,14 @@ dependencies = ["pre-commit>=3,<4"]
 check = ["pre-commit run --all-files"]
 update = ["pre-commit autoupdate"]
 
+# >>> Hatch Python Scripts <<<
+
+[tool.hatch.envs.python]
+extra-dependencies = ["django-stubs", "pyright", "brotli"]
+
+[tool.hatch.envs.python.scripts]
+type_check = ["pyright src"]
+
 # >>> Generic Tools <<<
 
 [tool.ruff]
