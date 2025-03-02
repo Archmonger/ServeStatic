@@ -125,7 +125,7 @@ class ServeStaticBase:
 
     def find_file(self, url):
         # Optimization: bail early if the URL can never match a file
-        if self.index_file is None or url.endswith("/"):
+        if self.index_file is None and url.endswith("/"):
             return
         if not self.url_is_canonical(url):
             return
