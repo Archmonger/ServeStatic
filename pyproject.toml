@@ -154,7 +154,7 @@ addopts = """\
 [tool.coverage.run]
 branch = true
 parallel = true
-source = ["src/", "tests/"]
+source = ["src/"]
 
 [tool.coverage.paths]
 source = ["src/"]
