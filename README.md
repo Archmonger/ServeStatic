@@ -19,22 +19,21 @@
 
 _Production-grade static file server for Python web apps._
 
-_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, maintenance, and feature updates](https://archmonger.github.io/ServeStatic/latest/changelog/)._
+_This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, bug fixes, new features, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
 
 ---
 
-With a couple of lines of configuration `ServeStatic` allows your web app to serve its own static files, making it a self-contained unit that can be deployed anywhere without relying on nginx, Amazon S3, or any other external service. This is especially useful on Heroku, OpenShift, and other PaaS providers.
+`ServeStatic` simplifies static file serving for web apps with minimal lines of configuration. It transforms your app into a self-contained unit, without relying on external services like nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
 
-It's designed to work nicely with a CDN for high-traffic sites so you don't have to sacrifice performance to benefit from simplicity.
+It is designed to work seamlessly with CDNs to ensure high performance for traffic-intensive sites, and is compatible with any ASGI/WSGI app. Extra features and auto-configuration are available for [Django](https://www.djangoproject.com/) users.
 
-`ServeStatic` works with any ASGI or WSGI compatible app but has some special auto-configuration features for Django.
+Best practices are automatically handled by `ServeStatic`, such as:
 
-`ServeStatic` automatically takes care of best-practices for you, for instance:
+-   Automatically serving compressed content
+-   Proper handling of `Accept-Encoding` and `Vary` headers
+-   Setting far-future cache headers for immutable static files.
 
--   Serving compressed content (gzip and Brotli formats, handling Accept-Encoding and Vary headers correctly)
--   Setting far-future cache headers on content which won't change
-
-Worried that serving static files with Python is horribly inefficient? Still think you should be using Amazon S3? Have a look at the FAQ below.
+To get started or learn more about `ServeStatic`, visit the [documentation](https://archmonger.github.io/ServeStatic/).
 
 ## Frequently Asked Questions
 
