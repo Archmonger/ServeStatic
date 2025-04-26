@@ -19,7 +19,7 @@
 
 _Production-grade static file server for Python web apps._
 
-_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [new features (such as ASGI support), bug fixes, maintenance, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
+_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, new features, bug fixes, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
 
 ---
 
