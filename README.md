@@ -19,7 +19,7 @@
 
 _Production-grade static file server for Python web apps._
 
-_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, maintenance, and feature updates](https://archmonger.github.io/ServeStatic/latest/changelog/)._
+_A fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [new features (such as ASGI support), bug fixes, maintenance, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
 
 ---
 
@@ -34,7 +34,7 @@ It's designed to work nicely with a CDN for high-traffic sites so you don't have
 -   Serving compressed content (gzip and Brotli formats, handling Accept-Encoding and Vary headers correctly)
 -   Setting far-future cache headers on content which won't change
 
-Worried that serving static files with Python is horribly inefficient? Still think you should be using Amazon S3? Have a look at the FAQ below.
+Worried that serving static files with Python is horribly inefficient? Still think you should be using Amazon S3? Have a look at the FAQ below. Additionally, you can get started with `ServeStatic` by reading the [documentation](https://archmonger.github.io/ServeStatic/).
 
 ## Frequently Asked Questions
 
