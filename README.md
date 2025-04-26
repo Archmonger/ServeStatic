@@ -23,18 +23,13 @@ _This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) fo
 
 ---
 
-With a couple of lines of configuration `ServeStatic` allows your web app to serve its own static files, making it a self-contained unit that can be deployed anywhere without relying on nginx, Amazon S3, or any other external service. This is especially useful on Heroku, OpenShift, and other PaaS providers.
+`ServeStatic` simplifies static file serving for web apps with just a few lines of configuration. It transforms your app into a self-contained unit, without relying on external services like nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
 
-It's designed to work nicely with a CDN for high-traffic sites so you don't have to sacrifice performance to benefit from simplicity.
+It is designed to work seamlessly with CDNs, ensuring high performance for traffic-intensive sites, and is compatible with any ASGI or WSGI app. For Django users, `ServeStatic` offers additional features and auto-configuration.
 
-`ServeStatic` works with any ASGI or WSGI app but brings some additional features for Django.
+Best practices are automatically handled such as serving compressed content, proper handling of `Accept-Encoding` and `Vary` headers, and setting far-future cache headers for immutable static files.
 
-`ServeStatic` automatically takes care of best-practices for you, for instance:
-
--   Serving compressed content (gzip and Brotli formats, handling Accept-Encoding and Vary headers correctly)
--   Setting far-future cache headers on content which won't change
-
-You can get started with `ServeStatic` by reading the [documentation](https://archmonger.github.io/ServeStatic/).
+To get started and explore its features, visit the [documentation](https://archmonger.github.io/ServeStatic/).
 
 ## Frequently Asked Questions
 
