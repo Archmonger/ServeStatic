@@ -8,7 +8,7 @@ import pytest
 from servestatic import utils as servestatic_utils
 from servestatic.asgi import ServeStaticASGI
 
-from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
+from .utils import AsgiReceiveEmulator, AsgiBaseScopeEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
 
 
 @pytest.fixture
@@ -74,6 +74,14 @@ def test_user_app(application):
 
 def test_ws_scope(application):
     scope = AsgiScopeEmulator({"type": "websocket"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    with pytest.raises(RuntimeError):
+        asyncio.run(application(scope, receive, send))
+
+
+def test_lifespan_scope(application):
+    scope = AsgiBaseScopeEmulator({"type": "lifespan"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     with pytest.raises(RuntimeError):

@@ -16,19 +16,19 @@ class ServeStaticASGI(ServeStaticBase):
         if not self.user_app:
             self.user_app = guarantee_single_callable(self.application)
 
-        # Determine if the request is for a static file
-        path = decode_path_info(scope["path"])
-        static_file = None
         if scope["type"] == "http":
+            # Determine if the request is for a static file
+            path = decode_path_info(scope["path"])
+
             if self.autorefresh:
                 static_file = await asyncio.to_thread(self.find_file, path)
             else:
                 static_file = self.files.get(path)
 
-        # Serve static file if it exists
-        if static_file:
-            await FileServerASGI(static_file)(scope, receive, send)
-            return
+            # Serve static file if it exists
+            if static_file:
+                await FileServerASGI(static_file)(scope, receive, send)
+                return
 
         # Serve the user's ASGI application
         await self.user_app(scope, receive, send)
