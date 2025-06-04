@@ -19,7 +19,6 @@ class ServeStaticASGI(ServeStaticBase):
         if scope["type"] == "http":
             # Determine if the request is for a static file
             path = decode_path_info(scope["path"])
-
             if self.autorefresh:
                 static_file = await asyncio.to_thread(self.find_file, path)
             else:
