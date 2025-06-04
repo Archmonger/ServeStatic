@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+-   Nothing (yet)!
+
+## [3.0.2] - 2025-06-03
+
 ### Fixed
 
 -   Fixed a bug where `ServeStaticASGI` was preventing compatibility with the `lifespan` protocol. All non-HTTP requests are now properly forwarded to the user's ASGI app.
@@ -102,7 +106,8 @@ Don't forget to remove deprecated code on each major release!
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...HEAD
+[3.0.2]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...3.0.0
 [2.1.1]: https://github.com/Archmonger/ServeStatic/compare/2.1.0...2.1.1
