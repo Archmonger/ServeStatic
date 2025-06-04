@@ -8,7 +8,7 @@ import pytest
 from servestatic import utils as servestatic_utils
 from servestatic.asgi import ServeStaticASGI
 
-from .utils import AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
+from .utils import AsgiHttpScopeEmulator, AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def application(request, test_files):
 
 
 def test_get_js_static_file(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js"})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -55,7 +55,7 @@ def test_get_js_static_file(application, test_files):
 
 
 def test_redirect_preserves_query_string(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/with-index", "query_string": b"v=1&x=2"})
+    scope = AsgiHttpScopeEmulator({"path": "/static/with-index", "query_string": b"v=1&x=2"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -63,7 +63,7 @@ def test_redirect_preserves_query_string(application, test_files):
 
 
 def test_user_app(application):
-    scope = AsgiScopeEmulator({"path": "/"})
+    scope = AsgiHttpScopeEmulator({"path": "/"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -73,7 +73,15 @@ def test_user_app(application):
 
 
 def test_ws_scope(application):
-    scope = AsgiScopeEmulator({"type": "websocket"})
+    scope = AsgiHttpScopeEmulator({"type": "websocket"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    with pytest.raises(RuntimeError):
+        asyncio.run(application(scope, receive, send))
+
+
+def test_lifespan_scope(application):
+    scope = AsgiScopeEmulator({"type": "lifespan"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     with pytest.raises(RuntimeError):
@@ -81,7 +89,7 @@ def test_ws_scope(application):
 
 
 def test_head_request(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js", "method": "HEAD"})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "method": "HEAD"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -92,7 +100,7 @@ def test_head_request(application, test_files):
 
 
 def test_small_block_size(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js"})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
 
@@ -104,7 +112,7 @@ def test_small_block_size(application, test_files):
 
 
 def test_request_range_response(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=0-13")]})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=0-13")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -112,7 +120,7 @@ def test_request_range_response(application, test_files):
 
 
 def test_out_of_range_error(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=10000-11000")]})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=10000-11000")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -121,7 +129,7 @@ def test_out_of_range_error(application, test_files):
 
 
 def test_wrong_method_type(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/app.js", "method": "PUT"})
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "method": "PUT"})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))
@@ -129,7 +137,7 @@ def test_wrong_method_type(application, test_files):
 
 
 def test_large_static_file(application, test_files):
-    scope = AsgiScopeEmulator({"path": "/static/large-file.txt", "headers": []})
+    scope = AsgiHttpScopeEmulator({"path": "/static/large-file.txt", "headers": []})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(application(scope, receive, send))

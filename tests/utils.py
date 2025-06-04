@@ -73,12 +73,30 @@ class Files:
 
 
 class AsgiScopeEmulator(dict):
-    """Simulate a real scope. Individual scope values can be overridden by passing
-    a dictionary to the constructor."""
+    """
+    Simulate a basic ASGI scope with minimal default values.
+    Individual scope values can be overridden by passing a dictionary to the constructor.
+    """
 
     def __init__(self, scope_overrides: dict | None = None):
         scope = {
             "asgi": {"version": "3.0"},
+        }
+
+        if scope_overrides:  # pragma: no cover
+            scope.update(scope_overrides)
+
+        super().__init__(scope)
+
+
+class AsgiHttpScopeEmulator(AsgiScopeEmulator):
+    """
+    Simulate a detailed ASGI scope (like HTTP/WS).
+    Individual scope values can be overridden by passing a dictionary to the constructor.
+    """
+
+    def __init__(self, scope_overrides: dict | None = None):
+        scope = {
             "client": ["127.0.0.1", 64521],
             "headers": [
                 (b"host", b"127.0.0.1:8000"),
