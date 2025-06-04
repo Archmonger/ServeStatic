@@ -72,7 +72,7 @@ class Files:
             setattr(self, f"{name}_content", content)
 
 
-class AsgiBaseScopeEmulator(dict):
+class AsgiScopeEmulator(dict):
     """
     Simulate a basic ASGI scope with minimal default values.
     Individual scope values can be overridden by passing a dictionary to the constructor.
@@ -89,7 +89,7 @@ class AsgiBaseScopeEmulator(dict):
         super().__init__(scope)
 
 
-class AsgiScopeEmulator(AsgiBaseScopeEmulator):
+class AsgiHttpScopeEmulator(AsgiScopeEmulator):
     """
     Simulate a detailed ASGI scope (like HTTP/WS).
     Individual scope values can be overridden by passing a dictionary to the constructor.

@@ -27,8 +27,8 @@ from servestatic.utils import AsyncFile
 from .utils import (
     AppServer,
     AsgiAppServer,
+    AsgiHttpScopeEmulator,
     AsgiReceiveEmulator,
-    AsgiScopeEmulator,
     AsgiSendEmulator,
     Files,
 )
@@ -112,7 +112,7 @@ def test_versioned_file_cached_forever(server, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
@@ -129,7 +129,7 @@ def test_asgi_versioned_file_cached_forever_brotli(asgi_application, static_file
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"br")]})
 
     async def executor():
         communicator = ApplicationCommunicator(asgi_application, scope)
@@ -358,7 +358,7 @@ def test_range_response(server, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_range_response(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
@@ -372,7 +372,7 @@ def test_asgi_range_response(asgi_application, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_range_response_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"range", b"bytes=0-13")]})
 
     async def executor():
         communicator = ApplicationCommunicator(asgi_application, scope)
@@ -401,7 +401,7 @@ def test_out_of_range_error(server, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_out_of_range_error(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
@@ -412,7 +412,7 @@ def test_asgi_out_of_range_error(asgi_application, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_out_of_range_error_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
 
     async def executor():
         communicator = ApplicationCommunicator(asgi_application, scope)
@@ -430,7 +430,7 @@ def test_asgi_out_of_range_error_2(asgi_application, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_large_static_file(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.txt_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": []})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": []})
     receive = AsgiReceiveEmulator()
     send = AsgiSendEmulator()
     asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
@@ -446,7 +446,7 @@ def test_large_static_file(asgi_application, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_large_static_file_2(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.txt_path)
-    scope = AsgiScopeEmulator({"path": url, "headers": []})
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": []})
 
     async def executor():
         communicator = ApplicationCommunicator(asgi_application, scope)
@@ -483,14 +483,14 @@ def test_manifest_with_keep_only_hashed(static_files):
             assert not hashed_path.endswith("app.js")
 
             # Check if SERVESTATIC_KEEP_ONLY_HASHED_FILES removed the original file
-            scope = AsgiScopeEmulator({"path": original_path, "headers": []})
+            scope = AsgiHttpScopeEmulator({"path": original_path, "headers": []})
             receive = AsgiReceiveEmulator()
             send = AsgiSendEmulator()
             asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
             assert send.status == 404
 
             # Check if the hashed file can be served
-            scope = AsgiScopeEmulator({"path": hashed_path, "headers": []})
+            scope = AsgiHttpScopeEmulator({"path": hashed_path, "headers": []})
             receive = AsgiReceiveEmulator()
             send = AsgiSendEmulator()
             asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
@@ -517,7 +517,7 @@ def test_manifest_with_keep_only_hashed_2():
 
             # Check if SERVESTATIC_KEEP_ONLY_HASHED_FILES removed the original file
             async def executor():
-                scope = AsgiScopeEmulator({"path": original_path, "headers": []})
+                scope = AsgiHttpScopeEmulator({"path": original_path, "headers": []})
                 communicator = ApplicationCommunicator(get_asgi_application(), scope)
                 await communicator.send_input(scope)
                 response_start = await communicator.receive_output()
@@ -529,7 +529,7 @@ def test_manifest_with_keep_only_hashed_2():
 
             # Check if the hashed file can be served
             async def executor_2():
-                scope = AsgiScopeEmulator({"path": hashed_path, "headers": []})
+                scope = AsgiHttpScopeEmulator({"path": hashed_path, "headers": []})
                 communicator = ApplicationCommunicator(get_asgi_application(), scope)
                 await communicator.send_input(scope)
                 response_start = await communicator.receive_output()
