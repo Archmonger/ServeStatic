@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Fixed
+
+-   Fixed a bug where `ServeStaticASGI` was preventing compatibility with the `lifespan` protocol. All non-HTTP requests are now properly forwarded to the user's ASGI app.
 
 ## [3.0.1] - 2025-03-02
 
