@@ -27,7 +27,7 @@ class ServeStaticASGI(ServeStaticBase):
             return await FileServerASGI(static_file)(scope, receive, send)
 
         # Could not find a static file. Serve the default application instead.
-        await self.application(scope, receive, send)
+        return await self.application(scope, receive, send)
 
     def initialize(self) -> None:
         """Ensure the ASGI application is initialized"""
