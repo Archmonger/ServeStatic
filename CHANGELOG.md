@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
--   Nothing (yet)!
+### Added
+
+-   Added support for running `ServeStatic` in standalone WSGI/ASGI mode (without an app).
 
 ## [3.0.2] - 2025-06-03
 

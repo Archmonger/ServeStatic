@@ -24,24 +24,7 @@ def test_files():
 def application(request, test_files):
     """Return an ASGI application can serve the test files."""
 
-    async def asgi_app(scope, receive, send):
-        if scope["type"] != "http":
-            msg = "Incorrect response type!"
-            raise RuntimeError(msg)
-
-        await send({
-            "type": "http.response.start",
-            "status": 404,
-            "headers": [[b"content-type", b"text/plain"]],
-        })
-        await send({"type": "http.response.body", "body": b"Not Found"})
-
-    return ServeStaticASGI(
-        asgi_app,
-        root=test_files.directory,
-        autorefresh=request.param,
-        index_file=True,
-    )
+    return ServeStaticASGI(None, root=test_files.directory, autorefresh=request.param, index_file=True)
 
 
 def test_get_js_static_file(application, test_files):

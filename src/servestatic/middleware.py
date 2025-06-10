@@ -245,6 +245,10 @@ class ServeStaticMiddleware(ServeStaticBase):
                 static_prefix = static_prefix[len(script_name) :]
         return static_prefix
 
+    def initialize(self) -> None:
+        """Stub that does nothing. ServeStaticMiddleware does not need to use
+        ServeStatic's initialization hooks."""
+
 
 class AsyncServeStaticFileResponse(FileResponse):
     """

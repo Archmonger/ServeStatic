@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "servestatic"
-description = "Production-grade static file server for Python web apps."
+description = "Production-grade static file server for Python WSGI & ASGI."
 readme = "README.md"
 keywords = ["asgi", "django", "http", "server", "static", "staticfiles", "wsgi"]
 license = "MIT"

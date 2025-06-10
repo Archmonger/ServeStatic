@@ -74,7 +74,7 @@ class Files:
 
 class AsgiScopeEmulator(dict):
     """
-    Simulate a basic ASGI scope with minimal default values.
+    Simulate a minimal ASGI scope.
     Individual scope values can be overridden by passing a dictionary to the constructor.
     """
 
@@ -91,7 +91,7 @@ class AsgiScopeEmulator(dict):
 
 class AsgiHttpScopeEmulator(AsgiScopeEmulator):
     """
-    Simulate a detailed ASGI scope (like HTTP/WS).
+    Simulate a HTTP ASGI scope.
     Individual scope values can be overridden by passing a dictionary to the constructor.
     """
 
