@@ -391,3 +391,19 @@ def test_redirect_preserves_query_string():
     responder = Redirect("/redirect/to/here/")
     response = responder.get_response("GET", {"QUERY_STRING": "foo=1&bar=2"})
     assert response.headers[0] == ("Location", "/redirect/to/here/?foo=1&bar=2")
+
+
+def test_user_app():
+    """Test that the user app is called when no static file is found."""
+    application = ServeStatic(None)
+    result = {}
+
+    def start_response(status, headers):
+        result["status"] = status
+        result["headers"] = headers
+
+    response = b"".join(application(environ={}, start_response=start_response))
+
+    # Check if the response is a 404 Not Found
+    assert result["status"] == "404 Not Found"
+    assert b"Not Found" in response

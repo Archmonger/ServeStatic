@@ -31,7 +31,7 @@ class ServeStaticBase:
 
     def __init__(
         self,
-        application: Callable,
+        application: Callable | None,
         root: Path | str | None = None,
         prefix: str | None = None,
         *,
@@ -78,6 +78,12 @@ class ServeStaticBase:
 
         if root is not None:
             self.add_files(root, prefix)
+
+        self.initialize()
+
+    def initialize(self):
+        """Perform any necessary setup/initialization steps."""
+        raise NotImplementedError("Subclasses must implement this method.")
 
     def insert_directory(self, root, prefix):
         # Exit early if the directory is already in the list

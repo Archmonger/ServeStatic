@@ -1,4 +1,4 @@
-The documentation below is a quick-start guide to using `ServeStatic` to serve your static files. For more detailed information see the [full installation docs](django.md).
+The documentation below is a quick-start guide to using ServeStatic to serve your static files. For more detailed information see the [full installation docs](django.md).
 
 ---
 
@@ -12,7 +12,7 @@ pip install servestatic
 
 ## Using with Django
 
-Edit your `settings.py` file and add `ServeStatic` to the `MIDDLEWARE` list, above all other middleware apart from Django's [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security).
+Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list, above all other middleware apart from Django's [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security).
 
 ```python linenums="0"
 MIDDLEWARE = [
@@ -50,6 +50,8 @@ application = ServeStatic(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
+To use ServeStatic as a standalone file server, you can skip providing a WSGI app, such as `#!python ServeStatic(None, root="/path/to/static/files")`.
+
 And that's it, you're ready to go. For more details see the [full WSGI guide](wsgi.md).
 
 ## Using with ASGI
@@ -65,5 +67,7 @@ application = MyASGIApp()
 application = ServeStaticASGI(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
+
+To use ServeStatic as a standalone file server, you can skip providing an ASGI app, such as `#!python ServeStaticASGI(None, root="/path/to/static/files")`.
 
 And that's it, you're ready to go. For more details see the [full ASGI guide](asgi.md).

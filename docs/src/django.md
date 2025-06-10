@@ -1,4 +1,4 @@
-# Using `ServeStatic` with Django
+# Using ServeStatic with Django
 
 This guide walks you through setting up a Django project with ServeStatic. In most cases it shouldn't take more than a couple of lines of configuration.
 
@@ -24,7 +24,7 @@ That's it! ServeStatic is now configured to serve your static files. For optimal
 
 ??? question "How should I order my middleware?"
 
-    You might find other third-party middleware that suggests it should be given highest priority at the top of the middleware list. Unless you understand exactly what is happening you should ignore this advice and always place `ServeStaticMiddleware` above other middleware.
+    You might find other third-party middleware that suggests it should be given highest priority at the top of the middleware list. Unless you understand exactly what is happening you should always place `ServeStaticMiddleware` above all middleware other than `SecurityMiddleware`.
 
 ## Step 2: Add compression and caching support
 
@@ -53,7 +53,7 @@ If you need to compress files outside of the static files storage system you can
     format. This helps reduce bandwidth and increase loading speed. To enable brotli compression you will need the [Brotli Python
     package](https://pypi.org/project/Brotli/) installed by running `pip install servestatic[brotli]`.
 
-    Brotli is supported by [all major browsers](https://caniuse.com/#feat=brotli) (except IE11). ServeStatic will only serve brotli data to browsers which request it so there are no compatibility issues with enabling brotli support.
+    Brotli is supported by [all modern browsers](https://caniuse.com/#feat=brotli). ServeStatic will only serve brotli data to browsers which request it so there are no compatibility issues with enabling brotli support.
 
     Also note that browsers will only request brotli data over an HTTPS connection.
 
@@ -81,13 +81,27 @@ For further details see the Django [staticfiles](https://docs.djangoproject.com/
 
 ---
 
-## Optional Steps
+## Step 4: Optional configuration
 
-### Configure ServeStatic
+### Modify ServeStatic's Django settings
 
 ServeStatic has a number of configuration options that you can set in your `settings.py` file.
 
 See the [reference documentation](./django-settings.md) for a full list of options.
+
+### Enable ServeStatic during development
+
+In development Django's `runserver` automatically takes over static file handling. In most cases this is fine, however this means that some of the improvements that ServeStatic makes to static file handling won't be available in development and it opens up the possibility for differences in behaviour between development and production environments. For this reason it's a good idea to use ServeStatic in development as well.
+
+You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to edit your `settings.py` file and add `servestatic.runserver_nostatic` to the top of your `INSTALLED_APPS` list:
+
+```python linenums="0"
+INSTALLED_APPS = [
+    "servestatic.runserver_nostatic",
+    "django.contrib.staticfiles",
+    # ...
+]
+```
 
 ### Utilize a Content Delivery Network (CDN)
 
@@ -140,17 +154,3 @@ Below are instruction for setting up ServeStatic with Amazon CloudFront, a popul
     3.  Check that the `static/*` pattern is first on the list, and the default one is second. This will ensure that requests for static files are passed through but all others are blocked.
 
 <!--cdn-end-->
-
-### Enable ServeStatic during development
-
-In development Django's `runserver` automatically takes over static file handling. In most cases this is fine, however this means that some of the improvements that ServeStatic makes to static file handling won't be available in development and it opens up the possibility for differences in behaviour between development and production environments. For this reason it's a good idea to use ServeStatic in development as well.
-
-You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to edit your `settings.py` file and add `servestatic.runserver_nostatic` to the top of your `INSTALLED_APPS` list:
-
-```python linenums="0"
-INSTALLED_APPS = [
-    "servestatic.runserver_nostatic",
-    "django.contrib.staticfiles",
-    # ...
-]
-```

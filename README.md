@@ -17,7 +17,7 @@
     </a>
 </p>
 
-_Production-grade static file server for Python web apps._
+_Production-grade static file server for Python WSGI & ASGI._
 
 _This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, bug fixes, new features, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
 

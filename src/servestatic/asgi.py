@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Callable
 
 from asgiref.compatibility import guarantee_single_callable
 
@@ -9,28 +10,34 @@ from servestatic.utils import decode_path_info, get_block_size
 
 
 class ServeStaticASGI(ServeStaticBase):
-    user_app = None
+    application: Callable
 
     async def __call__(self, scope, receive, send):
-        # Ensure ASGI v2 is converted to ASGI v3
-        if not self.user_app:
-            self.user_app = guarantee_single_callable(self.application)
-
+        # Determine if the request is for a static file
+        static_file = None
         if scope["type"] == "http":
-            # Determine if the request is for a static file
             path = decode_path_info(scope["path"])
             if self.autorefresh:
                 static_file = await asyncio.to_thread(self.find_file, path)
             else:
                 static_file = self.files.get(path)
 
-            # Serve static file if it exists
-            if static_file:
-                await FileServerASGI(static_file)(scope, receive, send)
-                return
+        # Serve static file if it exists
+        if static_file:
+            await FileServerASGI(static_file)(scope, receive, send)
+            return
 
-        # Serve the user's ASGI application
-        await self.user_app(scope, receive, send)
+        # Could not find a static file. Serve the default application instead.
+        await self.application(scope, receive, send)
+
+    def initialize(self):
+        """Ensure the ASGI application is initialized"""
+        # If no application is provided, default to a "404 Not Found" app
+        if not self.application:
+            self.application = NotFoundASGI()
+
+        # Ensure ASGI v2 is converted to ASGI v3
+        self.application = guarantee_single_callable(self.application)
 
 
 class FileServerASGI:
@@ -57,7 +64,7 @@ class FileServerASGI:
             "status": response.status,
             "headers": [
                 # Convert headers back to ASGI spec
-                (key.lower().encode(), value.encode())
+                (key.lower().replace("_", "-").encode(), value.encode())
                 for key, value in response.headers
             ],
         })
@@ -79,3 +86,20 @@ class FileServerASGI:
                 })
                 if not more_body:
                     break
+
+
+class NotFoundASGI:
+    """ASGI v3 application that returns a 404 Not Found response."""
+
+    async def __call__(self, scope, receive, send):
+        # Ensure this is an HTTP request
+        if scope["type"] != "http":
+            raise RuntimeError("Default ASGI application only supports HTTP requests.")
+
+        # Send a 404 Not Found response
+        await send({
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [(b"content-type", b"text/plain")],
+        })
+        await send({"type": "http.response.body", "body": b"Not Found"})

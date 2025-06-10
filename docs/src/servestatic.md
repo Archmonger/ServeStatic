@@ -2,7 +2,7 @@
 
 | Name | Type | Description | Default |
 | --- | --- | --- | --- |
-| `application` | `Callable` | Original WSGI application | N/A |
+| `application` | `Union[Callable, None]` | Your WSGI application. If set to `None`, then ServeStatic will run in standalone mode. | N/A |
 | `root` | `str` | Absolute path to a directory of static files to be served. | `None` |
 | `prefix` | `str` | If set, the URL prefix under which the files will be served. Trailing slashes are automatically added. | `None` |
 | `**kwargs` |  | Sets [configuration attributes](#configuration-attributes) for this instance | N/A |
