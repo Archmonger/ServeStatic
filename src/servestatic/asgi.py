@@ -12,7 +12,7 @@ from servestatic.utils import decode_path_info, get_block_size
 class ServeStaticASGI(ServeStaticBase):
     application: Callable
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> None:
         # Determine if the request is for a static file
         static_file = None
         if scope["type"] == "http":
@@ -24,13 +24,12 @@ class ServeStaticASGI(ServeStaticBase):
 
         # Serve static file if it exists
         if static_file:
-            await FileServerASGI(static_file)(scope, receive, send)
-            return
+            return await FileServerASGI(static_file)(scope, receive, send)
 
         # Could not find a static file. Serve the default application instead.
         await self.application(scope, receive, send)
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Ensure the ASGI application is initialized"""
         # If no application is provided, default to a "404 Not Found" app
         if not self.application:
@@ -43,11 +42,11 @@ class ServeStaticASGI(ServeStaticBase):
 class FileServerASGI:
     """Primitive ASGI v3 application that streams a StaticFile over HTTP in chunks."""
 
-    def __init__(self, static_file):
+    def __init__(self, static_file) -> None:
         self.static_file = static_file
         self.block_size = get_block_size()
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> None:
         # Convert ASGI headers into WSGI headers. Allows us to reuse all of our WSGI
         # header logic inside of aget_response().
         wsgi_headers = {
@@ -91,7 +90,7 @@ class FileServerASGI:
 class NotFoundASGI:
     """ASGI v3 application that returns a 404 Not Found response."""
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> None:
         # Ensure this is an HTTP request
         if scope["type"] != "http":
             msg = "Default ASGI application only supports HTTP requests."

@@ -50,7 +50,7 @@ application = ServeStatic(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
-To use ServeStatic as a standalone file server, you can skip providing a WSGI app, such as `#!python ServeStatic(None, root="/path/to/static/files")`.
+Alternatively, you can use ServeStatic as a standalone file server by not providing a WSGI app, such as via `#!python ServeStatic(None, root="/path/to/static/files")`.
 
 And that's it, you're ready to go. For more details see the [full WSGI guide](wsgi.md).
 
@@ -68,6 +68,6 @@ application = ServeStaticASGI(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
-To use ServeStatic as a standalone file server, you can skip providing an ASGI app, such as `#!python ServeStaticASGI(None, root="/path/to/static/files")`.
+Alternatively, you can use ServeStatic as a standalone file server by not providing a ASGI app, such as via `#!python ServeStaticASGI(None, root="/path/to/static/files")`.
 
 And that's it, you're ready to go. For more details see the [full ASGI guide](asgi.md).

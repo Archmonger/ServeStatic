@@ -12,7 +12,7 @@ application = ServeStatic(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
-If you would rather use ServeStatic as a standalone file server, you can simply not provide a WSGI app, such as `#!python ServeStatic(None, root="/path/to/static/files")`.
+If you would rather use ServeStatic as a standalone file server, you can simply not provide a WSGI app, such as via `#!python ServeStatic(None, root="/path/to/static/files")`.
 
 <!--shared-desc-start-->
 
