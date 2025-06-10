@@ -94,7 +94,8 @@ class NotFoundASGI:
     async def __call__(self, scope, receive, send):
         # Ensure this is an HTTP request
         if scope["type"] != "http":
-            raise RuntimeError("Default ASGI application only supports HTTP requests.")
+            msg = "Default ASGI application only supports HTTP requests."
+            raise RuntimeError(msg)
 
         # Send a 404 Not Found response
         await send({

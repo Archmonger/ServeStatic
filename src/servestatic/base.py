@@ -81,9 +81,11 @@ class ServeStaticBase:
 
         self.initialize()
 
+    # ruff: noqa: PLR6301
     def initialize(self):
         """Perform any necessary setup/initialization steps."""
-        raise NotImplementedError("Subclasses must implement this method.")
+        msg = "Subclasses must implement this method."
+        raise NotImplementedError(msg)
 
     def insert_directory(self, root, prefix):
         # Exit early if the directory is already in the list
