@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+-   Nothing (yet!)
+
+## [3.1.0] - 2025-06-10
+
 ### Added
 
 -   Added support for running `ServeStatic` in standalone WSGI/ASGI mode (without an app).
@@ -108,7 +112,8 @@ Don't forget to remove deprecated code on each major release!
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...HEAD
+[3.1.0]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...3.1.0
 [3.0.2]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...3.0.1
 [3.0.0]: https://github.com/Archmonger/ServeStatic/compare/2.1.1...3.0.0
