@@ -61,7 +61,7 @@ class Compressor:
     @staticmethod
     def get_extension_re(extensions):
         if not extensions:
-            return re.compile("^$")
+            return re.compile(r"^$")
         return re.compile(rf"\.({'|'.join(map(re.escape, extensions))})$", re.IGNORECASE)
 
     def should_compress(self, filename):

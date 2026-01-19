@@ -44,7 +44,7 @@ def get_lower_priority_apps():
     yield "django.core"
 
 
-RunserverCommand = cast(type["BaseCommand"], get_next_runserver_command())
+RunserverCommand = cast("type[BaseCommand]", get_next_runserver_command())
 
 
 class Command(RunserverCommand):

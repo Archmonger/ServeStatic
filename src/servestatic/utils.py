@@ -7,11 +7,11 @@ import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from io import IOBase
 from typing import TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncIterable, Iterable
+    from io import IOBase
 
     from servestatic.responders import AsyncSlicedFile
 
@@ -129,7 +129,7 @@ class AsyncFile:
         self.loop: asyncio.AbstractEventLoop | None = None
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic-AsyncFile")
         self.lock = threading.Lock()
-        self.file_obj: IOBase = cast(IOBase, None)
+        self.file_obj: IOBase = cast("IOBase", None)
         self.closed = False
 
     async def _execute(self, func, *args):
