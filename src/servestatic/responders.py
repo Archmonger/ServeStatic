@@ -289,7 +289,7 @@ class StaticFile:
                 headers["Content-Encoding"] = encoding
                 encoding_re = re.compile(rf"\b{encoding}\b")
             else:
-                encoding_re = re.compile("")
+                encoding_re = re.compile(r"")
             alternatives.append((encoding_re, file_entry.path, headers.items()))
         return alternatives
 
@@ -367,9 +367,9 @@ class FileEntry:
     def __init__(self, path, stat_cache=None):
         self.path = path
         stat_function = os.stat if stat_cache is None else stat_cache.__getitem__
-        _stat = self.stat_regular_file(path, stat_function)
-        self.size = _stat.st_size
-        self.mtime = _stat.st_mtime
+        stat_ = self.stat_regular_file(path, stat_function)
+        self.size = stat_.st_size
+        self.mtime = stat_.st_mtime
 
     @staticmethod
     def stat_regular_file(path, stat_function):

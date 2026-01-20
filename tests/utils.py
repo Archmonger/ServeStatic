@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+from collections import UserDict
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from wsgiref.util import shift_path_info
 
@@ -72,7 +73,7 @@ class Files:
             setattr(self, f"{name}_content", content)
 
 
-class AsgiScopeEmulator(dict):
+class AsgiScopeEmulator(UserDict):
     """
     Simulate a minimal ASGI scope.
     Individual scope values can be overridden by passing a dictionary to the constructor.

@@ -241,8 +241,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         static_prefix = urlparse(static_url or "").path
         if force_script_name:
             script_name = force_script_name.rstrip("/")
-            if static_prefix.startswith(script_name):
-                static_prefix = static_prefix[len(script_name) :]
+            static_prefix = static_prefix.removeprefix(script_name)
         return static_prefix
 
     def initialize(self) -> None:

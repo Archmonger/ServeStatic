@@ -63,7 +63,7 @@ def test_with_custom_extensions():
 
 def test_with_falsey_extensions():
     compressor = Compressor(quiet=True)
-    assert compressor.get_extension_re("") == re.compile("^$")
+    assert compressor.get_extension_re("") == re.compile(r"^$")
 
 
 def test_custom_log():
