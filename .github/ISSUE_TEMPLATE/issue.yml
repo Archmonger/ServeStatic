@@ -1,11 +1,10 @@
-name: Issue
-description: File an issue
+name: Issues
+description: Report an issue issue or problem with this package.
 body:
   - type: input
     id: python_version
     attributes:
       label: Python Version
-      description: Which version of Python were you using?
       placeholder: 3.9.0
     validations:
       required: false
@@ -13,7 +12,6 @@ body:
     id: django_version
     attributes:
       label: Django Version
-      description: Which version of Django were you using?
       placeholder: 3.2.0
     validations:
       required: false
@@ -21,7 +19,6 @@ body:
     id: package_version
     attributes:
       label: Package Version
-      description: Which version of this package were you using? If not the latest version, please check this issue has not since been resolved.
       placeholder: 1.0.0
     validations:
       required: false
@@ -29,6 +26,6 @@ body:
     id: description
     attributes:
       label: Description
-      description: Please describe your issue.
+      description: Please provide a detailed explanation of your issue. If necessary, include steps on how to reproduce it.
     validations:
       required: true
