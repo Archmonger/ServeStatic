@@ -204,7 +204,7 @@ jobs:
         if: github.ref_name == 'main'
         run: |
           hatch run docs:deploy_develop
-      - name: Publish Develop Docs
+      - name: Publish Latest Docs
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           hatch run docs:deploy_latest ${{ github.ref_name }}
@@ -240,7 +240,6 @@ jobs:
         run: |
           echo "Version: ${{ steps.query-release-info.outputs.version }}"
           echo "Date: ${{ steps.query-release-info.outputs.release-date }}"
-          echo "${{ steps.query-release-info.outputs.release-notes }}"
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*.tar.gz,dist/*.whl"
