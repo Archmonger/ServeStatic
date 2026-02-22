@@ -87,6 +87,9 @@ extra:
   generator: false
   version:
     provider: mike
+    analytics:
+      provider: google
+      property: G-TJPWZVF8HZ
 
 extra_css:
   - assets/css/main.css
