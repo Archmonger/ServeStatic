@@ -7,6 +7,8 @@ import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from io import IOBase
+from logging import getLogger
 from typing import TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -17,6 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
+_logger = getLogger(__name__)
 
 
 def get_block_size():
@@ -165,7 +168,10 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        self.executor.shutdown(wait=True)
+        try:
+            self.executor.shutdown(wait=True, cancel_futures=True)
+        except Exception:
+            _logger.warning("Unknown error occurred during AsyncFile shutdown", exc_info=True)
 
 
 class EmptyAsyncIterator:
