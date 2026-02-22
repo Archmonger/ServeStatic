@@ -81,7 +81,7 @@ class ServeStaticBase:
 
         self.initialize()
 
-    def initialize(self):  # noqa: PLR6301
+    def initialize(self):
         """Perform any necessary setup/initialization steps."""
         msg = "Subclasses must implement this method."
         raise NotImplementedError(msg)
