@@ -147,3 +147,24 @@ def test_async_file_del_does_not_join_current_thread(test_files, capsys):
     gc.collect()
 
     assert "cannot join current thread" not in capsys.readouterr().err
+
+
+def test_async_file_read_raises_after_close():
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+    asyncio.run(async_file.close())
+    with pytest.raises(ValueError, match="closed file"):
+        asyncio.run(async_file.read(1))
+
+
+def test_asgi_initialize_preserves_user_application():
+    async def user_app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    app = ServeStaticASGI(user_app)
+    scope = AsgiHttpScopeEmulator({"path": "/"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(app(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b"ok"

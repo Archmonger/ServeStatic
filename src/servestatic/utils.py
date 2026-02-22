@@ -143,11 +143,6 @@ class AsyncFile:
         with self.lock:
             return await self.loop.run_in_executor(self.executor, func, *args)
 
-    def open_raw(self):
-        """Open the file without using the executor."""
-        GLOBAL_EXECUTOR.submit(self.executor.shutdown, cancel_futures=True)
-        return open(*self.open_args)  # pylint: disable=unspecified-encoding
-
     async def close(self):
         self.closed = True
         if self.file_obj:

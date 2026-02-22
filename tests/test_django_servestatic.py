@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import os
 import shutil
 import tempfile
 from contextlib import closing
@@ -14,6 +15,7 @@ import pytest
 from asgiref.testing import ApplicationCommunicator
 from django.conf import settings
 from django.contrib.staticfiles import finders, storage
+from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
 from django.core.asgi import get_asgi_application
 from django.core.management import call_command
 from django.core.wsgi import get_wsgi_application
@@ -21,7 +23,9 @@ from django.templatetags.static import static
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
+import servestatic.middleware as middleware_module
 from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.storage import CompressedManifestStaticFilesStorage
 from servestatic.utils import AsyncFile
 
 from .utils import (
@@ -85,6 +89,14 @@ def server(application):
     app_server = AppServer(application)
     with closing(app_server):
         yield app_server
+
+
+@pytest.fixture
+def async_middleware_response():
+    async def _get_response(_request):
+        return None
+
+    return _get_response
 
 
 @pytest.mark.usefixtures("_collect_static")
@@ -285,6 +297,172 @@ def test_servestatic_file_response_has_only_one_header():
     headers = {key.lower() for key, value in response.items()}
     # This subclass should have none of the default headers that FileReponse sets
     assert headers == {"content-type"}
+
+
+def test_async_serve_static_file_response_set_headers_noop():
+    response = AsyncServeStaticFileResponse(AsyncFile(__file__, "rb"))
+    try:
+        assert response.set_headers("ignored") is None
+    finally:
+        response.close()
+
+
+def test_middleware_requires_async_get_response():
+    with pytest.raises(ValueError, match="async compatible"):
+        ServeStaticMiddleware(get_response=lambda request: None)
+
+
+def test_add_files_from_manifest_raises_when_storage_has_no_manifest(async_middleware_response):
+    class Settings:
+        DEBUG = False
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = True
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    original_storage = middleware_module.staticfiles_storage
+    middleware_module.staticfiles_storage = object()
+    try:
+        with pytest.raises(TypeError, match="not using a manifest"):
+            ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    finally:
+        middleware_module.staticfiles_storage = original_storage
+
+
+def test_add_files_from_manifest_uses_manifest_stats_and_handles_empty_location(monkeypatch):
+    class DummyCompressedStorage(CompressedManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+        def load_manifest_stats(self):
+            return {
+                "app.js": tuple(os.stat(__file__)),
+                "app.abc123.js": tuple(os.stat(__file__)),
+            }
+
+    storage_instance = DummyCompressedStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    inserted_dirs = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: inserted_dirs.append((args, kwargs))
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    stat_cache = added_files[0][1]["stat_cache"]
+    assert isinstance(stat_cache["/tmp/app.js"], os.stat_result)
+    assert not inserted_dirs
+
+
+def test_add_files_from_manifest_uses_none_stat_cache_when_not_compressed_storage(monkeypatch):
+    class DummyManifestStorage(ManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+    storage_instance = DummyManifestStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: None
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    assert added_files[0][1]["stat_cache"] is None
+
+
+def test_add_files_from_manifest_ignores_empty_manifest_stats(monkeypatch):
+    class DummyCompressedStorage(CompressedManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+        def load_manifest_stats(self):
+            return {}
+
+    storage_instance = DummyCompressedStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: None
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    assert added_files[0][1]["stat_cache"] is None
+
+
+def test_middleware_adds_files_from_static_root_when_manifest_and_finders_disabled(tmp_path, async_middleware_response):
+    asset_path = tmp_path / "app.js"
+    asset_path.write_text("console.log('ok')", encoding="utf-8")
+
+    class Settings:
+        DEBUG = False
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = str(tmp_path)
+
+    middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert "/static/app.js" in middleware.files
+
+
+def test_candidate_paths_for_url_finder_miss_still_falls_back(monkeypatch):
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.use_finders = True
+    middleware.static_prefix = "/static/"
+    middleware.directories = []
+    monkeypatch.setattr(middleware_module.finders, "find", lambda path: None)
+    assert not list(middleware.candidate_paths_for_url("/static/file.js"))
+
+
+def test_candidate_paths_for_url_skips_finders_when_disabled(tmp_path):
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.use_finders = False
+    middleware.static_prefix = "/static/"
+    middleware.directories = [(str(tmp_path) + os.sep, "/static/")]
+    paths = list(middleware.candidate_paths_for_url("/static/file.js"))
+    assert paths == [os.path.join(str(tmp_path) + os.sep, "file.js")]
 
 
 @override_settings(STATIC_URL="static/")
