@@ -93,7 +93,7 @@ def server(application):
 
 @pytest.fixture
 def async_middleware_response():
-    async def _get_response(_request):
+    async def _get_response(_request):  # noqa: RUF029
         return None
 
     return _get_response
