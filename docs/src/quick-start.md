@@ -7,7 +7,7 @@ The documentation below is a quick-start guide to using ServeStatic to serve you
 Install with:
 
 ```bash linenums="0"
-pip install servestatic
+pip install servestatic[brotli]
 ```
 
 ## Using with Django
