@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 from pathlib import Path
 
 import pytest
@@ -130,3 +131,19 @@ def test_large_static_file(application, test_files):
     assert send.body_count == 2
     assert send.headers[b"content-length"] == str(len(test_files.txt_content)).encode()
     assert b"text/plain" in send.headers[b"content-type"]
+
+
+def test_async_file_del_does_not_join_current_thread(test_files, capsys):
+    file_path = str(Path(test_files.directory) / test_files.js_path)
+    holder = {"async_file": servestatic_utils.AsyncFile(file_path, "rb")}
+    executor = holder["async_file"].executor
+
+    def drop_last_reference_from_worker():
+        holder.pop("async_file")
+        gc.collect()
+
+    future = executor.submit(drop_last_reference_from_worker)
+    future.result()
+    gc.collect()
+
+    assert "cannot join current thread" not in capsys.readouterr().err

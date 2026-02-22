@@ -8,7 +8,6 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import IOBase
-from logging import getLogger
 from typing import TYPE_CHECKING, Callable, cast
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -19,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
-_logger = getLogger(__name__)
+GLOBAL_EXECUTOR = concurrent.futures.ThreadPoolExecutor(thread_name_prefix="ServeStatic-Global-Executor")
 
 
 def get_block_size():
@@ -73,7 +72,9 @@ class AsyncToSyncIterator:
     def __iter__(self):
         # Create a dedicated event loop to run the async iterator on.
         loop = asyncio.new_event_loop()
-        thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic")
+        thread_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile-Runtime"
+        )
 
         # Convert from async to sync by stepping through the async iterator and yielding
         # the result of each step.
@@ -144,7 +145,7 @@ class AsyncFile:
 
     def open_raw(self):
         """Open the file without using the executor."""
-        self.executor.shutdown(wait=True)
+        GLOBAL_EXECUTOR.submit(self.executor.shutdown, cancel_futures=True)
         return open(*self.open_args)  # pylint: disable=unspecified-encoding
 
     async def close(self):
@@ -168,10 +169,7 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        try:
-            self.executor.shutdown(wait=True, cancel_futures=True)
-        except Exception:
-            _logger.warning("Unknown error occurred during AsyncFile shutdown", exc_info=True)
+        GLOBAL_EXECUTOR.submit(self.executor.shutdown, cancel_futures=True)
 
 
 class EmptyAsyncIterator:
