@@ -37,7 +37,10 @@ urls.Source = "https://github.com/Archmonger/ServeStatic"
 path = "src/servestatic/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src"]
+include = ["/src/"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/servestatic"]
 
 [tool.hatch.metadata]
 license-files = { paths = ["LICENSE.md"] }
@@ -149,18 +152,12 @@ lint.extend-ignore = [
 lint.preview = true
 
 [tool.pytest.ini_options]
-addopts = """\
-    --strict-config
-    --strict-markers
-    """
+addopts = ["--strict-config", "--strict-markers"]
 
-[tool.coverage.run]
-branch = true
-parallel = true
-source = ["src/", "tests/"]
-
-[tool.coverage.paths]
-source = ["src/"]
-
-[tool.coverage.report]
-show_missing = true
+[tool.coverage]
+run.relative_files = true
+run.branch = true
+run.parallel = true
+run.source = ["src/"]
+paths.source = ["src/"]
+report.show_missing = true
