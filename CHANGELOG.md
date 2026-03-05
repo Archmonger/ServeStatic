@@ -15,7 +15,15 @@ Don't forget to remove deprecated code on each major release!
 
 -   Nothing (yet!)
 
-## [3.1.1] - 2026-02-21
+## [3.2.0] - 2026-03-05
+
+### Added
+
+-  Added `servestatic` CLI command for creating manifests, hashing, and compressing for static files.
+
+### Deprecated
+
+-   Calling the compression API via `python -m servestatic.compress` is now deprecated. Please use the `servestatic --compress` CLI instead.
 
 ### Fixed
 
@@ -118,8 +126,8 @@ Don't forget to remove deprecated code on each major release!
 
 -   Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.1.1...HEAD
-[3.1.1]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...3.1.1
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/3.2.0...HEAD
+[3.2.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.1...3.2.0
 [3.1.0]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...3.1.0
 [3.0.2]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...3.0.2
 [3.0.1]: https://github.com/Archmonger/ServeStatic/compare/3.0.0...3.0.1

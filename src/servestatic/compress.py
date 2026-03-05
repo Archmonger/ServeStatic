@@ -177,4 +177,11 @@ def main(argv=None):
 
 
 if __name__ == "__main__":  # pragma: no cover
+    from warnings import warn
+
+    warn(
+        "Calling this file directly is deprecated. Use the 'servestatic --compress' command instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     raise SystemExit(main())

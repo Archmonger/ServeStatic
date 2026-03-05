@@ -33,6 +33,9 @@ urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Source = "https://github.com/Archmonger/ServeStatic"
 
+[project.scripts]
+servestatic = "servestatic.cli:main"
+
 [tool.hatch.version]
 path = "src/servestatic/__init__.py"
 
@@ -51,9 +54,10 @@ installer = "uv"
 # >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pytest-sugar", "requests", "brotli"]
+extra-dependencies = ["pytest-sugar", "requests", "brotli", "pytest-timeout"]
 randomize = true
 matrix-name-format = "{variable}-{value}"
+timeout = 15
 
 # Django 4.2
 [[tool.hatch.envs.hatch-test.matrix]]
@@ -152,6 +156,7 @@ lint.extend-ignore = [
   "PT011",   # Pytest exception is too broad
   "RUF012",  # Mutable class attributes should have `typing.ClassVar` annotations.
   "PLC0415", # Imports should always be at the top of a file
+  "BLE001",  # Do not catch `Exception`
 ]
 lint.preview = true
 

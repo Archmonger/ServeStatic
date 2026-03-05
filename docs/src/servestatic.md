@@ -155,38 +155,6 @@ def immutable_file_test(path, url):
     return re.match(r"^.+\.[0-9a-f]{12}\..+$", url)
 ```
 
-## Compression Support
-
-When ServeStatic builds its list of available files it checks for corresponding files with a `.gz` and a `.br` suffix (e.g., `scripts/app.js`, `scripts/app.js.gz` and `scripts/app.js.br`). If it finds them, it will assume that they are (respectively) gzip and [brotli](https://en.wikipedia.org/wiki/Brotli) compressed versions of the original file and it will serve them in preference to the uncompressed version where clients indicate that they that compression format (see note on Amazon S3 for why this behaviour is important).
-
-ServeStatic comes with a command line utility which will generate compressed versions of your files for you. Note that in order for brotli compression to work the [Brotli Python package](https://pypi.org/project/Brotli/) must be installed.
-
-Usage is simple:
-
-```console linenums="0"
-$ python -m servestatic.compress --help
-usage: compress.py [-h] [-q] [--no-gzip] [--no-brotli]
-                   root [extensions [extensions ...]]
-
-Search for all files inside <root> *not* matching <extensions> and produce
-compressed versions with '.gz' and '.br' suffixes (as long as this results in
-a smaller file)
-
-positional arguments:
-  root         Path root from which to search for files
-  extensions   File extensions to exclude from compression (default: jpg,
-               jpeg, png, gif, webp, zip, gz, tgz, bz2, tbz, xz, br, swf, flv,
-               woff, woff2)
-
-optional arguments:
-  -h, --help   show this help message and exit
-  -q, --quiet  Don't produce log output
-  --no-gzip    Don't produce gzip '.gz' files
-  --no-brotli  Don't produce brotli '.br' files
-```
-
-You can either run this during development and commit your compressed files to your repository, or you can run this as part of your build and deploy processes. (Note that this is handled automatically in Django if you're using the custom storage backend.)
-
 ## Caching Headers
 
 By default, ServeStatic sets a max-age header on all responses it sends. You can configure this by passing a [`max_age`](#max_age) keyword argument.

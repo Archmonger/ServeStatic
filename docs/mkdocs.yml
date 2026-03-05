@@ -8,11 +8,12 @@ nav:
           - WSGI Project: wsgi.md
           - Django Project: django.md
   - Reference:
-      - ServeStaticASGI: servestatic-asgi.md
-      - ServeStatic: servestatic.md
+      - ASGI: servestatic-asgi.md
+      - WSGI: servestatic.md
       - Django:
           - Settings: django-settings.md
           - FAQ: django-faq.md
+      - Command Line Interface: cli.md
   - About:
       - Changelog: changelog.md
       - Contributor Guide: contributing.md
