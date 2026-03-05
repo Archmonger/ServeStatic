@@ -100,14 +100,13 @@ jobs:
       - name: Run tests
         run: |
           hatch test --cover --python ${{ matrix.python-version }}
-          mv .coverage ".coverage.py${{ matrix.python-version }}"
+          mv .coverage ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
 
       - name: Upload coverage data
-        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: "coverage-data-py${{ matrix.python-version }}"
-          path: ".coverage.py${{ matrix.python-version }}"
+          name: "coverage ${{ matrix.python-version }} ${{ matrix.os }}"
+          path: ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
