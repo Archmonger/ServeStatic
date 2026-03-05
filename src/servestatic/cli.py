@@ -102,7 +102,7 @@ def main(argv=None):
         if not manifest_path_file.exists():
             parser.error(f"Existing manifest not found at '{manifest_path_file}' for merging.")
         try:
-            with open(manifest_path_file, "r", encoding="utf-8") as f:
+            with open(manifest_path_file, encoding="utf-8") as f:
                 existing_manifest_data = json.load(f)
                 if not isinstance(existing_manifest_data, dict):
                     parser.error("Existing manifest must be a JSON object.")
