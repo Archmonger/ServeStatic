@@ -8,17 +8,16 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import IOBase
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncIterable, Iterable
+    from collections.abc import AsyncIterable, Callable, Iterable
     from io import IOBase
 
     from servestatic.responders import AsyncSlicedFile
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
-GLOBAL_EXECUTOR = concurrent.futures.ThreadPoolExecutor(thread_name_prefix="ServeStatic-Global-Executor")
 
 
 def get_block_size():
@@ -135,6 +134,16 @@ class AsyncFile:
         self.lock = threading.Lock()
         self.file_obj: IOBase = cast("IOBase", None)
         self.closed = False
+        self._executor_shutdown = False
+
+    def _shutdown_executor(self):
+        if self._executor_shutdown:
+            return
+        try:
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            return
+        self._executor_shutdown = True
 
     async def _execute(self, func, *args):
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
@@ -147,6 +156,7 @@ class AsyncFile:
         self.closed = True
         if self.file_obj:
             await self._execute(self.file_obj.close)
+        self._shutdown_executor()
 
     @open_lazy
     async def read(self, size=-1):
@@ -164,7 +174,7 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        GLOBAL_EXECUTOR.submit(self.executor.shutdown, cancel_futures=True)
+        self._shutdown_executor()
 
 
 class EmptyAsyncIterator:

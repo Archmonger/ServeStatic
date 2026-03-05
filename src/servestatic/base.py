@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from wsgiref.headers import Headers
 
 from servestatic.media_types import MediaTypes
@@ -18,6 +18,7 @@ from servestatic.responders import (
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 

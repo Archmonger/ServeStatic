@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import gc
 from pathlib import Path
 
@@ -143,7 +144,10 @@ def test_async_file_del_does_not_join_current_thread(test_files, capsys):
         gc.collect()
 
     future = executor.submit(drop_last_reference_from_worker)
-    future.result()
+    try:
+        future.result(timeout=5)
+    except concurrent.futures.TimeoutError as e:
+        pytest.fail(f"AsyncFile cleanup deadlocked: {e}")
     gc.collect()
 
     assert "cannot join current thread" not in capsys.readouterr().err

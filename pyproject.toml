@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["asgi", "django", "http", "server", "static", "staticfiles", "wsgi"]
 license = "MIT"
 authors = [{ name = "Mark Bakhit", email = "archiethemonger@gmail.com" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: Django",
@@ -17,7 +17,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -61,7 +60,7 @@ timeout = 15
 
 # Django 4.2
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.9", "3.10", "3.11", "3.12"]
+python = ["3.10", "3.11", "3.12"]
 django = ["4.2"]
 
 # Django 5.0

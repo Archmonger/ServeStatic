@@ -3,7 +3,7 @@
 If you plan to make code changes to this repository, you will need to install the following dependencies first:
 
 - [Git](https://git-scm.com/downloads)
-- [Python 3.9+](https://www.python.org/downloads/)
+- [Python 3.10+](https://www.python.org/downloads/)
 - [Hatch](https://hatch.pypa.io/latest/)
 
 Once you finish installing these dependencies, you can clone this repository:
@@ -23,7 +23,7 @@ By utilizing `hatch`, the following commands are available to manage the develop
 | --- | --- |
 | `hatch test` | Run Python tests using the current environment's Python version |
 | `hatch test --all` | Run tests using all compatible Python and Django versions |
-| `hatch test --python 3.9` | Run tests using a specific Python version |
+| `hatch test --python 3.10` | Run tests using a specific Python version |
 | `hatch test --include "django=5.1"` | Run tests using a specific Django version |
 | `hatch test -k test_get_js_static_file` | Run only a specific test |
 

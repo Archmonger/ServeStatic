@@ -13,13 +13,15 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
-- Nothing (yet!)
-
 ## [3.2.0] - 2026-03-05
 
 ### Added
 
 - Added `servestatic` CLI command for creating manifests, hashing, and compressing for static files.
+
+### Changed
+
+- Minimum python version is now 3.10.
 
 ### Deprecated
 
