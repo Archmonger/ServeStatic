@@ -160,6 +160,18 @@ def test_async_file_read_raises_after_close():
         asyncio.run(async_file.read(1))
 
 
+def test_async_file_shutdown_exception_is_ignored(monkeypatch):
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+
+    def mock_shutdown(*_args, **_kwargs):
+        msg = "shutdown failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(async_file.executor, "shutdown", mock_shutdown)
+    async_file._shutdown_executor()
+    assert async_file._executor_shutdown is False
+
+
 def test_asgi_initialize_preserves_user_application():
     async def user_app(scope, receive, send):
         await send({"type": "http.response.start", "status": 200, "headers": []})

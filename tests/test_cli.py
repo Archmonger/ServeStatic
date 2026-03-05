@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+import servestatic.cli as servestatic_cli
 from servestatic.cli import main
 
 
@@ -312,3 +313,83 @@ def test_cli_merge_manifest_missing(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert "Existing manifest not found" in captured.err
+
+
+def test_cli_merge_manifest_invalid_object(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    with open(dest / "staticfiles.json", "w", encoding="utf-8") as f:
+        json.dump(["not", "an", "object"], f)
+
+    with pytest.raises(SystemExit):
+        main(["--manifest", "--merge-manifest", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Existing manifest must be a JSON object" in captured.err
+
+
+def test_cli_merge_manifest_invalid_paths_object(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    with open(dest / "staticfiles.json", "w", encoding="utf-8") as f:
+        json.dump({"paths": []}, f)
+
+    with pytest.raises(SystemExit):
+        main(["--manifest", "--merge-manifest", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Existing manifest 'paths' must be a JSON object" in captured.err
+
+
+def test_cli_merge_manifest_invalid_json(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    (dest / "staticfiles.json").write_text("{", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        main(["--manifest", "--merge-manifest", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Failed to read existing manifest" in captured.err
+
+
+def test_cli_hash_logs_worker_errors(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content")
+    dest = tmp_path / "dest"
+
+    def mock_process(*_args, **_kwargs):
+        msg = "hash failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(servestatic_cli.ManifestHashGenerator, "process", mock_process)
+
+    main(["--hash", "--manifest", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Error hashing" in captured.out
+
+
+def test_cli_compress_logs_worker_errors(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+
+    def mock_compress(*_args, **_kwargs):
+        msg = "compress failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(servestatic_cli.Compressor, "compress", mock_compress)
+
+    main(["--compress", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Error compressing" in captured.out

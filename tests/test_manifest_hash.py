@@ -1,4 +1,5 @@
-from servestatic.manifest_hash import generate_hash, get_hashed_name, hash_path
+from servestatic import manifest_hash
+from servestatic.manifest_hash import ManifestHashGenerator, generate_hash, get_hashed_name, hash_path
 
 
 def test_generate_hash():
@@ -31,3 +32,23 @@ def test_get_hashed_name_from_file(tmp_path):
 
     # Check that the suffix is correct
     assert hashed_p.endswith("test.296ab49302a4.txt")
+
+
+def test_process_skips_copy_when_hashed_name_matches_input(tmp_path, monkeypatch):
+    path = tmp_path / "test.txt"
+    path.write_bytes(b"testcontent")
+
+    monkeypatch.setattr(manifest_hash, "get_hashed_name", str)
+
+    def fail_copy(*_args, **_kwargs):
+        msg = "copy2 should not be called when hashed path matches input path"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(manifest_hash.shutil, "copy2", fail_copy)
+
+    generator = ManifestHashGenerator(root=tmp_path, keep_original=False)
+    rel_original, rel_hashed = generator.process(path)
+
+    assert rel_original == "test.txt"
+    assert rel_hashed == "test.txt"
+    assert path.exists()

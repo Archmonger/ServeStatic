@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling", "packaging<26"]
 
 [project]
 name = "servestatic"
@@ -31,9 +31,7 @@ optional-dependencies.brotli = ["brotli"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Source = "https://github.com/Archmonger/ServeStatic"
-
-[project.scripts]
-servestatic = "servestatic.cli:main"
+scripts.servestatic = "servestatic.cli:main"
 
 [tool.hatch.version]
 path = "src/servestatic/__init__.py"
