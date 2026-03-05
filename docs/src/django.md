@@ -45,7 +45,7 @@ This combines automatic compression with the caching behaviour provided by Djang
 "servestatic.storage.CompressedStaticFilesStorage"
 ```
 
-If you need to compress files outside of the static files storage system you can use the supplied [command line utility](servestatic.md#compression-support).
+If you need to compress files outside of the static files storage system you can use the supplied [command line utility](cli.md).
 
 ??? tip "Enable Brotli compression"
 
