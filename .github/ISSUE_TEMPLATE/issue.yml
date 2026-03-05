@@ -12,7 +12,7 @@ body:
     id: django_version
     attributes:
       label: Django Version
-      placeholder: 3.2.0
+      placeholder: 6.10.0
     validations:
       required: false
   - type: input

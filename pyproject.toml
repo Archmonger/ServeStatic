@@ -90,7 +90,7 @@ matrix.django.dependencies = [
 template = "docs"
 detached = true
 dependencies = [
-  "mkdocs",
+  "mkdocs<2.0", # Mkdocs has some breaking changes planned that would brick mkdocs-material
   "mkdocs-git-revision-date-localized-plugin",
   "mkdocs-material",
   "mkdocs-include-markdown-plugin",
@@ -99,6 +99,7 @@ dependencies = [
   "mkdocs-git-authors-plugin",
   "mkdocs-minify-plugin",
   "mike",
+  "click==8.2.1", # Newer versions of click do not work with mkdocs<2.0
 ]
 
 [tool.hatch.envs.docs.scripts]

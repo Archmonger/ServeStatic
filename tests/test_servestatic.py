@@ -347,6 +347,12 @@ def test_immutable_file_test_accepts_regex():
     assert not instance.immutable_file_test("", "file.test.txt")
 
 
+def test_immutable_file_test_defaults_to_cli_hash_pattern():
+    app = DummyServeStaticBase(None)
+    assert app.immutable_file_test("", "/static/app.db8f2edc0c8a.js")
+    assert not app.immutable_file_test("", "/static/app.js")
+
+
 @pytest.mark.skipif(sys.version_info < (3, 4), reason="Pathlib was added in Python 3.4")
 def test_directory_path_can_be_pathlib_instance():
     root = Path(Files("root").directory)
