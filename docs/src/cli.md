@@ -56,7 +56,7 @@ options:
 
 When ServeStatic builds its list of available files, it optionally checks for corresponding files with a `.gz` and a `.br` suffix (e.g., `scripts/app.js`, `scripts/app.js.gz` and `scripts/app.js.br`). If it finds them, it will assume that they are (respectively) gzip and [brotli](https://en.wikipedia.org/wiki/Brotli) compressed versions of the original file and it will serve them in preference to the uncompressed version whenever clients indicate they support that compression format.
 
-*Note that in order for brotli compression to work, the [Brotli](https://pypi.org/project/Brotli/) python package must be installed.*
+In order for brotli compression to work, the [Brotli](https://pypi.org/project/Brotli/) python package must be installed.
 
 ## Hash Details
 

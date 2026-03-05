@@ -43,9 +43,9 @@ If `True` enable index file serving. If set to a non-empty string, enable index 
 
 When the `index_file` option is enabled:
 
--   Visiting `/example/` will serve the file at `/example/index.html`
--   Visiting `/example` will redirect (302) to `/example/`
--   Visiting `/example/index.html` will redirect (302) to `/example/`
+- Visiting `/example/` will serve the file at `/example/index.html`
+- Visiting `/example` will redirect (302) to `/example/`
+- Visiting `/example/index.html` will redirect (302) to `/example/`
 
 If you want to something other than `index.html` as the index file, then you can also set this option to an alternative filename.
 

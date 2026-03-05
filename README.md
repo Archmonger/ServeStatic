@@ -29,9 +29,9 @@ It is designed to work seamlessly with CDNs to ensure high performance for traff
 
 Best practices are automatically handled by `ServeStatic`, such as:
 
--   Automatically serving compressed content
--   Proper handling of `Accept-Encoding` and `Vary` headers
--   Setting far-future cache headers for immutable static files.
+- Automatically serving compressed content
+- Proper handling of `Accept-Encoding` and `Vary` headers
+- Setting far-future cache headers for immutable static files.
 
 To get started or learn more about `ServeStatic`, visit the [documentation](https://archmonger.github.io/ServeStatic/).
 
