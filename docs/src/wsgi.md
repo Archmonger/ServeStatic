@@ -26,7 +26,7 @@ On initialization, ServeStatic walks over all the files in the directories that 
 
 <!--shared-desc-end-->
 
-After configuring ServeStatic, you can use your favourite WSGI server (such as [`gunicorn`](https://gunicorn.org/) or [`waitress`](https://pypi.org/project/waitress/)) to run your application.
+After configuring ServeStatic, you can use your favorite WSGI server (such as [`gunicorn`](https://gunicorn.org/) or [`waitress`](https://pypi.org/project/waitress/)) to run your application.
 
 ```bash linenums="0"
 gunicorn my_project:application

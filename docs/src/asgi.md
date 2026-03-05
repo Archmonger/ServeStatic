@@ -26,7 +26,7 @@ application = ServeStaticASGI(None, root="/path/to/static/files")
 
 {% include-markdown "./wsgi.md" start="<!--shared-desc-start-->" end="<!--shared-desc-end-->" %}
 
-After configuring ServeStatic, you can use your favourite ASGI server (such as [`uvicorn`](https://pypi.org/project/uvicorn/) or [`hypercorn`](https://pypi.org/project/Hypercorn/)) to run your application.
+After configuring ServeStatic, you can use your favorite ASGI server (such as [`uvicorn`](https://pypi.org/project/uvicorn/) or [`hypercorn`](https://pypi.org/project/Hypercorn/)) to run your application.
 
 ```bash linenums="0"
 uvicorn my_project:application
