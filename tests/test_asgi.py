@@ -5,19 +5,12 @@ import concurrent.futures
 import gc
 from pathlib import Path
 
-import httpx
 import pytest
 
 from servestatic import utils as servestatic_utils
 from servestatic.asgi import ServeStaticASGI
 
 from .utils import AsgiHttpScopeEmulator, AsgiReceiveEmulator, AsgiScopeEmulator, AsgiSendEmulator, Files
-
-
-async def request_asgi(application, method, path, **kwargs):
-    transport = httpx.ASGITransport(app=application, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        return await client.request(method, path, **kwargs)
 
 
 @pytest.fixture
@@ -37,22 +30,31 @@ def application(request, test_files):
 
 
 def test_get_js_static_file(application, test_files):
-    response = asyncio.run(request_asgi(application, "GET", "/static/app.js"))
-    assert response.content == test_files.js_content
-    assert "text/javascript" in response.headers["content-type"]
-    assert response.headers["content-length"] == str(len(test_files.js_content))
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == test_files.js_content
+    assert b"text/javascript" in send.headers[b"content-type"]
+    assert send.headers[b"content-length"] == str(len(test_files.js_content)).encode()
 
 
 def test_redirect_preserves_query_string(application, test_files):
-    response = asyncio.run(request_asgi(application, "GET", "/static/with-index?v=1&x=2"))
-    assert response.headers["location"] == "with-index/?v=1&x=2"
+    scope = AsgiHttpScopeEmulator({"path": "/static/with-index", "query_string": b"v=1&x=2"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.headers[b"location"] == b"with-index/?v=1&x=2"
 
 
 def test_user_app(application):
-    response = asyncio.run(request_asgi(application, "GET", "/"))
-    assert response.content == b"Not Found"
-    assert "text/plain" in response.headers["content-type"]
-    assert response.status_code == 404
+    scope = AsgiHttpScopeEmulator({"path": "/"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == b"Not Found"
+    assert b"text/plain" in send.headers[b"content-type"]
+    assert send.status == 404
 
 
 def test_ws_scope(application):
@@ -72,10 +74,14 @@ def test_lifespan_scope(application):
 
 
 def test_head_request(application, test_files):
-    response = asyncio.run(request_asgi(application, "HEAD", "/static/app.js"))
-    assert response.content == b""
-    assert "text/javascript" in response.headers["content-type"]
-    assert response.headers["content-length"] == str(len(test_files.js_content))
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "method": "HEAD"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == b""
+    assert b"text/javascript" in send.headers[b"content-type"]
+    assert send.headers[b"content-length"] == str(len(test_files.js_content)).encode()
+    assert len(send.message) == 2
 
 
 def test_small_block_size(application, test_files):
@@ -91,19 +97,28 @@ def test_small_block_size(application, test_files):
 
 
 def test_request_range_response(application, test_files):
-    response = asyncio.run(request_asgi(application, "GET", "/static/app.js", headers={"range": "bytes=0-13"}))
-    assert response.content == test_files.js_content[:14]
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=0-13")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == test_files.js_content[:14]
 
 
 def test_out_of_range_error(application, test_files):
-    response = asyncio.run(request_asgi(application, "GET", "/static/app.js", headers={"range": "bytes=10000-11000"}))
-    assert response.status_code == 416
-    assert response.headers["content-range"] == "bytes */%d" % len(test_files.js_content)
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=10000-11000")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 416
+    assert send.headers[b"content-range"] == b"bytes */%d" % len(test_files.js_content)
 
 
 def test_wrong_method_type(application, test_files):
-    response = asyncio.run(request_asgi(application, "PUT", "/static/app.js"))
-    assert response.status_code == 405
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "method": "PUT"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 405
 
 
 def test_large_static_file(application, test_files):
@@ -163,6 +178,9 @@ def test_asgi_initialize_preserves_user_application():
         await send({"type": "http.response.body", "body": b"ok"})
 
     app = ServeStaticASGI(user_app)
-    response = asyncio.run(request_asgi(app, "GET", "/"))
-    assert response.status_code == 200
-    assert response.content == b"ok"
+    scope = AsgiHttpScopeEmulator({"path": "/"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(app(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b"ok"

@@ -14,7 +14,6 @@ from urllib.parse import urljoin, urlparse
 
 import brotli
 import django
-import httpx
 import pytest
 from asgiref.testing import ApplicationCommunicator
 from django.conf import settings
@@ -56,12 +55,6 @@ def reset_lazy_object(obj):
 
 def get_url_path(base, url):
     return urlparse(urljoin(base, url)).path
-
-
-async def request_asgi(application, method, path, **kwargs):
-    transport = httpx.ASGITransport(app=AsgiAppServer(application), raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
-        return await client.request(method, path, **kwargs)
 
 
 @pytest.fixture
@@ -638,8 +631,11 @@ def test_out_of_range_error(server, static_files):
 @pytest.mark.usefixtures("_collect_static")
 def test_asgi_out_of_range_error(asgi_application, static_files):
     url = storage.staticfiles_storage.url(static_files.js_path)
-    response = asyncio.run(request_asgi(asgi_application, "GET", url, headers={"range": "bytes=900-999"}))
-    assert response.status_code == 416
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"range", b"bytes=900-999")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert send.status == 416
 
 
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
@@ -717,12 +713,18 @@ def test_manifest_with_keep_only_hashed(static_files):
             assert not hashed_path.endswith("app.js")
 
             # Check if SERVESTATIC_KEEP_ONLY_HASHED_FILES removed the original file
-            response = asyncio.run(request_asgi(get_asgi_application(), "GET", original_path))
-            assert response.status_code == 404
+            scope = AsgiHttpScopeEmulator({"path": original_path, "headers": []})
+            receive = AsgiReceiveEmulator()
+            send = AsgiSendEmulator()
+            asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
+            assert send.status == 404
 
             # Check if the hashed file can be served
-            response = asyncio.run(request_asgi(get_asgi_application(), "GET", hashed_path))
-            assert response.status_code == 200
+            scope = AsgiHttpScopeEmulator({"path": hashed_path, "headers": []})
+            receive = AsgiReceiveEmulator()
+            send = AsgiSendEmulator()
+            asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
+            assert send.status == 200
 
         finally:
             static_root: Path = settings.STATIC_ROOT
