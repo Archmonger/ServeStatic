@@ -13,13 +13,19 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- Nothing (yet)
+
+## [4.1.0] - 2026-03-06
+
 ### Added
 
 - Added support for `zstd` compression on Python 3.14+.
+- Added Django system checks to test for common misconfigurations.
 
 ### Changed
 
 - Tightened cleanup/event-loop handling for ASGI file iterator bridging.
+- Installing `servestatic` as a Django app is now the suggested configuration. A warning will appear if it is not detected in `INSTALLED_APPS` when `DEBUG` is `True`.
 
 ### Fixed
 
@@ -145,7 +151,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...HEAD
+[4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...4.0.0
 [3.1.0]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...3.1.0
 [3.0.2]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...3.0.2

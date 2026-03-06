@@ -20,6 +20,15 @@ MIDDLEWARE = [
 ]
 ```
 
+To enable ServeStatic's configuration checks, add `servestatic` to `INSTALLED_APPS`:
+
+```python linenums="0"
+INSTALLED_APPS = [
+    "servestatic",
+    # ...
+]
+```
+
 That's it! ServeStatic is now configured to serve your static files. For optimal performance, proceed to the next step to enable compression and caching.
 
 ??? question "How should I order my middleware?"

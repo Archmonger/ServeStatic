@@ -10,7 +10,7 @@ ROOT_URLCONF = "tests.django_urls"
 
 SECRET_KEY = "test_secret"
 
-INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
+INSTALLED_APPS = ["servestatic", "servestatic.runserver_nostatic", "django.contrib.staticfiles"]
 
 FORCE_SCRIPT_NAME = f"/{AppServer.PREFIX}"
 STATIC_URL = f"{FORCE_SCRIPT_NAME}/static/"

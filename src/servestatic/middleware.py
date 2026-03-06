@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import warnings
+from inspect import iscoroutinefunction
 from posixpath import basename, normpath
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+from asgiref.sync import markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import (
@@ -30,6 +32,16 @@ from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
+SERVESTATIC_APP_PATHS = frozenset({"servestatic", "servestatic.apps.ServeStaticConfig"})
+
+
+def has_servestatic_app(installed_apps) -> bool:
+    return bool(set(installed_apps) & SERVESTATIC_APP_PATHS)
+
+
+def is_async_callable(value) -> bool:
+    return iscoroutinefunction(value) or iscoroutinefunction(getattr(value, "__call__", None))
+
 
 class ServeStaticMiddleware(ServeStaticBase):
     """
@@ -41,13 +53,21 @@ class ServeStaticMiddleware(ServeStaticBase):
     sync_capable = False
 
     def __init__(self, get_response=None, settings=django_settings):
-        if not iscoroutinefunction(get_response):
+        if not is_async_callable(get_response):
             msg = "ServeStaticMiddleware requires an async compatible version of Django."
             raise ValueError(msg)
         markcoroutinefunction(self)
 
-        self.get_response = get_response
+        installed_apps = getattr(settings, "INSTALLED_APPS", [])
         debug = settings.DEBUG
+        if debug and installed_apps and not has_servestatic_app(installed_apps):
+            warnings.warn(
+                "Django checks for ServeStatic are disabled because 'servestatic' is not in "
+                "INSTALLED_APPS. Add 'servestatic' to enable configuration checks.",
+                stacklevel=2,
+            )
+
+        self.get_response = get_response
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)

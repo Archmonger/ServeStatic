@@ -7,6 +7,7 @@ import importlib.util
 import os
 import shutil
 import tempfile
+import warnings
 from contextlib import closing, suppress
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ from django.conf import settings
 from django.contrib.staticfiles import finders, storage
 from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
 from django.core.asgi import get_asgi_application
+from django.core.checks import run_checks
 from django.core.management import call_command
 from django.core.wsgi import get_wsgi_application
 from django.templatetags.static import static
@@ -358,6 +360,128 @@ def test_async_serve_static_file_response_set_headers_noop():
 def test_middleware_requires_async_get_response():
     with pytest.raises(ValueError, match="async compatible"):
         ServeStaticMiddleware(get_response=lambda request: None)
+
+
+@override_settings(MIDDLEWARE=["django.middleware.gzip.GZipMiddleware", "servestatic.middleware.ServeStaticMiddleware"])
+def test_django_check_reports_gzip_middleware_order_error():
+    errors = [error for error in run_checks() if error.id == "servestatic.E001"]
+    assert len(errors) == 1
+
+
+@override_settings(MIDDLEWARE=["servestatic.middleware.ServeStaticMiddleware", "django.middleware.gzip.GZipMiddleware"])
+def test_django_check_accepts_correct_gzip_middleware_order():
+    errors = [error for error in run_checks() if error.id == "servestatic.E001"]
+    assert not errors
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error_id"),
+    [
+        ({"SERVESTATIC_ROOT": 123}, "servestatic.E010"),
+        ({"SERVESTATIC_AUTOREFRESH": "true"}, "servestatic.E011"),
+        ({"SERVESTATIC_USE_MANIFEST": "yes"}, "servestatic.E012"),
+        ({"SERVESTATIC_USE_FINDERS": "yes"}, "servestatic.E013"),
+        ({"SERVESTATIC_MAX_AGE": -1}, "servestatic.E014"),
+        ({"SERVESTATIC_INDEX_FILE": ""}, "servestatic.E015"),
+        ({"SERVESTATIC_MIMETYPES": {".foo": 1}}, "servestatic.E016"),
+        ({"SERVESTATIC_CHARSET": ""}, "servestatic.E017"),
+        ({"SERVESTATIC_ALLOW_ALL_ORIGINS": "yes"}, "servestatic.E018"),
+        ({"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": "jpg,png"}, "servestatic.E019"),
+        ({"SERVESTATIC_USE_ZSTD": "yes"}, "servestatic.E020"),
+        ({"SERVESTATIC_ZSTD_DICTIONARY": 123}, "servestatic.E021"),
+        ({"SERVESTATIC_ZSTD_DICTIONARY_IS_RAW": "yes"}, "servestatic.E022"),
+        ({"SERVESTATIC_ZSTD_LEVEL": True}, "servestatic.E023"),
+        ({"SERVESTATIC_ADD_HEADERS_FUNCTION": "not-callable"}, "servestatic.E024"),
+        ({"SERVESTATIC_IMMUTABLE_FILE_TEST": "("}, "servestatic.E025"),
+        ({"SERVESTATIC_STATIC_PREFIX": 5}, "servestatic.E026"),
+        ({"SERVESTATIC_KEEP_ONLY_HASHED_FILES": "yes"}, "servestatic.E027"),
+        ({"SERVESTATIC_MANIFEST_STRICT": "yes"}, "servestatic.E028"),
+    ],
+)
+def test_django_check_reports_invalid_setting_types(overrides, error_id):
+    with override_settings(**overrides):
+        errors = [error for error in run_checks() if error.id == error_id]
+    assert len(errors) == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"SERVESTATIC_ROOT": Path(".")},
+        {"SERVESTATIC_MAX_AGE": None},
+        {"SERVESTATIC_INDEX_FILE": True},
+        {"SERVESTATIC_INDEX_FILE": "index.html"},
+        {"SERVESTATIC_MIMETYPES": {"special-file": "text/plain"}},
+        {"SERVESTATIC_CHARSET": "utf-8"},
+        {"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": ["jpg", "png"]},
+        {"SERVESTATIC_ZSTD_DICTIONARY": b"dict-bytes"},
+        {"SERVESTATIC_ZSTD_LEVEL": 3},
+        {"SERVESTATIC_ADD_HEADERS_FUNCTION": lambda *_: None},
+        {"SERVESTATIC_IMMUTABLE_FILE_TEST": r"^.+\\.[0-9a-f]{12}\\..+$"},
+        {"SERVESTATIC_IMMUTABLE_FILE_TEST": lambda *_: True},
+        {"SERVESTATIC_STATIC_PREFIX": "/static/"},
+    ],
+)
+def test_django_check_accepts_valid_setting_values(overrides):
+    with override_settings(**overrides):
+        errors = [error for error in run_checks() if error.id.startswith("servestatic.E0") and error.id != "servestatic.E001"]
+    assert not errors
+
+
+def test_django_check_reports_skip_compress_extensions_non_string_items():
+    with override_settings(SERVESTATIC_SKIP_COMPRESS_EXTENSIONS=["jpg", 1]):
+        errors = [error for error in run_checks() if error.id == "servestatic.E019"]
+    assert len(errors) == 1
+
+
+def test_django_check_reports_mimetypes_non_mapping_value():
+    with override_settings(SERVESTATIC_MIMETYPES=[(".foo", "text/plain")]):
+        errors = [error for error in run_checks() if error.id == "servestatic.E016"]
+    assert len(errors) == 1
+
+
+def test_django_check_reports_mimetypes_non_string_key():
+    with override_settings(SERVESTATIC_MIMETYPES={1: "text/plain"}):
+        errors = [error for error in run_checks() if error.id == "servestatic.E016"]
+    assert len(errors) == 1
+
+
+def test_django_check_accepts_boolean_setting_values():
+    with override_settings(SERVESTATIC_AUTOREFRESH=True):
+        errors = [error for error in run_checks() if error.id == "servestatic.E011"]
+    assert not errors
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+def test_django_check_accepts_zstd_dictionary_object():
+    assert stdlib_zstd is not None
+    dictionary = stdlib_zstd.ZstdDict(b"servestatic-checks-dict", is_raw=True)
+    with override_settings(SERVESTATIC_ZSTD_DICTIONARY=dictionary):
+        errors = [error for error in run_checks() if error.id == "servestatic.E021"]
+    assert not errors
+
+
+def test_django_check_reports_immutable_file_test_invalid_type():
+    with override_settings(SERVESTATIC_IMMUTABLE_FILE_TEST=object()):
+        errors = [error for error in run_checks() if error.id == "servestatic.E025"]
+    assert len(errors) == 1
+
+
+def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_response):
+    class Settings:
+        DEBUG = True
+        INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert any("checks for ServeStatic are disabled" in str(item.message) for item in caught)
 
 
 def test_add_files_from_manifest_raises_when_storage_has_no_manifest(async_middleware_response):
