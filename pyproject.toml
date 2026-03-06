@@ -52,7 +52,7 @@ installer = "uv"
 # >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pytest-sugar", "requests", "brotli", "pytest-timeout"]
+extra-dependencies = ["pytest-sugar", "httpx", "brotli", "pytest-timeout"]
 randomize = true
 matrix-name-format = "{variable}-{value}"
 timeout = 15
