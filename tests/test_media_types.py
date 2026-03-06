@@ -18,6 +18,11 @@ def test_matched_extension():
     assert result == "text/javascript"
 
 
+def test_matched_extension_html():
+    result = MediaTypes().get_type("static/index.html")
+    assert result == "text/html"
+
+
 def test_unmatched_extension():
     result = MediaTypes().get_type("static/app.example-unmatched")
     assert result == "application/octet-stream"

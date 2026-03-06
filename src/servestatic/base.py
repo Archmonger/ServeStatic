@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from wsgiref.headers import Headers
 
 from servestatic.media_types import MediaTypes
@@ -18,6 +18,7 @@ from servestatic.responders import (
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -25,6 +26,7 @@ class ServeStaticBase:
     # Ten years is what nginx sets a max age if you use 'expires max;'
     # so we'll follow its lead
     FOREVER = 10 * 365 * 24 * 60 * 60
+    DEFAULT_IMMUTABLE_FILE_TEST = re.compile(r"^.+\.[0-9a-f]{12}\..+$")
 
     __call__: Callable
     """"Subclasses must implement `__call__`"""
@@ -229,7 +231,7 @@ class ServeStaticBase:
             if callable(self.user_immutable_file_test):
                 return self.user_immutable_file_test(path, url)
             return bool(self.user_immutable_file_test.search(url))
-        return False
+        return bool(self.DEFAULT_IMMUTABLE_FILE_TEST.search(url))
 
     def redirect(self, from_url, to_url):
         """

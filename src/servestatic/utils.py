@@ -7,10 +7,11 @@ import functools
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Callable, cast
+from io import IOBase
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncIterable, Iterable
+    from collections.abc import AsyncIterable, Callable, Iterable
     from io import IOBase
 
     from servestatic.responders import AsyncSlicedFile
@@ -70,7 +71,9 @@ class AsyncToSyncIterator:
     def __iter__(self):
         # Create a dedicated event loop to run the async iterator on.
         loop = asyncio.new_event_loop()
-        thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic")
+        thread_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="ServeStatic-AsyncFile-Runtime"
+        )
 
         # Convert from async to sync by stepping through the async iterator and yielding
         # the result of each step.
@@ -131,6 +134,16 @@ class AsyncFile:
         self.lock = threading.Lock()
         self.file_obj: IOBase = cast("IOBase", None)
         self.closed = False
+        self._executor_shutdown = False
+
+    def _shutdown_executor(self):
+        if self._executor_shutdown:
+            return
+        try:
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            return
+        self._executor_shutdown = True
 
     async def _execute(self, func, *args):
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
@@ -139,15 +152,11 @@ class AsyncFile:
         with self.lock:
             return await self.loop.run_in_executor(self.executor, func, *args)
 
-    def open_raw(self):
-        """Open the file without using the executor."""
-        self.executor.shutdown(wait=True)
-        return open(*self.open_args)  # pylint: disable=unspecified-encoding
-
     async def close(self):
         self.closed = True
         if self.file_obj:
             await self._execute(self.file_obj.close)
+        self._shutdown_executor()
 
     @open_lazy
     async def read(self, size=-1):
@@ -165,7 +174,7 @@ class AsyncFile:
         await self.close()
 
     def __del__(self):
-        self.executor.shutdown(wait=True)
+        self._shutdown_executor()
 
 
 class EmptyAsyncIterator:

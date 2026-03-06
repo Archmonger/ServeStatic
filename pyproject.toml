@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling", "packaging<26"]
 
 [project]
 name = "servestatic"
@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["asgi", "django", "http", "server", "static", "staticfiles", "wsgi"]
 license = "MIT"
 authors = [{ name = "Mark Bakhit", email = "archiethemonger@gmail.com" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Framework :: Django",
@@ -17,7 +17,6 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -32,12 +31,16 @@ optional-dependencies.brotli = ["brotli"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Source = "https://github.com/Archmonger/ServeStatic"
+scripts.servestatic = "servestatic.cli:main"
 
 [tool.hatch.version]
 path = "src/servestatic/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src"]
+include = ["/src/"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/servestatic"]
 
 [tool.hatch.metadata]
 license-files = { paths = ["LICENSE.md"] }
@@ -48,13 +51,14 @@ installer = "uv"
 # >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pytest-sugar", "requests", "brotli"]
+extra-dependencies = ["pytest-sugar", "requests", "brotli", "pytest-timeout"]
 randomize = true
 matrix-name-format = "{variable}-{value}"
+timeout = 15
 
 # Django 4.2
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.9", "3.10", "3.11", "3.12"]
+python = ["3.10", "3.11", "3.12"]
 django = ["4.2"]
 
 # Django 5.0
@@ -86,7 +90,7 @@ matrix.django.dependencies = [
 template = "docs"
 detached = true
 dependencies = [
-  "mkdocs",
+  "mkdocs<2.0", # Mkdocs has some breaking changes planned that would brick mkdocs-material
   "mkdocs-git-revision-date-localized-plugin",
   "mkdocs-material",
   "mkdocs-include-markdown-plugin",
@@ -95,6 +99,7 @@ dependencies = [
   "mkdocs-git-authors-plugin",
   "mkdocs-minify-plugin",
   "mike",
+  "click==8.2.1", # Newer versions of click do not work with mkdocs<2.0
 ]
 
 [tool.hatch.envs.docs.scripts]
@@ -145,22 +150,21 @@ lint.extend-ignore = [
   "PLR2004", # Magic value used in comparison
   "SIM115",  # Use context handler for opening files
   "SLF001",  # Private member accessed
+  "ARG005",  # Unused lambda argument
+  "PT011",   # Pytest exception is too broad
+  "RUF012",  # Mutable class attributes should have `typing.ClassVar` annotations.
+  "PLC0415", # Imports should always be at the top of a file
+  "BLE001",  # Do not catch `Exception`
 ]
 lint.preview = true
 
 [tool.pytest.ini_options]
-addopts = """\
-    --strict-config
-    --strict-markers
-    """
+addopts = ["--strict-config", "--strict-markers"]
 
-[tool.coverage.run]
-branch = true
-parallel = true
-source = ["src/", "tests/"]
-
-[tool.coverage.paths]
-source = ["src/"]
-
-[tool.coverage.report]
-show_missing = true
+[tool.coverage]
+run.relative_files = true
+run.branch = true
+run.parallel = true
+run.source = ["src/"]
+paths.source = ["src/"]
+report.show_missing = true

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import errno
 import os
 import re
 import shutil
@@ -16,9 +18,18 @@ from wsgiref.simple_server import demo_app
 import pytest
 
 from servestatic import ServeStatic
-from servestatic.responders import Redirect, StaticFile
+from servestatic.base import ServeStaticBase
+from servestatic.responders import FileEntry, MissingFileError, NotARegularFileError, Redirect, StaticFile
 
 from .utils import AppServer, Files
+
+
+class DummyServeStaticBase(ServeStaticBase):
+    def initialize(self):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return None
 
 
 @pytest.fixture(scope="module")
@@ -336,6 +347,12 @@ def test_immutable_file_test_accepts_regex():
     assert not instance.immutable_file_test("", "file.test.txt")
 
 
+def test_immutable_file_test_defaults_to_cli_hash_pattern():
+    app = DummyServeStaticBase(None)
+    assert app.immutable_file_test("", "/static/app.db8f2edc0c8a.js")
+    assert not app.immutable_file_test("", "/static/app.js")
+
+
 @pytest.mark.skipif(sys.version_info < (3, 4), reason="Pathlib was added in Python 3.4")
 def test_directory_path_can_be_pathlib_instance():
     root = Path(Files("root").directory)
@@ -358,6 +375,62 @@ def fake_stat_entry(st_mode: int = stat.S_IFREG, st_size: int = 1024, st_mtime: 
     ))
 
 
+def test_base_init_accepts_string_index_file():
+    app = DummyServeStaticBase(None, index_file="home.html")
+    assert app.index_file == "home.html"
+
+
+def test_base_initialize_requires_override():
+    with pytest.raises(NotImplementedError):
+        ServeStaticBase(None)
+
+
+def test_find_file_returns_none_for_trailing_slash_without_index_file():
+    app = DummyServeStaticBase(None, autorefresh=True, index_file=None)
+    assert app.find_file("/any/path/") is None
+
+
+def test_find_file_at_path_without_index_file_returns_static_file():
+    app = DummyServeStaticBase(None, index_file=None)
+    result = app.find_file_at_path(__file__, "/test_servestatic.py")
+    assert isinstance(result, StaticFile)
+
+
+def test_find_file_at_path_index_file_missing_raises_missing_file_error():
+    app = DummyServeStaticBase(None, index_file=True)
+    with pytest.raises(MissingFileError):
+        app.find_file_at_path("/tmp/does-not-exist/index.html", "/tmp/index.html")
+
+
+def test_url_is_canonical_rejects_backslashes():
+    assert not DummyServeStaticBase.url_is_canonical(r"/static\file.js")
+
+
+def test_immutable_file_test_supports_callable():
+    app = DummyServeStaticBase(None, immutable_file_test=lambda path, url: url.endswith(".ok"))
+    assert app.immutable_file_test("ignored", "/file.ok")
+
+
+def test_redirect_raises_for_unhandled_pattern():
+    app = DummyServeStaticBase(None, index_file="index.html")
+    with pytest.raises(ValueError):
+        app.redirect("/from", "/to")
+
+
+def test_add_cache_headers_omits_header_when_max_age_none():
+    app = DummyServeStaticBase(None, max_age=None)
+    headers = Headers([])
+    app.add_cache_headers(headers, __file__, "/file")
+    assert "Cache-Control" not in headers
+
+
+def test_get_static_file_omits_allow_all_origins_header_when_disabled():
+    app = DummyServeStaticBase(None, allow_all_origins=False)
+    static_file = app.get_static_file(__file__, "/coverage.py", stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    headers = dict(static_file.alternatives[0][2])
+    assert "Access-Control-Allow-Origin" not in headers
+
+
 def test_last_modified_not_set_when_mtime_is_zero():
     stat_cache = {__file__: fake_stat_entry()}
     responder = StaticFile(__file__, [], stat_cache=stat_cache)
@@ -366,6 +439,92 @@ def test_last_modified_not_set_when_mtime_is_zero():
     headers_dict = Headers(response.headers)
     assert "Last-Modified" not in headers_dict
     assert "ETag" not in headers_dict
+
+
+def test_static_file_range_requires_content_length_header():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    with pytest.raises(ValueError, match="Content-Length"):
+        responder.get_range_response("bytes=0-3", [("X-Test", "1")], None)
+
+
+def test_static_file_async_range_requires_content_length_header():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    with pytest.raises(ValueError, match="Content-Length"):
+        asyncio.run(responder.aget_range_response("bytes=0-3", [("X-Test", "1")], None))
+
+
+def test_parse_byte_range_rejects_invalid_units_and_missing_separator():
+    with pytest.raises(ValueError):
+        StaticFile.parse_byte_range("items=0-1")
+    with pytest.raises(ValueError):
+        StaticFile.parse_byte_range("bytes0-1")
+
+
+def test_parse_byte_range_requires_dash_separator():
+    with pytest.raises(ValueError):
+        StaticFile.parse_byte_range("bytes=10")
+
+
+def test_get_path_and_headers_raises_when_no_alternatives_match():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    responder.alternatives = []
+    with pytest.raises(MissingFileError, match="No matching file"):
+        responder.get_path_and_headers({"HTTP_ACCEPT_ENCODING": "gzip"})
+
+
+def test_get_range_not_satisfiable_response_closes_file_handle():
+    class DummyFile:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    handle = DummyFile()
+    response = StaticFile.get_range_not_satisfiable_response(handle, 123)
+    assert handle.closed
+    assert int(response.status) == 416
+
+
+def test_get_range_not_satisfiable_response_allows_none_file_handle():
+    response = StaticFile.get_range_not_satisfiable_response(None, 10)
+    assert int(response.status) == 416
+
+
+def test_get_range_response_keeps_none_file_handle():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_size=32, st_mtime=1)})
+    response = responder.get_range_response("bytes=0-1", [("Content-Length", "10")], None)
+    assert response.file is None
+
+
+def test_get_async_range_response_keeps_none_file_handle():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_size=32, st_mtime=1)})
+    response = asyncio.run(responder.aget_range_response("bytes=0-1", [("Content-Length", "10")], None))
+    assert response.file is None
+
+
+def test_get_headers_preserves_existing_last_modified_and_etag():
+    files = {None: FileEntry(__file__, {__file__: fake_stat_entry(st_size=10, st_mtime=5)})}
+    headers = StaticFile.get_headers(
+        [("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT"), ("ETag", '"existing"')],
+        files,
+    )
+    assert headers["Last-Modified"] == "Wed, 21 Oct 2015 07:28:00 GMT"
+    assert headers["ETag"] == '"existing"'
+
+
+def test_file_entry_reraises_unexpected_oserror():
+    def raise_permission_error(_path):
+        raise OSError(errno.EPERM, "permission denied")
+
+    with pytest.raises(OSError):
+        FileEntry.stat_regular_file("/tmp/no-access", raise_permission_error)
+
+
+def test_file_entry_rejects_non_regular_non_directory_file():
+    character_device_stat = fake_stat_entry(st_mode=stat.S_IFCHR)
+    with pytest.raises(NotARegularFileError, match="Not a regular file"):
+        FileEntry.stat_regular_file("/dev/char", lambda _path: character_device_stat)
 
 
 def test_file_size_matches_range_with_range_header():

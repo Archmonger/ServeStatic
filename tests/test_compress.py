@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import servestatic.compress as compress_module
 from servestatic.compress import Compressor
 from servestatic.compress import main as compress_main
 
@@ -73,7 +74,7 @@ def test_custom_log():
 
 def test_compress():
     compressor = Compressor(use_brotli=False, use_gzip=False)
-    assert list(compressor.compress("tests/test_files/static/styles.css")) == []
+    assert not list(compressor.compress("tests/test_files/static/styles.css"))
 
 
 def test_compressed_effectively_no_orig_size():
@@ -89,3 +90,9 @@ def test_main_error(files_dir):
         compress_main([files_dir, "--quiet"])
 
     assert excinfo.value.args == ("woops",)
+
+
+def test_compress_brotli_raises_when_dependency_missing(monkeypatch):
+    monkeypatch.setattr(compress_module, "brotli", None)
+    with pytest.raises(RuntimeError, match="Brotli is not installed"):
+        Compressor.compress_brotli(b"abc")

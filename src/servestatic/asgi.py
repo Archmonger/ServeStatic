@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Callable
+from typing import TYPE_CHECKING
 
 from asgiref.compatibility import guarantee_single_callable
 
 from servestatic.base import ServeStaticBase
 from servestatic.utils import decode_path_info, get_block_size
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class ServeStaticASGI(ServeStaticBase):

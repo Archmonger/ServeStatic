@@ -16,10 +16,20 @@ application = ServeStaticASGI(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
-If you would rather use ServeStatic as a standalone file server, you can simply not provide an ASGI app, such as via `#!python ServeStaticASGI(None, root="/path/to/static/files")`.
+Alternatively, you can use ServeStatic as a standalone file server by not providing a WSGI app. For example:
+
+```python
+from servestatic import ServeStaticASGI
+
+application = ServeStaticASGI(None, root="/path/to/static/files")
+```
 
 {% include-markdown "./wsgi.md" start="<!--shared-desc-start-->" end="<!--shared-desc-end-->" %}
 
-After configuring ServeStatic, you can use your favourite ASGI server (such as [`uvicorn`](https://pypi.org/project/uvicorn/), [`hypercorn`](https://pypi.org/project/Hypercorn/), or [`nginx-unit`](https://unit.nginx.org/)) to run your application.
+After configuring ServeStatic, you can use your favourite ASGI server (such as [`uvicorn`](https://pypi.org/project/uvicorn/) or [`hypercorn`](https://pypi.org/project/Hypercorn/)) to run your application.
+
+```bash linenums="0"
+uvicorn my_project:application
+```
 
 See the [API reference documentation](servestatic-asgi.md) for detailed usage and features.
