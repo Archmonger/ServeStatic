@@ -188,11 +188,12 @@ class ServeStaticBase:
 
     @staticmethod
     def is_compressed_variant(path, stat_cache=None):
-        if path[-3:] in {".gz", ".br"}:
-            uncompressed_path = path[:-3]
-            if stat_cache is None:
-                return os.path.isfile(uncompressed_path)
-            return uncompressed_path in stat_cache
+        for suffix in (".gz", ".br", ".zstd"):
+            if path.endswith(suffix):
+                uncompressed_path = path[: -len(suffix)]
+                if stat_cache is None:
+                    return os.path.isfile(uncompressed_path)
+                return uncompressed_path in stat_cache
         return False
 
     def get_static_file(self, path, url, stat_cache=None):
@@ -210,7 +211,7 @@ class ServeStaticBase:
             path,
             headers.items(),
             stat_cache=stat_cache,
-            encodings={"gzip": f"{path}.gz", "br": f"{path}.br"},
+            encodings={"zstd": f"{path}.zstd", "gzip": f"{path}.gz", "br": f"{path}.br"},
         )
 
     def add_mime_headers(self, headers, path, url):

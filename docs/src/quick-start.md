@@ -7,6 +7,7 @@ The documentation below is a quick-start guide to using ServeStatic to serve you
 Install with:
 
 ```bash linenums="0"
+# Note: 'brotli' is an optional extra that adds support for more efficient compression.
 pip install servestatic[brotli]
 ```
 

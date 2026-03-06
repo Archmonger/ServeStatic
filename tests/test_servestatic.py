@@ -406,6 +406,11 @@ def test_url_is_canonical_rejects_backslashes():
     assert not DummyServeStaticBase.url_is_canonical(r"/static\file.js")
 
 
+def test_is_compressed_variant_detects_zstd_suffix_with_cache():
+    cache = {"/tmp/app.js": fake_stat_entry(st_mtime=1)}
+    assert DummyServeStaticBase.is_compressed_variant("/tmp/app.js.zstd", stat_cache=cache)
+
+
 def test_immutable_file_test_supports_callable():
     app = DummyServeStaticBase(None, immutable_file_test=lambda path, url: url.endswith(".ok"))
     assert app.immutable_file_test("ignored", "/file.ok")
@@ -429,6 +434,18 @@ def test_get_static_file_omits_allow_all_origins_header_when_disabled():
     static_file = app.get_static_file(__file__, "/coverage.py", stat_cache={__file__: fake_stat_entry(st_mtime=1)})
     headers = dict(static_file.alternatives[0][2])
     assert "Access-Control-Allow-Origin" not in headers
+
+
+def test_get_static_file_prefers_zstd_when_requested():
+    app = DummyServeStaticBase(None)
+    stat_cache = {
+        __file__: fake_stat_entry(st_size=1000, st_mtime=1),
+        f"{__file__}.zstd": fake_stat_entry(st_size=200, st_mtime=1),
+    }
+    static_file = app.get_static_file(__file__, "/coverage.py", stat_cache=stat_cache)
+    path, headers = static_file.get_path_and_headers({"HTTP_ACCEPT_ENCODING": "zstd, gzip"})
+    assert path == f"{__file__}.zstd"
+    assert Headers(headers)["Content-Encoding"] == "zstd"
 
 
 def test_last_modified_not_set_when_mtime_is_zero():

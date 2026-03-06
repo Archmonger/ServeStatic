@@ -47,15 +47,15 @@ This combines automatic compression with the caching behaviour provided by Djang
 
 If you need to compress files outside of the static files storage system you can use the supplied [command line utility](cli.md).
 
-??? tip "Enable Brotli compression"
+??? tip "Enable modern compression"
 
-    As well as the common gzip compression format, ServeStatic supports the newer, more efficient [brotli](https://en.wikipedia.org/wiki/Brotli)
-    format. This helps reduce bandwidth and increase loading speed. To enable brotli compression you will need the [Brotli Python
-    package](https://pypi.org/project/Brotli/) installed by running `pip install servestatic[brotli]`.
+    ServeStatic supports gzip, zstd, and brotli compression.
 
-    Brotli is supported by [all modern browsers](https://caniuse.com/#feat=brotli). ServeStatic will only serve brotli data to browsers which request it so there are no compatibility issues with enabling brotli support.
+    On Python 3.14+, zstd support is available from the standard library and is enabled automatically.
 
-    Also note that browsers will only request brotli data over an HTTPS connection.
+    On older Python versions, install Brotli with `pip install servestatic[brotli]` to get brotli support in addition to gzip.
+
+    ServeStatic only sends compressed responses for encodings requested by the client, so enabling these formats remains backward-compatible.
 
 ## Step 3: Make sure Django's `staticfiles` is configured correctly
 
@@ -143,7 +143,7 @@ Below are instruction for setting up ServeStatic with Amazon CloudFront, a popul
 
     By default, CloudFront will discard any `Accept-Encoding` header browsers include in requests, unless the value of the header is gzip. If it is gzip, CloudFront will fetch the uncompressed file from the origin, compress it, and return it to the requesting browser.
 
-    To get CloudFront to not do the compression itself as well as serve files compressed using other algorithms, such as Brotli, you must configure your distribution to [cache based on the Accept-Encoding header](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/ServingCompressedFiles.html#compressed-content-custom-origin). You can do this in the `Behaviours` tab of your distribution.
+    To get CloudFront to not do the compression itself as well as serve files compressed using other algorithms, such as zstd and Brotli, you must configure your distribution to [cache based on the Accept-Encoding header](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/ServingCompressedFiles.html#compressed-content-custom-origin). You can do this in the `Behaviours` tab of your distribution.
 
 ??? warning "CloudFront SEO issues"
 

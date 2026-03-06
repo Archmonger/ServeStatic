@@ -40,7 +40,7 @@ def main(argv=None):
     parser.add_argument(
         "--compress",
         action="store_true",
-        help="Generate compressed versions (gzip/brotli) of files.",
+        help="Generate compressed versions (gzip/zstd/brotli) of files.",
     )
     parser.add_argument(
         "--clear",
@@ -65,6 +65,26 @@ def main(argv=None):
         action="store_false",
         dest="use_brotli",
         help="Don't produce brotli '.br' files (only applies with --compress).",
+    )
+    parser.add_argument(
+        "--no-zstd",
+        action="store_false",
+        dest="use_zstd",
+        help="Don't produce zstd '.zstd' files (only applies with --compress).",
+    )
+    parser.add_argument(
+        "--zstd-dict",
+        help="Path to a zstd dictionary file (only applies with --compress).",
+    )
+    parser.add_argument(
+        "--zstd-dict-raw",
+        action="store_true",
+        help="Treat the zstd dictionary as raw content (only applies with --compress).",
+    )
+    parser.add_argument(
+        "--zstd-level",
+        type=int,
+        help="Compression level for zstd output (only applies with --compress).",
     )
     # Exclusion
     parser.add_argument(
@@ -125,10 +145,10 @@ def main(argv=None):
     if args.clear and dest_path.exists():
         log(f"Clearing destination directory {dest_path}...")
         for item in dest_path.iterdir():
-            if item.is_symlink() or item.is_file():
-                item.unlink()
-            elif item.is_dir():
+            if item.is_dir() and not item.is_symlink():
                 shutil.rmtree(item)
+            else:
+                item.unlink()
 
     # 1. Copy src to dest (ensure dest exists)
     log(f"Copying files from {src_path} to {dest_path}...")
@@ -216,6 +236,10 @@ def main(argv=None):
         compressor = Compressor(
             use_gzip=args.use_gzip,
             use_brotli=args.use_brotli,
+            use_zstd=args.use_zstd,
+            zstd_dict=args.zstd_dict,
+            zstd_dict_is_raw=args.zstd_dict_raw,
+            zstd_level=args.zstd_level,
             quiet=args.quiet,
             log=log,
             # We explicitly rely on the compressor class's default extension exclusion filter

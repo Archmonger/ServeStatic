@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+### Added
+
+- Added support for `zstd` compression on Python 3.14+.
+
 ### Changed
 
 - Tightened cleanup/event-loop handling for ASGI file iterator bridging.

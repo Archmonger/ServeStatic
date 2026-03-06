@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import html
+import importlib
+import importlib.util
 import os
 import shutil
 import tempfile
-from contextlib import closing
+from contextlib import closing, suppress
 from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import brotli
@@ -36,6 +39,14 @@ from .utils import (
     AsgiSendEmulator,
     Files,
 )
+
+stdlib_zstd: Any | None
+with suppress(ModuleNotFoundError):
+    if importlib.util.find_spec("compression.zstd") is not None:
+        stdlib_zstd = importlib.import_module("compression.zstd")
+
+if "stdlib_zstd" not in globals():  # pragma: no cover
+    stdlib_zstd = None
 
 
 def reset_lazy_object(obj):
@@ -186,6 +197,43 @@ def test_get_brotli(server, static_files):
     assert response.content == static_files.js_content
     assert response.headers["Content-Encoding"] == "br"
     assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_get_zstd(asgi_application, static_files):
+    assert stdlib_zstd is not None
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"zstd")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert stdlib_zstd.decompress(send.body) == static_files.js_content
+    assert send.headers.get(b"Content-Encoding") == b"zstd"
+    assert send.headers.get(b"Vary") == b"Accept-Encoding"
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_get_zstd_2(asgi_application, static_files):
+    assert stdlib_zstd is not None
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"zstd")]})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    headers = dict(response["headers"])
+    assert stdlib_zstd.decompress(response["body"]) == static_files.js_content
+    assert headers.get(b"Content-Encoding") == b"zstd"
+    assert headers.get(b"Vary") == b"Accept-Encoding"
 
 
 @pytest.mark.usefixtures("_collect_static")
