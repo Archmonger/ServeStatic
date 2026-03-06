@@ -13,6 +13,18 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened cleanup/event-loop handling for ASGI file iterator bridging.
+
+### Fixed
+
+- Fixed a real range-request edge case where the last byte could be requested but not served.
+
+### Security
+
+- Hardened autorefresh path matching to prevent potential path traversal or path clobbering.
+
 ## [4.0.0] - 2026-03-05
 
 ### Added

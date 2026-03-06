@@ -29,7 +29,7 @@ class ServeStaticBase:
     DEFAULT_IMMUTABLE_FILE_TEST = re.compile(r"^.+\.[0-9a-f]{12}\..+$")
 
     __call__: Callable
-    """"Subclasses must implement `__call__`"""
+    """Subclasses must implement `__call__`."""
 
     def __init__(
         self,
@@ -147,8 +147,10 @@ class ServeStaticBase:
         for root, prefix in self.directories:
             if url.startswith(prefix):
                 path = os.path.join(root, url[len(prefix) :])
-                if os.path.commonpath((root, path)) == root:
-                    yield path
+                normalized_root = root.rstrip(os.path.sep) or root
+                with contextlib.suppress(ValueError):
+                    if os.path.commonpath((normalized_root, path)) == normalized_root:
+                        yield path
 
     def find_file_at_path(self, path, url):
         if self.is_compressed_variant(path):

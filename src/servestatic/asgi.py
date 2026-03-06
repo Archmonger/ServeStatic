@@ -26,7 +26,7 @@ class ServeStaticASGI(ServeStaticBase):
                 static_file = self.files.get(path)
 
         # Serve static file if it exists
-        if static_file:
+        if static_file is not None:
             return await FileServerASGI(static_file)(scope, receive, send)
 
         # Could not find a static file. Serve the default application instead.
@@ -53,9 +53,10 @@ class FileServerASGI:
         # Convert ASGI headers into WSGI headers. Allows us to reuse all of our WSGI
         # header logic inside of aget_response().
         wsgi_headers = {
-            "HTTP_" + key.decode().upper().replace("-", "_"): value.decode() for key, value in scope["headers"]
+            "HTTP_" + key.decode("latin-1").upper().replace("-", "_"): value.decode("latin-1")
+            for key, value in scope["headers"]
         }
-        wsgi_headers["QUERY_STRING"] = scope["query_string"].decode()
+        wsgi_headers["QUERY_STRING"] = scope["query_string"].decode("latin-1")
 
         # Get the ServeStatic file response
         response = await self.static_file.aget_response(scope["method"], wsgi_headers)
@@ -66,7 +67,7 @@ class FileServerASGI:
             "status": response.status,
             "headers": [
                 # Convert headers back to ASGI spec
-                (key.lower().replace("_", "-").encode(), value.encode())
+                (key.lower().replace("_", "-").encode("latin-1"), value.encode("latin-1"))
                 for key, value in response.headers
             ],
         })

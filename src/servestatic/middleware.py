@@ -116,7 +116,8 @@ class ServeStaticMiddleware(ServeStaticBase):
             current_finders = finders.get_finders()
             app_dirs = [storage.location for finder in current_finders for storage in finder.storages.values()]  # pyright: ignore [reportAttributeAccessIssue]
             app_dirs = "\n• ".join(sorted(app_dirs))
-            msg = f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
+            missing_path = request.path.removeprefix(django_settings.STATIC_URL)
+            msg = f"ServeStatic did not find the file '{missing_path}' within the following paths:\n• {app_dirs}"
             raise MissingFileError(msg)
 
         return await self.get_response(request)

@@ -94,6 +94,8 @@ def main(argv=None):
 
     if not src_path.exists():
         parser.error(f"Source directory '{src_path}' does not exist.")
+    if src_path == dest_path:
+        parser.error("Source and destination directories cannot be the same.")
 
     existing_manifest_data = {}
     existing_manifest_paths = {}
@@ -114,15 +116,19 @@ def main(argv=None):
 
     log = (lambda _: None) if args.quiet else print
 
+    def is_excluded(path: Path) -> bool:
+        if not args.exclude:
+            return False
+        rel_path = path.relative_to(dest_path).as_posix()
+        return any(fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(path.name, pattern) for pattern in args.exclude)
+
     if args.clear and dest_path.exists():
-        if src_path == dest_path:
-            parser.error("Source and destination directories cannot be the same when using --clear.")
         log(f"Clearing destination directory {dest_path}...")
         for item in dest_path.iterdir():
-            if item.is_dir():
-                shutil.rmtree(item)
-            else:
+            if item.is_symlink() or item.is_file():
                 item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
 
     # 1. Copy src to dest (ensure dest exists)
     log(f"Copying files from {src_path} to {dest_path}...")
@@ -140,10 +146,7 @@ def main(argv=None):
                 continue
 
             # Check exclusions
-            rel_path = p.relative_to(dest_path).as_posix()
-            if args.exclude and any(
-                fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(filename, pattern) for pattern in args.exclude
-            ):
+            if is_excluded(p):
                 excluded_files.append(p)
                 continue
 
@@ -206,10 +209,7 @@ def main(argv=None):
                     continue
 
                 # Check exclusions - apply logic against the current file path
-                rel_path = p.relative_to(dest_path).as_posix()
-                if args.exclude and any(
-                    fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(filename, pattern) for pattern in args.exclude
-                ):
+                if is_excluded(p):
                     continue
                 files_to_compress.append(p)
 

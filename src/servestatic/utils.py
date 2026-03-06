@@ -5,7 +5,6 @@ import concurrent.futures
 import contextlib
 import functools
 import os
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import IOBase
 from typing import TYPE_CHECKING, cast
@@ -74,15 +73,16 @@ class AsyncToSyncIterator:
         thread_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="ServeStatic-AsyncFile-Runtime"
         )
-
-        # Convert from async to sync by stepping through the async iterator and yielding
-        # the result of each step.
-        generator = self.iterator.__aiter__()
-        with contextlib.suppress(GeneratorExit, StopAsyncIteration):
-            while True:
-                yield thread_executor.submit(loop.run_until_complete, generator.__anext__()).result()
-        loop.close()
-        thread_executor.shutdown(wait=True)
+        try:
+            # Convert from async to sync by stepping through the async iterator and yielding
+            # the result of each step.
+            generator = self.iterator.__aiter__()
+            with contextlib.suppress(GeneratorExit, StopAsyncIteration):
+                while True:
+                    yield thread_executor.submit(loop.run_until_complete, generator.__anext__()).result()
+        finally:
+            loop.close()
+            thread_executor.shutdown(wait=True)
 
 
 def open_lazy(f):
@@ -131,8 +131,7 @@ class AsyncFile:
         )
         self.loop: asyncio.AbstractEventLoop | None = None
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ServeStatic-AsyncFile")
-        self.lock = threading.Lock()
-        self.file_obj: IOBase = cast("IOBase", None)
+        self.file_obj: IOBase | None = cast("IOBase | None", None)
         self.closed = False
         self._executor_shutdown = False
 
@@ -148,13 +147,12 @@ class AsyncFile:
     async def _execute(self, func, *args):
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
         if self.loop is None:
-            self.loop = asyncio.get_event_loop()
-        with self.lock:
-            return await self.loop.run_in_executor(self.executor, func, *args)
+            self.loop = asyncio.get_running_loop()
+        return await self.loop.run_in_executor(self.executor, func, *args)
 
     async def close(self):
         self.closed = True
-        if self.file_obj:
+        if self.file_obj is not None:
             await self._execute(self.file_obj.close)
         self._shutdown_executor()
 

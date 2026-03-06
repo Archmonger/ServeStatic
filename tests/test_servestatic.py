@@ -535,6 +535,17 @@ def test_file_size_matches_range_with_range_header():
     assert file_size == 14
 
 
+def test_single_byte_range_is_supported():
+    stat_cache = {__file__: fake_stat_entry()}
+    responder = StaticFile(__file__, [], stat_cache=stat_cache)
+    response = responder.get_response("GET", {"HTTP_RANGE": "bytes=0-0"})
+    assert int(response.status) == 206
+    assert response.file is not None
+    with open(__file__, "rb") as source:
+        assert response.file.read() == source.read(1)
+    response.file.close()
+
+
 def test_chunked_file_size_matches_range_with_range_header():
     stat_cache = {__file__: fake_stat_entry()}
     responder = StaticFile(__file__, [], stat_cache=stat_cache)

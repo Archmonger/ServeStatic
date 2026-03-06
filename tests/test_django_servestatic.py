@@ -496,6 +496,16 @@ def test_error_message(server):
     assert str(Path(__file__).parent / "test_files" / "static") in response_content
 
 
+@override_settings(DEBUG=True)
+def test_error_message_preserves_missing_path_after_prefix(server):
+    response = server.get(f"{settings.STATIC_URL}static.css")
+    response_content = str(response.content.decode())
+    response_content = html.unescape(response_content)
+    response_content = response_content[response_content.index("ServeStatic") :]
+
+    assert "ServeStatic did not find the file 'static.css' within the following paths:" in response_content
+
+
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="static/")
 @pytest.mark.usefixtures("_collect_static")
 def test_force_script_name(server, static_files):

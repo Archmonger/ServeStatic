@@ -252,6 +252,18 @@ def test_cli_clear_same_dir(tmp_path, capsys):
     assert "cannot be the same" in captured.err
 
 
+def test_cli_same_dir_without_clear(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content")
+
+    with pytest.raises(SystemExit):
+        main(["--manifest", str(src), str(src)])
+
+    captured = capsys.readouterr()
+    assert "cannot be the same" in captured.err
+
+
 def test_cli_merge_manifest_success(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
