@@ -583,18 +583,12 @@ def test_force_script_name_with_matching_static_url(server, static_files):
 
 @pytest.mark.usefixtures("_collect_static")
 def test_range_response(server, static_files):
-    ...
-    # FIXME: This test is not working, seemingly due to bugs with AppServer.
-
-    # url = storage.staticfiles_storage.url(static_files.js_path)
-    # response = server.get(url, headers={"Range": "bytes=0-13"})
-    # assert response.content == static_files.js_content[:14]
-    # assert response.status_code == 206
-    # assert (
-    #     response.headers["Content-Range"]
-    #     == f"bytes 0-13/{len(static_files.js_content)}"
-    # )
-    # assert response.headers["Content-Length"] == "14"
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    response = server.get(url, headers={"Range": "bytes=0-13", "Accept-Encoding": "identity"})
+    assert response.content == static_files.js_content[:14]
+    assert response.status_code == 206
+    assert response.headers["Content-Range"] == f"bytes 0-13/{len(static_files.js_content)}"
+    assert response.headers["Content-Length"] == "14"
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
