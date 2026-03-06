@@ -147,7 +147,7 @@ class ServeStaticBase:
         for root, prefix in self.directories:
             if url.startswith(prefix):
                 path = os.path.join(root, url[len(prefix) :])
-                if os.path.commonprefix((root, path)) == root:
+                if os.path.commonpath((root, path)) == root:
                     yield path
 
     def find_file_at_path(self, path, url):
