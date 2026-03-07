@@ -1,6 +1,7 @@
 wsgi
 asgi
 gzip
+zstd
 filesystem
 mimetype
 mimetypes
@@ -36,3 +37,7 @@ linters
 linting
 pytest
 formatters
+misconfigurations
+encodings
+symlink
+symlinks
