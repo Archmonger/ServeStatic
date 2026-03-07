@@ -20,20 +20,22 @@ Don't forget to remove deprecated code on each major release!
 ### Added
 
 - Added support for `zstd` compression on Python 3.14+.
+- Added support for the top-level `servestatic` module to run as a Django app.
 - Added Django system checks to test for common misconfigurations.
 
 ### Changed
 
 - Tightened cleanup/event-loop handling for ASGI file iterator bridging.
 - Installing `servestatic` as a Django app is now the suggested configuration. A warning will appear if it is not detected in `INSTALLED_APPS` when `DEBUG` is `True`.
+- `servestatic.runserver_nostatic` is no longer the recommended Django app installation path. This import path will be retained to ease `WhiteNoise` to `ServeStatic` migration, but now the documentation recommends to use the top-level `servestatic` module instead.
 
 ### Fixed
 
-- Fixed a real range-request edge case where the last byte could be requested but not served.
+- Fixed a range-request edge case where the last byte could be requested but would not be served.
 
 ### Security
 
-- Hardened autorefresh path matching to prevent potential path traversal or path clobbering.
+- Hardened `autorefresh` path matching to prevent potential path traversal or path clobbering.
 
 ## [4.0.0] - 2026-03-05
 

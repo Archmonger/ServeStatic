@@ -140,7 +140,9 @@ def main(argv=None):
         if not args.exclude:
             return False
         rel_path = path.relative_to(dest_path).as_posix()
-        return any(fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(path.name, pattern) for pattern in args.exclude)
+        return any(
+            fnmatch.fnmatch(rel_path, pattern) or fnmatch.fnmatch(path.name, pattern) for pattern in args.exclude
+        )
 
     if args.clear and dest_path.exists():
         log(f"Clearing destination directory {dest_path}...")

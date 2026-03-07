@@ -424,7 +424,11 @@ def test_django_check_reports_invalid_setting_types(overrides, error_id):
 )
 def test_django_check_accepts_valid_setting_values(overrides):
     with override_settings(**overrides):
-        errors = [error for error in run_checks() if error.id.startswith("servestatic.E0") and error.id != "servestatic.E001"]
+        errors = [
+            error
+            for error in run_checks()
+            if error.id and error.id.startswith("servestatic.E0") and error.id != "servestatic.E001"
+        ]
     assert not errors
 
 
@@ -470,7 +474,7 @@ def test_django_check_reports_immutable_file_test_invalid_type():
 def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_response):
     class Settings:
         DEBUG = True
-        INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
+        INSTALLED_APPS = ["some.other.app", "django.contrib.staticfiles"]
         SERVESTATIC_AUTOREFRESH = False
         SERVESTATIC_USE_MANIFEST = False
         SERVESTATIC_USE_FINDERS = False

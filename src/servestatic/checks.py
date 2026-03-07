@@ -1,3 +1,7 @@
+"""
+Django system checks for ServeStatic configuration issues.
+"""
+
 from __future__ import annotations
 
 import os
@@ -75,7 +79,9 @@ def _validate_servestatic_mimetypes():
     if value is None:
         return []
     if not isinstance(value, Mapping):
-        return [Error("SERVESTATIC_MIMETYPES must be a mapping of string keys to string values.", id="servestatic.E016")]
+        return [
+            Error("SERVESTATIC_MIMETYPES must be a mapping of string keys to string values.", id="servestatic.E016")
+        ]
     for key, item in value.items():
         if not isinstance(key, str) or not key:
             return [Error("SERVESTATIC_MIMETYPES keys must be non-empty strings.", id="servestatic.E016")]
@@ -99,7 +105,9 @@ def _validate_servestatic_skip_compress_extensions():
         return [Error("SERVESTATIC_SKIP_COMPRESS_EXTENSIONS must be an iterable of strings.", id="servestatic.E019")]
     for item in value:
         if not isinstance(item, str) or not item:
-            return [Error("SERVESTATIC_SKIP_COMPRESS_EXTENSIONS must contain non-empty strings.", id="servestatic.E019")]
+            return [
+                Error("SERVESTATIC_SKIP_COMPRESS_EXTENSIONS must contain non-empty strings.", id="servestatic.E019")
+            ]
     return []
 
 

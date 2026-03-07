@@ -40,7 +40,7 @@ def has_servestatic_app(installed_apps) -> bool:
 
 
 def is_async_callable(value) -> bool:
-    return iscoroutinefunction(value) or iscoroutinefunction(getattr(value, "__call__", None))
+    return iscoroutinefunction(value) or (callable(value) and iscoroutinefunction(value.__call__))
 
 
 class ServeStaticMiddleware(ServeStaticBase):

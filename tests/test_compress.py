@@ -106,7 +106,7 @@ def test_compress_zstd_raises_when_dependency_missing(monkeypatch):
 
 def test_compressor_rejects_dictionary_when_zstd_is_unavailable(monkeypatch):
     monkeypatch.setattr(compress_module, "zstd", None)
-    with pytest.raises(RuntimeError, match="requires Python 3.14"):
+    with pytest.raises(RuntimeError, match=r"requires Python 3\.14"):
         Compressor(zstd_dict=b"dict")
 
 

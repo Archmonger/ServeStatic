@@ -102,11 +102,11 @@ See the [reference documentation](./django-settings.md) for a full list of optio
 
 In development Django's `runserver` automatically takes over static file handling. In most cases this is fine, however this means that some of the improvements that ServeStatic makes to static file handling won't be available in development and it opens up the possibility for differences in behaviour between development and production environments. For this reason it's a good idea to use ServeStatic in development as well.
 
-You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to edit your `settings.py` file and add `servestatic.runserver_nostatic` to the top of your `INSTALLED_APPS` list:
+You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to add `servestatic` to the top of your `INSTALLED_APPS` list:
 
 ```python linenums="0"
 INSTALLED_APPS = [
-    "servestatic.runserver_nostatic",
+    "servestatic",
     "django.contrib.staticfiles",
     # ...
 ]
