@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from types import SimpleNamespace
 
+import pytest
 from django.core.management import get_commands, load_command_class
 
 
@@ -79,3 +80,14 @@ def test_legacy_alias_app_config_points_to_runserver_nostatic_path():
     assert issubclass(ServeStaticRunserverNoStaticAliasConfig, ServeStaticConfig)
     assert ServeStaticRunserverNoStaticAliasConfig.name == "servestatic.runserver_nostatic"
     assert ServeStaticRunserverNoStaticAliasConfig.label == "servestatic_runserver_nostatic"
+
+
+def test_legacy_alias_app_config_ready_emits_deprecation_warning(monkeypatch):
+    from servestatic.apps import ServeStaticConfig
+    from servestatic.runserver_nostatic.apps import ServeStaticRunserverNoStaticAliasConfig
+
+    monkeypatch.setattr(ServeStaticConfig, "ready", lambda _self: None)
+    app_config = object.__new__(ServeStaticRunserverNoStaticAliasConfig)
+
+    with pytest.warns(DeprecationWarning, match="'servestatic.runserver_nostatic' app is deprecated"):
+        app_config.ready()
