@@ -341,6 +341,53 @@ def copytree(src, dst):
             shutil.copy2(src_path, dst_path)
 
 
+def build_symlink_escape_fixture():
+    tmp_dir = tempfile.mkdtemp()
+    static_dir = os.path.join(tmp_dir, "static")
+    os.makedirs(static_dir, exist_ok=True)
+
+    outside_content = b"outside-file-marker"
+    outside_path = os.path.join(tmp_dir, "outside.txt")
+    with open(outside_path, "wb") as outside_file:
+        outside_file.write(outside_content)
+
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+        os.symlink(outside_path, link_path)
+    except (OSError, NotImplementedError):
+        shutil.rmtree(tmp_dir)
+        pytest.skip("Symlink creation is unavailable in this environment")
+
+    return tmp_dir, static_dir, outside_content
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_symlink_escape_is_blocked_by_default(autorefresh):
+    tmp_dir, static_dir, _outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStatic(None, root=static_dir, autorefresh=autorefresh)
+        app_server = AppServer(app)
+        with closing(app_server):
+            response = app_server.get(f"/{AppServer.PREFIX}/link-outside.txt")
+        assert response.status_code == 404
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_symlink_escape_can_be_enabled(autorefresh):
+    tmp_dir, static_dir, outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStatic(None, root=static_dir, autorefresh=autorefresh, allow_unsafe_symlinks=True)
+        app_server = AppServer(app)
+        with closing(app_server):
+            response = app_server.get(f"/{AppServer.PREFIX}/link-outside.txt")
+        assert response.status_code == 200
+        assert response.content == outside_content
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
 def test_immutable_file_test_accepts_regex():
     instance = ServeStatic(None, immutable_file_test=r"\.test$")
     assert instance.immutable_file_test("", "/myfile.test")
@@ -404,6 +451,10 @@ def test_find_file_at_path_index_file_missing_raises_missing_file_error():
 
 def test_url_is_canonical_rejects_backslashes():
     assert not DummyServeStaticBase.url_is_canonical(r"/static\file.js")
+
+
+def test_path_is_within_returns_false_when_commonpath_raises_value_error():
+    assert not DummyServeStaticBase._path_is_within("/tmp/root", "relative/path")
 
 
 def test_is_compressed_variant_detects_zstd_suffix_with_cache():

@@ -53,6 +53,7 @@ class ServeStaticBase:
         add_headers_function: Callable[[Headers, str, str], None] | None = None,
         index_file: str | bool | None = None,
         immutable_file_test: Callable | str | None = None,
+        allow_unsafe_symlinks: bool = False,
     ):
         self.autorefresh = autorefresh
         self.max_age = max_age
@@ -61,6 +62,7 @@ class ServeStaticBase:
         self.add_headers_function = add_headers_function
         self._immutable_file_test = immutable_file_test
         self._immutable_file_test_regex: re.Pattern | None = None
+        self.allow_unsafe_symlinks = allow_unsafe_symlinks
         self.media_types = MediaTypes(extra_types=mimetypes)
         self.application = application
         self.files = {}
@@ -118,9 +120,11 @@ class ServeStaticBase:
             relative_path = path[len(root) :]
             relative_url = relative_path.replace("\\", "/")
             url = prefix + relative_url
-            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+            self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
-    def add_file_to_dictionary(self, url, path, stat_cache=None):
+    def add_file_to_dictionary(self, url, path, root=None, stat_cache=None):
+        if root and not self.path_within_root(root, path):
+            return
         if self.is_compressed_variant(path, stat_cache=stat_cache):
             return
         if self.index_file is not None and url.endswith(f"/{self.index_file}"):
@@ -147,10 +151,25 @@ class ServeStaticBase:
         for root, prefix in self.directories:
             if url.startswith(prefix):
                 path = os.path.join(root, url[len(prefix) :])
-                normalized_root = root.rstrip(os.path.sep) or root
-                with contextlib.suppress(ValueError):
-                    if os.path.commonpath((normalized_root, path)) == normalized_root:
-                        yield path
+                if self.path_within_root(root, path):
+                    yield path
+
+    def path_within_root(self, root, path):
+        normalized_root = root.rstrip(os.path.sep) or root
+        if not self._path_is_within(normalized_root, path):
+            return False
+        if getattr(self, "allow_unsafe_symlinks", False):
+            return True
+
+        resolved_root = os.path.realpath(normalized_root)
+        resolved_path = os.path.realpath(path)
+        return self._path_is_within(resolved_root, resolved_path)
+
+    @staticmethod
+    def _path_is_within(root, path):
+        with contextlib.suppress(ValueError):
+            return os.path.commonpath((root, path)) == root
+        return False
 
     def find_file_at_path(self, path, url):
         if self.is_compressed_variant(path):

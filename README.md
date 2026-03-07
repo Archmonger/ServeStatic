@@ -23,11 +23,11 @@ _This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) fo
 
 ---
 
-`ServeStatic` simplifies static file serving with minimal lines of configuration. It can operate standalone or transform your existing app into a self-contained unit, without relying on external services like nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
+`ServeStatic` simplifies static file serving with minimal lines of configuration. It enables you to create a self-contained unit (WSGI, ASGI, Django, or 'standalone') without requiring external services like nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
 
-It is designed to work seamlessly with CDNs to ensure high performance for traffic-intensive sites, and is compatible with any ASGI/WSGI app. Extra features and auto-configuration are available for [Django](https://www.djangoproject.com/) users.
+It is designed to work seamlessly with CDNs to ensure high performance for traffic-intensive sites, and is compatible with any ASGI/WSGI app. A command-line interface is provided to perform common tasks, such as compression, file-name hashing, and manifest generation. Extra features and auto-configuration are available for [Django](https://www.djangoproject.com/) users.
 
-Best practices are automatically handled by `ServeStatic`, such as:
+When using `ServeStatic`, best practices are automatically handled such as:
 
 - Automatically serving compressed content
 - Proper handling of `Accept-Encoding` and `Vary` headers
@@ -39,7 +39,7 @@ To get started or learn more about `ServeStatic`, visit the [documentation](http
 
 ### Isn't serving static files from Python horribly inefficient?
 
-The short answer to this is that if you care about performance and efficiency then you should be using `ServeStatic` behind a CDN like CloudFront. Due to the caching headers `ServeStatic` sends, the vast majority of static requests will be served directly by the CDN without touching your application, so it really doesn't make much difference how efficient `ServeStatic` is.
+The short answer to this is that if you care about performance and efficiency then you should be using `ServeStatic` behind a CDN (such as CloudFront). Due to the caching headers `ServeStatic` sends, the vast majority of static requests will be served directly by the CDN without touching your application, so it really doesn't make much difference how efficient `ServeStatic` is.
 
 That said, `ServeStatic` is pretty efficient. Because it only has to serve a fixed set of files it does all the work of finding files and determining the correct headers upfront on initialization. Requests can then be served with little more than a dictionary lookup to find the appropriate response. Also, when used with gunicorn (and most other WSGI servers) the actual business of pushing the file down the network interface is handled by the kernel's very efficient `sendfile` syscall, not by Python.
 
@@ -51,7 +51,7 @@ The second problem with a push-based approach to handling static files is that i
 
 ### What's the point in `ServeStatic` when I can use `apache`/`nginx`?
 
-There are two answers here. One is that ServeStatic is designed to work in situations where `apache`, `nginx`, and the like aren't easily available. But more importantly, it's easy to underestimate what's involved in serving static files correctly. Does your few lines of nginx configuration distinguish between files which might change and files which will never change and set the cache headers appropriately? Did you add the right CORS headers so that your fonts load correctly when served via a CDN? Did you turn on the special nginx setting which allows it to send gzip content in response to an `HTTP/1.0` request, which for some reason CloudFront still uses? Did you install support for zstd or brotli to support compression on modern browsers?
+There are two answers here. One is that ServeStatic is designed to work in situations where `apache`, `nginx`, and the like aren't easily available. But more importantly, it's easy to underestimate what's involved in serving static files correctly. Does your few lines of nginx configuration distinguish between files which might change and files which will never change and set the cache headers appropriately? Did you add the right CORS headers so that your fonts load correctly when served via a CDN? Did you turn on the special nginx setting which allows it to send gzip content in response to an `HTTP/1.0` request? Did you install, enable, and configure support for zstd and brotli compression?
 
 None of this is rocket science, but it's fiddly and annoying and `ServeStatic` takes care of all it for you.
 

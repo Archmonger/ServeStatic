@@ -108,6 +108,16 @@ The W3C [explicitly state](https://www.w3.org/TR/cors/#security) that this behav
 
 ---
 
+## `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`
+
+**Default:** `False`
+
+Controls whether symlinks that resolve outside configured static roots are allowed.
+
+By default, ServeStatic blocks symlink breakout so requests cannot escape the configured static directory tree. Set this to `True` only if you intentionally depend on symlinks that point outside your static roots and you trust those links.
+
+---
+
 ## `SERVESTATIC_SKIP_COMPRESS_EXTENSIONS`
 
 **Default:** `('jpg', 'jpeg', 'png', 'gif', 'webp','zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'zstd', 'swf', 'flv', 'woff', 'woff2')`

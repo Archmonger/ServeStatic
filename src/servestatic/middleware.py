@@ -81,6 +81,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         add_headers_function = getattr(settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None)
         self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
+        allow_unsafe_symlinks = getattr(settings, "SERVESTATIC_ALLOW_UNSAFE_SYMLINKS", False)
         self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", debug)
         self.use_manifest = getattr(
             settings,
@@ -102,6 +103,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             add_headers_function=add_headers_function,
             index_file=self.index_file,
             immutable_file_test=immutable_file_test,
+            allow_unsafe_symlinks=allow_unsafe_symlinks,
         )
 
         # Set the static prefix
@@ -162,7 +164,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         return http_response
 
     def add_files_from_finders(self):
-        files: dict[str, str] = {}
+        files: dict[str, tuple[str, str | None]] = {}
         for finder in finders.get_finders():
             for path, storage in finder.list(None):
                 prefix = (getattr(storage, "prefix", None) or "").strip("/")
@@ -173,12 +175,12 @@ class ServeStaticMiddleware(ServeStaticBase):
                     path.replace("\\", "/"),
                 ))
                 # Use setdefault as only first matching file should be used
-                files.setdefault(url, storage.path(path))
+                files.setdefault(url, (storage.path(path), getattr(storage, "location", None)))
                 self.insert_directory(storage.location, self.static_prefix)
 
-        stat_cache = stat_files(files.values())
-        for url, path in files.items():
-            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+        stat_cache = stat_files([path for path, _root in files.values()])
+        for url, (path, root) in files.items():
+            self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
@@ -200,12 +202,14 @@ class ServeStaticMiddleware(ServeStaticBase):
                 self.add_file_to_dictionary(
                     f"{self.static_prefix}{original_name}",
                     staticfiles_storage.path(original_name),
+                    root=staticfiles_storage.location,
                     stat_cache=stat_cache,
                 )
             # Add the hashed file
             self.add_file_to_dictionary(
                 f"{self.static_prefix}{hashed_name}",
                 staticfiles_storage.path(hashed_name),
+                root=staticfiles_storage.location,
                 stat_cache=stat_cache,
             )
 

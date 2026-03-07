@@ -396,6 +396,7 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_STATIC_PREFIX": 5}, "servestatic.E026"),
         ({"SERVESTATIC_KEEP_ONLY_HASHED_FILES": "yes"}, "servestatic.E027"),
         ({"SERVESTATIC_MANIFEST_STRICT": "yes"}, "servestatic.E028"),
+        ({"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": "yes"}, "servestatic.E029"),
     ],
 )
 def test_django_check_reports_invalid_setting_types(overrides, error_id):
@@ -420,6 +421,7 @@ def test_django_check_reports_invalid_setting_types(overrides, error_id):
         {"SERVESTATIC_IMMUTABLE_FILE_TEST": r"^.+\\.[0-9a-f]{12}\\..+$"},
         {"SERVESTATIC_IMMUTABLE_FILE_TEST": lambda *_: True},
         {"SERVESTATIC_STATIC_PREFIX": "/static/"},
+        {"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": True},
     ],
 )
 def test_django_check_accepts_valid_setting_values(overrides):
@@ -486,6 +488,86 @@ def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_respo
         warnings.simplefilter("always")
         ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
     assert any("checks for ServeStatic are disabled" in str(item.message) for item in caught)
+
+
+def build_symlink_escape_fixture():
+    tmp_dir = tempfile.mkdtemp()
+    static_dir = os.path.join(tmp_dir, "static")
+    os.makedirs(static_dir, exist_ok=True)
+
+    outside_content = b"outside-file-marker"
+    outside_path = os.path.join(tmp_dir, "outside.txt")
+    with open(outside_path, "wb") as outside_file:
+        outside_file.write(outside_content)
+
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+        os.symlink(outside_path, link_path)
+    except (OSError, NotImplementedError):
+        shutil.rmtree(tmp_dir)
+        pytest.skip("Symlink creation is unavailable in this environment")
+
+    return tmp_dir, static_dir
+
+
+def build_dummy_request(path):
+    request_class = type(
+        "DummyRequest",
+        (),
+        {
+            "path_info": path,
+            "method": "GET",
+            "META": {"HTTP_ACCEPT_ENCODING": "identity"},
+            "path": path,
+        },
+    )
+    return request_class()
+
+
+def test_middleware_blocks_symlink_escape_by_default(async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is None
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+def test_middleware_can_enable_symlink_escape(async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_ALLOW_UNSAFE_SYMLINKS = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is not None
+        assert response.status_code == 200
+    finally:
+        shutil.rmtree(tmp_dir)
 
 
 def test_add_files_from_manifest_raises_when_storage_has_no_manifest(async_middleware_response):

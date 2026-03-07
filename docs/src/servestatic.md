@@ -91,6 +91,16 @@ The W3C [explicitly state](https://www.w3.org/TR/cors/#security) that this behav
 
 ---
 
+### `allow_unsafe_symlinks`
+
+**Default:** `False`
+
+Controls whether symlinks that resolve outside configured static roots are allowed.
+
+By default, ServeStatic blocks symlink breakout so requests cannot escape the configured static directory tree. Set this to `True` only if you intentionally depend on symlinks that point outside your static roots and you trust those links.
+
+---
+
 ### `add_headers_function`
 
 **Default:** `None`

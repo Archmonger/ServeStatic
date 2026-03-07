@@ -209,5 +209,6 @@ def check_setting_configuration(app_configs, **kwargs):
     errors.extend(_validate_servestatic_static_prefix())
     errors.extend(_validate_bool_setting("SERVESTATIC_KEEP_ONLY_HASHED_FILES", "servestatic.E027"))
     errors.extend(_validate_bool_setting("SERVESTATIC_MANIFEST_STRICT", "servestatic.E028"))
+    errors.extend(_validate_bool_setting("SERVESTATIC_ALLOW_UNSAFE_SYMLINKS", "servestatic.E029"))
 
     return errors

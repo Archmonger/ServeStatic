@@ -22,6 +22,7 @@ Don't forget to remove deprecated code on each major release!
 - Added support for `zstd` compression on Python 3.14+.
 - Added support for the top-level `servestatic` module to run as a Django app.
 - Added Django system checks to test for common misconfigurations.
+- Added a new `allow_unsafe_symlinks` configuration option for WSGI/ASGI and `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS` for Django.
 
 ### Changed
 
@@ -36,6 +37,7 @@ Don't forget to remove deprecated code on each major release!
 ### Security
 
 - Hardened `autorefresh` path matching to prevent potential path traversal or path clobbering.
+- Hardened static file resolution to block symlink breakout outside configured static roots by default. This behavior can be disabled for trusted deployments using `allow_unsafe_symlinks` / `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`.
 
 ## [4.0.0] - 2026-03-05
 
