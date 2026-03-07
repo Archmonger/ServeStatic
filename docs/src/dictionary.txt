@@ -40,3 +40,4 @@ formatters
 misconfigurations
 encodings
 symlink
+symlinks
