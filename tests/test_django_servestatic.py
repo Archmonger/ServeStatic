@@ -490,6 +490,23 @@ def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_respo
     assert any("checks for ServeStatic are disabled" in str(item.message) for item in caught)
 
 
+def test_middleware_does_not_warn_for_legacy_servestatic_app(async_middleware_response):
+    class Settings:
+        DEBUG = True
+        INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert all("checks for ServeStatic are disabled" not in str(item.message) for item in caught)
+
+
 def build_symlink_escape_fixture():
     tmp_dir = tempfile.mkdtemp()
     static_dir = os.path.join(tmp_dir, "static")
@@ -566,6 +583,32 @@ def test_middleware_can_enable_symlink_escape(async_middleware_response):
         response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
         assert response is not None
         assert response.status_code == 200
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+def test_middleware_blocks_finder_symlink_escape_in_autorefresh(monkeypatch, async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        middleware.use_finders = True
+        monkeypatch.setattr(middleware_module.finders, "find", lambda _path: link_path)
+
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is None
     finally:
         shutil.rmtree(tmp_dir)
 

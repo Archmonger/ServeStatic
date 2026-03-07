@@ -155,14 +155,16 @@ class ServeStaticBase:
                     yield path
 
     def path_within_root(self, root, path):
-        normalized_root = root.rstrip(os.path.sep) or root
-        if not self._path_is_within(normalized_root, path):
+        normalized_root = os.path.normpath(os.fspath(root))
+        normalized_path = os.path.normpath(os.fspath(path))
+
+        if not self._path_is_within(normalized_root, normalized_path):
             return False
         if getattr(self, "allow_unsafe_symlinks", False):
             return True
 
         resolved_root = os.path.realpath(normalized_root)
-        resolved_path = os.path.realpath(path)
+        resolved_path = os.path.realpath(normalized_path)
         return self._path_is_within(resolved_root, resolved_path)
 
     @staticmethod

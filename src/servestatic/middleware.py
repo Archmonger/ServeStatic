@@ -36,7 +36,12 @@ __all__ = ["ServeStaticMiddleware"]
 
 GetResponseCallable = Callable[[HttpRequest], Awaitable[object]]
 
-SERVESTATIC_APP_PATHS = frozenset({"servestatic", "servestatic.apps.ServeStaticConfig"})
+SERVESTATIC_APP_PATHS = frozenset({
+    "servestatic",
+    "servestatic.apps.ServeStaticConfig",
+    "servestatic.runserver_nostatic",
+    "servestatic.runserver_nostatic.apps.ServeStaticRunserverNoStaticAliasConfig",
+})
 
 
 def has_servestatic_app(installed_apps) -> bool:
@@ -45,6 +50,10 @@ def has_servestatic_app(installed_apps) -> bool:
 
 def is_async_callable(value) -> bool:
     return iscoroutinefunction(value) or (callable(value) and iscoroutinefunction(value.__call__))
+
+
+def finder_path_is_allowed(directories, url, path, path_within_root) -> bool:
+    return any(root and url.startswith(prefix) and path_within_root(root, path) for root, prefix in directories)
 
 
 class ServeStaticMiddleware(ServeStaticBase):
@@ -223,7 +232,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             path = url2pathname(relative_url)
             normalized_path = normpath(path).lstrip("/")
             path = finders.find(normalized_path)
-            if path:
+            if path and finder_path_is_allowed(self.directories, url, path, self.path_within_root):
                 yield path
         yield from super().candidate_paths_for_url(url)
 

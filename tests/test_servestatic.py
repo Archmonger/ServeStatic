@@ -457,6 +457,18 @@ def test_path_is_within_returns_false_when_commonpath_raises_value_error():
     assert not DummyServeStaticBase._path_is_within("/tmp/root", "relative/path")
 
 
+def test_path_within_root_normalizes_drive_root_separator(monkeypatch):
+    app = DummyServeStaticBase(None)
+
+    def fake_path_is_within(root, path):
+        return root == "C:\\" and path.startswith("C:\\")
+
+    monkeypatch.setattr(app, "_path_is_within", fake_path_is_within)
+    monkeypatch.setattr(os.path, "realpath", lambda value: value)
+
+    assert app.path_within_root("C:\\", "C:\\static\\file.js")
+
+
 def test_is_compressed_variant_detects_zstd_suffix_with_cache():
     cache = {"/tmp/app.js": fake_stat_entry(st_mtime=1)}
     assert DummyServeStaticBase.is_compressed_variant("/tmp/app.js.zstd", stat_cache=cache)
