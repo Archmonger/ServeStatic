@@ -3,11 +3,15 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import warnings
+from collections.abc import Awaitable, Callable
+from inspect import iscoroutinefunction
 from posixpath import basename, normpath
+from typing import cast
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+from asgiref.sync import markcoroutinefunction
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import (
@@ -30,6 +34,27 @@ from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
+GetResponseCallable = Callable[[HttpRequest], Awaitable[object]]
+
+SERVESTATIC_APP_PATHS = frozenset({
+    "servestatic",
+    "servestatic.apps.ServeStaticConfig",
+    "servestatic.runserver_nostatic",
+    "servestatic.runserver_nostatic.apps.ServeStaticRunserverNoStaticAliasConfig",
+})
+
+
+def has_servestatic_app(installed_apps) -> bool:
+    return bool(set(installed_apps) & SERVESTATIC_APP_PATHS)
+
+
+def is_async_callable(value) -> bool:
+    return iscoroutinefunction(value) or (callable(value) and iscoroutinefunction(value.__call__))
+
+
+def finder_path_is_allowed(directories, url, path, path_within_root) -> bool:
+    return any(root and url.startswith(prefix) and path_within_root(root, path) for root, prefix in directories)
+
 
 class ServeStaticMiddleware(ServeStaticBase):
     """
@@ -39,15 +64,24 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     async_capable = True
     sync_capable = False
+    get_response: GetResponseCallable
 
     def __init__(self, get_response=None, settings=django_settings):
-        if not iscoroutinefunction(get_response):
+        if not is_async_callable(get_response):
             msg = "ServeStaticMiddleware requires an async compatible version of Django."
             raise ValueError(msg)
         markcoroutinefunction(self)
 
-        self.get_response = get_response
+        installed_apps = getattr(settings, "INSTALLED_APPS", [])
         debug = settings.DEBUG
+        if debug and installed_apps and not has_servestatic_app(installed_apps):
+            warnings.warn(
+                "Django checks for ServeStatic are disabled because 'servestatic' is not in "
+                "INSTALLED_APPS. Add 'servestatic' to enable configuration checks.",
+                stacklevel=2,
+            )
+
+        self.get_response = cast("GetResponseCallable", get_response)
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
@@ -56,6 +90,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         add_headers_function = getattr(settings, "SERVESTATIC_ADD_HEADERS_FUNCTION", None)
         self.index_file = getattr(settings, "SERVESTATIC_INDEX_FILE", None)
         immutable_file_test = getattr(settings, "SERVESTATIC_IMMUTABLE_FILE_TEST", None)
+        allow_unsafe_symlinks = getattr(settings, "SERVESTATIC_ALLOW_UNSAFE_SYMLINKS", False)
         self.use_finders = getattr(settings, "SERVESTATIC_USE_FINDERS", debug)
         self.use_manifest = getattr(
             settings,
@@ -77,6 +112,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             add_headers_function=add_headers_function,
             index_file=self.index_file,
             immutable_file_test=immutable_file_test,
+            allow_unsafe_symlinks=allow_unsafe_symlinks,
         )
 
         # Set the static prefix
@@ -116,7 +152,8 @@ class ServeStaticMiddleware(ServeStaticBase):
             current_finders = finders.get_finders()
             app_dirs = [storage.location for finder in current_finders for storage in finder.storages.values()]  # pyright: ignore [reportAttributeAccessIssue]
             app_dirs = "\n• ".join(sorted(app_dirs))
-            msg = f"ServeStatic did not find the file '{request.path.lstrip(django_settings.STATIC_URL)}' within the following paths:\n• {app_dirs}"
+            missing_path = request.path.removeprefix(django_settings.STATIC_URL)
+            msg = f"ServeStatic did not find the file '{missing_path}' within the following paths:\n• {app_dirs}"
             raise MissingFileError(msg)
 
         return await self.get_response(request)
@@ -136,7 +173,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         return http_response
 
     def add_files_from_finders(self):
-        files: dict[str, str] = {}
+        files: dict[str, tuple[str, str | None]] = {}
         for finder in finders.get_finders():
             for path, storage in finder.list(None):
                 prefix = (getattr(storage, "prefix", None) or "").strip("/")
@@ -147,12 +184,12 @@ class ServeStaticMiddleware(ServeStaticBase):
                     path.replace("\\", "/"),
                 ))
                 # Use setdefault as only first matching file should be used
-                files.setdefault(url, storage.path(path))
+                files.setdefault(url, (storage.path(path), getattr(storage, "location", None)))
                 self.insert_directory(storage.location, self.static_prefix)
 
-        stat_cache = stat_files(files.values())
-        for url, path in files.items():
-            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+        stat_cache = stat_files([path for path, _root in files.values()])
+        for url, (path, root) in files.items():
+            self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
     def add_files_from_manifest(self):
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
@@ -174,12 +211,14 @@ class ServeStaticMiddleware(ServeStaticBase):
                 self.add_file_to_dictionary(
                     f"{self.static_prefix}{original_name}",
                     staticfiles_storage.path(original_name),
+                    root=staticfiles_storage.location,
                     stat_cache=stat_cache,
                 )
             # Add the hashed file
             self.add_file_to_dictionary(
                 f"{self.static_prefix}{hashed_name}",
                 staticfiles_storage.path(hashed_name),
+                root=staticfiles_storage.location,
                 stat_cache=stat_cache,
             )
 
@@ -193,7 +232,7 @@ class ServeStaticMiddleware(ServeStaticBase):
             path = url2pathname(relative_url)
             normalized_path = normpath(path).lstrip("/")
             path = finders.find(normalized_path)
-            if path:
+            if path and finder_path_is_allowed(self.directories, url, path, self.path_within_root):
                 yield path
         yield from super().candidate_paths_for_url(url)
 

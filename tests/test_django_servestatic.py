@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import html
+import importlib
+import importlib.util
+import os
 import shutil
 import tempfile
-from contextlib import closing
+import warnings
+from contextlib import closing, suppress
 from pathlib import Path
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import brotli
@@ -14,14 +19,18 @@ import pytest
 from asgiref.testing import ApplicationCommunicator
 from django.conf import settings
 from django.contrib.staticfiles import finders, storage
+from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
 from django.core.asgi import get_asgi_application
+from django.core.checks import run_checks
 from django.core.management import call_command
 from django.core.wsgi import get_wsgi_application
 from django.templatetags.static import static
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
+import servestatic.middleware as middleware_module
 from servestatic.middleware import AsyncServeStaticFileResponse, ServeStaticMiddleware
+from servestatic.storage import CompressedManifestStaticFilesStorage
 from servestatic.utils import AsyncFile
 
 from .utils import (
@@ -32,6 +41,14 @@ from .utils import (
     AsgiSendEmulator,
     Files,
 )
+
+stdlib_zstd: Any | None
+with suppress(ModuleNotFoundError):
+    if importlib.util.find_spec("compression.zstd") is not None:
+        stdlib_zstd = importlib.import_module("compression.zstd")
+
+if "stdlib_zstd" not in globals():  # pragma: no cover
+    stdlib_zstd = None
 
 
 def reset_lazy_object(obj):
@@ -85,6 +102,14 @@ def server(application):
     app_server = AppServer(application)
     with closing(app_server):
         yield app_server
+
+
+@pytest.fixture
+def async_middleware_response():
+    async def _get_response(_request):  # noqa: RUF029
+        return None
+
+    return _get_response
 
 
 @pytest.mark.usefixtures("_collect_static")
@@ -174,6 +199,43 @@ def test_get_brotli(server, static_files):
     assert response.content == static_files.js_content
     assert response.headers["Content-Encoding"] == "br"
     assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_get_zstd(asgi_application, static_files):
+    assert stdlib_zstd is not None
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"zstd")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(AsgiAppServer(asgi_application)(scope, receive, send))
+    assert stdlib_zstd.decompress(send.body) == static_files.js_content
+    assert send.headers.get(b"Content-Encoding") == b"zstd"
+    assert send.headers.get(b"Vary") == b"Accept-Encoding"
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
+@pytest.mark.usefixtures("_collect_static")
+def test_asgi_get_zstd_2(asgi_application, static_files):
+    assert stdlib_zstd is not None
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    scope = AsgiHttpScopeEmulator({"path": url, "headers": [(b"accept-encoding", b"zstd")]})
+
+    async def executor():
+        communicator = ApplicationCommunicator(asgi_application, scope)
+        await communicator.send_input(scope)
+        response_start = await communicator.receive_output()
+        response_body = await communicator.receive_output()
+        return response_start | response_body
+
+    response = asyncio.run(executor())
+    headers = dict(response["headers"])
+    assert stdlib_zstd.decompress(response["body"]) == static_files.js_content
+    assert headers.get(b"Content-Encoding") == b"zstd"
+    assert headers.get(b"Vary") == b"Accept-Encoding"
 
 
 @pytest.mark.usefixtures("_collect_static")
@@ -287,6 +349,423 @@ def test_servestatic_file_response_has_only_one_header():
     assert headers == {"content-type"}
 
 
+def test_async_serve_static_file_response_set_headers_noop():
+    response = AsyncServeStaticFileResponse(AsyncFile(__file__, "rb"))
+    try:
+        assert response.set_headers("ignored") is None
+    finally:
+        response.close()
+
+
+def test_middleware_requires_async_get_response():
+    with pytest.raises(ValueError, match="async compatible"):
+        ServeStaticMiddleware(get_response=lambda request: None)
+
+
+@override_settings(MIDDLEWARE=["django.middleware.gzip.GZipMiddleware", "servestatic.middleware.ServeStaticMiddleware"])
+def test_django_check_reports_gzip_middleware_order_error():
+    errors = [error for error in run_checks() if error.id == "servestatic.E001"]
+    assert len(errors) == 1
+
+
+@override_settings(MIDDLEWARE=["servestatic.middleware.ServeStaticMiddleware", "django.middleware.gzip.GZipMiddleware"])
+def test_django_check_accepts_correct_gzip_middleware_order():
+    errors = [error for error in run_checks() if error.id == "servestatic.E001"]
+    assert not errors
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error_id"),
+    [
+        ({"SERVESTATIC_ROOT": 123}, "servestatic.E010"),
+        ({"SERVESTATIC_AUTOREFRESH": "true"}, "servestatic.E011"),
+        ({"SERVESTATIC_USE_MANIFEST": "yes"}, "servestatic.E012"),
+        ({"SERVESTATIC_USE_FINDERS": "yes"}, "servestatic.E013"),
+        ({"SERVESTATIC_MAX_AGE": -1}, "servestatic.E014"),
+        ({"SERVESTATIC_INDEX_FILE": ""}, "servestatic.E015"),
+        ({"SERVESTATIC_MIMETYPES": {".foo": 1}}, "servestatic.E016"),
+        ({"SERVESTATIC_CHARSET": ""}, "servestatic.E017"),
+        ({"SERVESTATIC_ALLOW_ALL_ORIGINS": "yes"}, "servestatic.E018"),
+        ({"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": "jpg,png"}, "servestatic.E019"),
+        ({"SERVESTATIC_USE_ZSTD": "yes"}, "servestatic.E020"),
+        ({"SERVESTATIC_ZSTD_DICTIONARY": 123}, "servestatic.E021"),
+        ({"SERVESTATIC_ZSTD_DICTIONARY_IS_RAW": "yes"}, "servestatic.E022"),
+        ({"SERVESTATIC_ZSTD_LEVEL": True}, "servestatic.E023"),
+        ({"SERVESTATIC_ADD_HEADERS_FUNCTION": "not-callable"}, "servestatic.E024"),
+        ({"SERVESTATIC_IMMUTABLE_FILE_TEST": "("}, "servestatic.E025"),
+        ({"SERVESTATIC_STATIC_PREFIX": 5}, "servestatic.E026"),
+        ({"SERVESTATIC_KEEP_ONLY_HASHED_FILES": "yes"}, "servestatic.E027"),
+        ({"SERVESTATIC_MANIFEST_STRICT": "yes"}, "servestatic.E028"),
+        ({"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": "yes"}, "servestatic.E029"),
+    ],
+)
+def test_django_check_reports_invalid_setting_types(overrides, error_id):
+    with override_settings(**overrides):
+        errors = [error for error in run_checks() if error.id == error_id]
+    assert len(errors) == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"SERVESTATIC_ROOT": Path(".")},
+        {"SERVESTATIC_MAX_AGE": None},
+        {"SERVESTATIC_INDEX_FILE": True},
+        {"SERVESTATIC_INDEX_FILE": "index.html"},
+        {"SERVESTATIC_MIMETYPES": {"special-file": "text/plain"}},
+        {"SERVESTATIC_CHARSET": "utf-8"},
+        {"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": ["jpg", "png"]},
+        {"SERVESTATIC_ZSTD_DICTIONARY": b"dict-bytes"},
+        {"SERVESTATIC_ZSTD_LEVEL": 3},
+        {"SERVESTATIC_ADD_HEADERS_FUNCTION": lambda *_: None},
+        {"SERVESTATIC_IMMUTABLE_FILE_TEST": r"^.+\\.[0-9a-f]{12}\\..+$"},
+        {"SERVESTATIC_IMMUTABLE_FILE_TEST": lambda *_: True},
+        {"SERVESTATIC_STATIC_PREFIX": "/static/"},
+        {"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": True},
+    ],
+)
+def test_django_check_accepts_valid_setting_values(overrides):
+    with override_settings(**overrides):
+        errors = [
+            error
+            for error in run_checks()
+            if error.id and error.id.startswith("servestatic.E0") and error.id != "servestatic.E001"
+        ]
+    assert not errors
+
+
+def test_django_check_reports_skip_compress_extensions_non_string_items():
+    with override_settings(SERVESTATIC_SKIP_COMPRESS_EXTENSIONS=["jpg", 1]):
+        errors = [error for error in run_checks() if error.id == "servestatic.E019"]
+    assert len(errors) == 1
+
+
+def test_django_check_reports_mimetypes_non_mapping_value():
+    with override_settings(SERVESTATIC_MIMETYPES=[(".foo", "text/plain")]):
+        errors = [error for error in run_checks() if error.id == "servestatic.E016"]
+    assert len(errors) == 1
+
+
+def test_django_check_reports_mimetypes_non_string_key():
+    with override_settings(SERVESTATIC_MIMETYPES={1: "text/plain"}):
+        errors = [error for error in run_checks() if error.id == "servestatic.E016"]
+    assert len(errors) == 1
+
+
+def test_django_check_accepts_boolean_setting_values():
+    with override_settings(SERVESTATIC_AUTOREFRESH=True):
+        errors = [error for error in run_checks() if error.id == "servestatic.E011"]
+    assert not errors
+
+
+@pytest.mark.skipif(stdlib_zstd is None, reason="Python 3.14+ zstd module required")
+def test_django_check_accepts_zstd_dictionary_object():
+    assert stdlib_zstd is not None
+    dictionary = stdlib_zstd.ZstdDict(b"servestatic-checks-dict", is_raw=True)
+    with override_settings(SERVESTATIC_ZSTD_DICTIONARY=dictionary):
+        errors = [error for error in run_checks() if error.id == "servestatic.E021"]
+    assert not errors
+
+
+def test_django_check_reports_immutable_file_test_invalid_type():
+    with override_settings(SERVESTATIC_IMMUTABLE_FILE_TEST=object()):
+        errors = [error for error in run_checks() if error.id == "servestatic.E025"]
+    assert len(errors) == 1
+
+
+def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_response):
+    class Settings:
+        DEBUG = True
+        INSTALLED_APPS = ["some.other.app", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert any("checks for ServeStatic are disabled" in str(item.message) for item in caught)
+
+
+def test_middleware_does_not_warn_for_legacy_servestatic_app(async_middleware_response):
+    class Settings:
+        DEBUG = True
+        INSTALLED_APPS = ["servestatic.runserver_nostatic", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert all("checks for ServeStatic are disabled" not in str(item.message) for item in caught)
+
+
+def build_symlink_escape_fixture():
+    tmp_dir = tempfile.mkdtemp()
+    static_dir = os.path.join(tmp_dir, "static")
+    os.makedirs(static_dir, exist_ok=True)
+
+    outside_content = b"outside-file-marker"
+    outside_path = os.path.join(tmp_dir, "outside.txt")
+    with open(outside_path, "wb") as outside_file:
+        outside_file.write(outside_content)
+
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+        os.symlink(outside_path, link_path)
+    except (OSError, NotImplementedError):
+        shutil.rmtree(tmp_dir)
+        pytest.skip("Symlink creation is unavailable in this environment")
+
+    return tmp_dir, static_dir
+
+
+def build_dummy_request(path):
+    request_class = type(
+        "DummyRequest",
+        (),
+        {
+            "path_info": path,
+            "method": "GET",
+            "META": {"HTTP_ACCEPT_ENCODING": "identity"},
+            "path": path,
+        },
+    )
+    return request_class()
+
+
+def test_middleware_blocks_symlink_escape_by_default(async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is None
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+def test_middleware_can_enable_symlink_escape(async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_ALLOW_UNSAFE_SYMLINKS = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is not None
+        assert response.status_code == 200
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+def test_middleware_blocks_finder_symlink_escape_in_autorefresh(monkeypatch, async_middleware_response):
+    tmp_dir, static_dir = build_symlink_escape_fixture()
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+
+        class Settings:
+            DEBUG = False
+            INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+            SERVESTATIC_ROOT = static_dir
+            SERVESTATIC_AUTOREFRESH = True
+            SERVESTATIC_USE_MANIFEST = False
+            SERVESTATIC_USE_FINDERS = False
+            SERVESTATIC_STATIC_PREFIX = "/"
+            STATIC_URL = "/"
+            STATIC_ROOT = None
+
+        middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+        middleware.use_finders = True
+        monkeypatch.setattr(middleware_module.finders, "find", lambda _path: link_path)
+
+        response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
+        assert response is None
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+def test_add_files_from_manifest_raises_when_storage_has_no_manifest(async_middleware_response):
+    class Settings:
+        DEBUG = False
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = True
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+
+    original_storage = middleware_module.staticfiles_storage
+    middleware_module.staticfiles_storage = object()
+    try:
+        with pytest.raises(TypeError, match="not using a manifest"):
+            ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    finally:
+        middleware_module.staticfiles_storage = original_storage
+
+
+def test_add_files_from_manifest_uses_manifest_stats_and_handles_empty_location(monkeypatch):
+    class DummyCompressedStorage(CompressedManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+        def load_manifest_stats(self):
+            return {
+                "app.js": tuple(os.stat(__file__)),
+                "app.abc123.js": tuple(os.stat(__file__)),
+            }
+
+    storage_instance = DummyCompressedStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    inserted_dirs = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: inserted_dirs.append((args, kwargs))
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    stat_cache = added_files[0][1]["stat_cache"]
+    assert isinstance(stat_cache["/tmp/app.js"], os.stat_result)
+    assert not inserted_dirs
+
+
+def test_add_files_from_manifest_uses_none_stat_cache_when_not_compressed_storage(monkeypatch):
+    class DummyManifestStorage(ManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+    storage_instance = DummyManifestStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: None
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    assert added_files[0][1]["stat_cache"] is None
+
+
+def test_add_files_from_manifest_ignores_empty_manifest_stats(monkeypatch):
+    class DummyCompressedStorage(CompressedManifestStaticFilesStorage):
+        def __init__(self):
+            pass
+
+        hashed_files = {"app.js": "app.abc123.js"}
+        location = ""
+
+        def path(self, name):
+            return f"/tmp/{name}"
+
+        def load_manifest_stats(self):
+            return {}
+
+    storage_instance = DummyCompressedStorage()
+    monkeypatch.setattr(middleware_module, "staticfiles_storage", storage_instance)
+
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.static_prefix = "/static/"
+    middleware.keep_only_hashed_files = False
+    middleware.directories = []
+
+    added_files = []
+    middleware.add_file_to_dictionary = lambda *args, **kwargs: added_files.append((args, kwargs))
+    middleware.insert_directory = lambda *args, **kwargs: None
+
+    middleware.add_files_from_manifest()
+
+    assert len(added_files) == 2
+    assert added_files[0][1]["stat_cache"] is None
+
+
+def test_middleware_adds_files_from_static_root_when_manifest_and_finders_disabled(tmp_path, async_middleware_response):
+    asset_path = tmp_path / "app.js"
+    asset_path.write_text("console.log('ok')", encoding="utf-8")
+
+    class Settings:
+        DEBUG = False
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = str(tmp_path)
+
+    middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert "/static/app.js" in middleware.files
+
+
+def test_candidate_paths_for_url_finder_miss_still_falls_back(monkeypatch):
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.use_finders = True
+    middleware.static_prefix = "/static/"
+    middleware.directories = []
+    monkeypatch.setattr(middleware_module.finders, "find", lambda path: None)
+    assert not list(middleware.candidate_paths_for_url("/static/file.js"))
+
+
+def test_candidate_paths_for_url_skips_finders_when_disabled(tmp_path):
+    middleware = object.__new__(ServeStaticMiddleware)
+    middleware.use_finders = False
+    middleware.static_prefix = "/static/"
+    middleware.directories = [(str(tmp_path) + os.sep, "/static/")]
+    paths = list(middleware.candidate_paths_for_url("/static/file.js"))
+    assert paths == [os.path.join(str(tmp_path) + os.sep, "file.js")]
+
+
 @override_settings(STATIC_URL="static/")
 @pytest.mark.usefixtures("_collect_static")
 def test_relative_static_url(server, static_files):
@@ -318,6 +797,16 @@ def test_error_message(server):
     assert str(Path(__file__).parent / "test_files" / "static") in response_content
 
 
+@override_settings(DEBUG=True)
+def test_error_message_preserves_missing_path_after_prefix(server):
+    response = server.get(f"{settings.STATIC_URL}static.css")
+    response_content = str(response.content.decode())
+    response_content = html.unescape(response_content)
+    response_content = response_content[response_content.index("ServeStatic") :]
+
+    assert "ServeStatic did not find the file 'static.css' within the following paths:" in response_content
+
+
 @override_settings(FORCE_SCRIPT_NAME="/subdir", STATIC_URL="static/")
 @pytest.mark.usefixtures("_collect_static")
 def test_force_script_name(server, static_files):
@@ -340,18 +829,12 @@ def test_force_script_name_with_matching_static_url(server, static_files):
 
 @pytest.mark.usefixtures("_collect_static")
 def test_range_response(server, static_files):
-    ...
-    # FIXME: This test is not working, seemingly due to bugs with AppServer.
-
-    # url = storage.staticfiles_storage.url(static_files.js_path)
-    # response = server.get(url, headers={"Range": "bytes=0-13"})
-    # assert response.content == static_files.js_content[:14]
-    # assert response.status_code == 206
-    # assert (
-    #     response.headers["Content-Range"]
-    #     == f"bytes 0-13/{len(static_files.js_content)}"
-    # )
-    # assert response.headers["Content-Length"] == "14"
+    url = storage.staticfiles_storage.url(static_files.js_path)
+    response = server.get(url, headers={"Range": "bytes=0-13", "Accept-Encoding": "identity"})
+    assert response.content == static_files.js_content[:14]
+    assert response.status_code == 206
+    assert response.headers["Content-Range"] == f"bytes 0-13/{len(static_files.js_content)}"
+    assert response.headers["Content-Length"] == "14"
 
 
 @pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")

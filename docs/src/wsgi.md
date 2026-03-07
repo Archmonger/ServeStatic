@@ -12,7 +12,13 @@ application = ServeStatic(application, root="/path/to/static/files")
 application.add_files("/path/to/more/static/files", prefix="more-files/")
 ```
 
-If you would rather use ServeStatic as a standalone file server, you can simply not provide a WSGI app, such as via `#!python ServeStatic(None, root="/path/to/static/files")`.
+Alternatively, you can use ServeStatic as a standalone file server by not providing a WSGI app. For example:
+
+```python
+from servestatic import ServeStatic
+
+application = ServeStatic(None, root="/path/to/static/files")
+```
 
 <!--shared-desc-start-->
 
@@ -20,6 +26,10 @@ On initialization, ServeStatic walks over all the files in the directories that 
 
 <!--shared-desc-end-->
 
-After configuring ServeStatic, you can use your favourite WSGI server (such as [`gunicorn`](https://gunicorn.org/), [`waitress`](https://pypi.org/project/waitress/), or [`nginx-unit`](https://unit.nginx.org/)) to run your application.
+After configuring ServeStatic, you can use your favourite WSGI server (such as [`gunicorn`](https://gunicorn.org/) or [`waitress`](https://pypi.org/project/waitress/)) to run your application.
+
+```bash linenums="0"
+gunicorn my_project:application
+```
 
 See the [API reference documentation](servestatic.md) for detailed usage and features.

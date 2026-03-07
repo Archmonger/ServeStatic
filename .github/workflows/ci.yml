@@ -75,11 +75,11 @@ jobs:
           - ubuntu-latest
           - windows-latest
         python-version:
-          - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
+          - "3.14"
 
     steps:
       - uses: actions/checkout@v4
@@ -101,14 +101,13 @@ jobs:
       - name: Run tests
         run: |
           hatch test --cover --python ${{ matrix.python-version }}
-          mv .coverage ".coverage.py${{ matrix.python-version }}"
+          mv .coverage ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
 
       - name: Upload coverage data
-        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: "coverage-data-py${{ matrix.python-version }}"
-          path: ".coverage.py${{ matrix.python-version }}"
+          name: "coverage ${{ matrix.python-version }} ${{ matrix.os }}"
+          path: ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
@@ -163,11 +162,11 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Combine coverage and fail if it's <95%
+      - name: Combine coverage data and generate report
         run: |
           python -m coverage combine
           python -m coverage html --skip-covered --skip-empty
-          python -m coverage report --fail-under=95
+          python -m coverage report --fail-under=100
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
@@ -204,7 +203,7 @@ jobs:
         if: github.ref_name == 'main'
         run: |
           hatch run docs:deploy_develop
-      - name: Publish Develop Docs
+      - name: Publish Latest Docs
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           hatch run docs:deploy_latest ${{ github.ref_name }}
@@ -240,7 +239,6 @@ jobs:
         run: |
           echo "Version: ${{ steps.query-release-info.outputs.version }}"
           echo "Date: ${{ steps.query-release-info.outputs.release-date }}"
-          echo "${{ steps.query-release-info.outputs.release-notes }}"
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*.tar.gz,dist/*.whl"

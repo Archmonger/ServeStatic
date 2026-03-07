@@ -162,7 +162,7 @@ class StaticFile:
             msg = "Content-Length header is required for range requests"
             raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
-        if start >= end:
+        if start > end:
             return self.get_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = SlicedFile(file_handle, start, end)
@@ -185,7 +185,7 @@ class StaticFile:
             msg = "Content-Length header is required for range requests"
             raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
-        if start >= end:
+        if start > end:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
         if file_handle is not None:
             file_handle = AsyncSlicedFile(file_handle, start, end)
@@ -382,7 +382,7 @@ class FileEntry:
         except KeyError as exc:
             raise MissingFileError(path) from exc
         except OSError as exc:
-            if exc.errno in {errno.ENOENT, errno.ENAMETOOLONG}:
+            if exc.errno in {errno.ENOENT, errno.ENAMETOOLONG, errno.ENOTDIR}:
                 raise MissingFileError(path) from exc
             raise
         if not stat.S_ISREG(stat_result.st_mode):

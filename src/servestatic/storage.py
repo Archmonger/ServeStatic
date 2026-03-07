@@ -8,7 +8,7 @@ import re
 import textwrap
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Union
+from typing import Any
 
 from django.conf import settings
 from django.contrib.staticfiles.storage import (
@@ -20,7 +20,18 @@ from django.core.files.base import ContentFile
 from servestatic.compress import Compressor
 from servestatic.utils import stat_files
 
-_PostProcessT = Iterator[Union[tuple[str, str, bool], tuple[str, None, RuntimeError]]]
+_PostProcessT = Iterator[tuple[str, str, bool] | tuple[str, None, RuntimeError]]
+
+
+def get_compressor_kwargs(*, quiet: bool) -> dict[str, Any]:
+    return {
+        "extensions": getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None),
+        "use_zstd": getattr(settings, "SERVESTATIC_USE_ZSTD", True),
+        "zstd_dict": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY", None),
+        "zstd_dict_is_raw": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY_IS_RAW", False),
+        "zstd_level": getattr(settings, "SERVESTATIC_ZSTD_LEVEL", None),
+        "quiet": quiet,
+    }
 
 
 class CompressedStaticFilesStorage(StaticFilesStorage):
@@ -34,8 +45,7 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
         if dry_run:
             return
 
-        extensions = getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None)
-        self.compressor = compressor = self.create_compressor(extensions=extensions, quiet=True)
+        self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
 
         def _compress_path(path: str) -> list[tuple[str, str, bool]]:
             compressed: list[tuple[str, str, bool]] = []
@@ -182,8 +192,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         return Compressor(**kwargs)
 
     def compress_files(self, paths):
-        extensions = getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None)
-        self.compressor = compressor = self.create_compressor(extensions=extensions, quiet=True)
+        self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
 
         def _compress_path(path: str) -> list[tuple[str, str]]:
             compressed: list[tuple[str, str]] = []

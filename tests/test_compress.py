@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+import servestatic.compress as compress_module
 from servestatic.compress import Compressor
 from servestatic.compress import main as compress_main
 
@@ -72,8 +73,8 @@ def test_custom_log():
 
 
 def test_compress():
-    compressor = Compressor(use_brotli=False, use_gzip=False)
-    assert list(compressor.compress("tests/test_files/static/styles.css")) == []
+    compressor = Compressor(use_brotli=False, use_gzip=False, use_zstd=False)
+    assert not list(compressor.compress("tests/test_files/static/styles.css"))
 
 
 def test_compressed_effectively_no_orig_size():
@@ -89,3 +90,100 @@ def test_main_error(files_dir):
         compress_main([files_dir, "--quiet"])
 
     assert excinfo.value.args == ("woops",)
+
+
+def test_compress_brotli_raises_when_dependency_missing(monkeypatch):
+    monkeypatch.setattr(compress_module, "brotli", None)
+    with pytest.raises(RuntimeError, match="Brotli is not installed"):
+        Compressor.compress_brotli(b"abc")
+
+
+def test_compress_zstd_raises_when_dependency_missing(monkeypatch):
+    monkeypatch.setattr(compress_module, "zstd", None)
+    with pytest.raises(RuntimeError, match="Zstandard is not available"):
+        Compressor.compress_zstd(b"abc")
+
+
+def test_compressor_rejects_dictionary_when_zstd_is_unavailable(monkeypatch):
+    monkeypatch.setattr(compress_module, "zstd", None)
+    with pytest.raises(RuntimeError, match=r"requires Python 3\.14"):
+        Compressor(zstd_dict=b"dict")
+
+
+def test_compress_generates_zstd_with_dictionary(tmp_path, monkeypatch):
+    class FakeZstdDict:
+        def __init__(self, dict_content, is_raw=False):
+            self.dict_content = dict_content
+            self.is_raw = is_raw
+
+    class FakeZstd:
+        def __init__(self):
+            self.last_call = None
+
+        ZstdDict = FakeZstdDict
+
+        def compress(self, data, **kwargs):
+            self.last_call = {"data": data, **kwargs}
+            return b"zstd" + data[:1]
+
+    fake_zstd = FakeZstd()
+    monkeypatch.setattr(compress_module, "zstd", fake_zstd)
+
+    source_path = tmp_path / "styles.css"
+    source_path.write_bytes(b"a" * 1000)
+    dict_path = tmp_path / "dict.bin"
+    dict_path.write_bytes(b"dictionary-bytes")
+
+    compressor = Compressor(
+        use_gzip=False,
+        use_brotli=False,
+        use_zstd=True,
+        zstd_dict=dict_path,
+        zstd_dict_is_raw=True,
+        zstd_level=7,
+        quiet=True,
+    )
+    outputs = compressor.compress(str(source_path))
+
+    assert outputs == [f"{source_path}.zstd"]
+    assert os.path.exists(f"{source_path}.zstd")
+    assert fake_zstd.last_call is not None
+    assert fake_zstd.last_call["level"] == 7
+    assert fake_zstd.last_call["zstd_dict"].dict_content == b"dictionary-bytes"
+    assert fake_zstd.last_call["zstd_dict"].is_raw is True
+
+
+def test_load_zstd_dictionary_raises_when_module_missing(monkeypatch):
+    monkeypatch.setattr(compress_module, "zstd", None)
+    with pytest.raises(RuntimeError, match="Zstandard is not available"):
+        Compressor.load_zstd_dictionary(b"abc")
+
+
+def test_load_zstd_dictionary_from_bytes_uses_zstd_dict(monkeypatch):
+    class FakeZstdDict:
+        def __init__(self, content, is_raw=False):
+            self.content = content
+            self.is_raw = is_raw
+
+    class FakeZstd:
+        ZstdDict = FakeZstdDict
+
+    monkeypatch.setattr(compress_module, "zstd", FakeZstd())
+    loaded = Compressor.load_zstd_dictionary(b"dict-bytes", is_raw=True)
+
+    assert isinstance(loaded, FakeZstdDict)
+    assert loaded.content == b"dict-bytes"
+    assert loaded.is_raw is True
+
+
+def test_load_zstd_dictionary_returns_prebuilt_object(monkeypatch):
+    class FakeZstdDict:
+        pass
+
+    class FakeZstd:
+        ZstdDict = FakeZstdDict
+
+    monkeypatch.setattr(compress_module, "zstd", FakeZstd())
+    sentinel = object()
+
+    assert Compressor.load_zstd_dictionary(sentinel) is sentinel

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import gc
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -130,3 +135,125 @@ def test_large_static_file(application, test_files):
     assert send.body_count == 2
     assert send.headers[b"content-length"] == str(len(test_files.txt_content)).encode()
     assert b"text/plain" in send.headers[b"content-type"]
+
+
+def test_async_file_del_does_not_join_current_thread(test_files, capsys):
+    file_path = str(Path(test_files.directory) / test_files.js_path)
+    holder = {"async_file": servestatic_utils.AsyncFile(file_path, "rb")}
+    executor = holder["async_file"].executor
+
+    def drop_last_reference_from_worker():
+        holder.pop("async_file")
+        gc.collect()
+
+    future = executor.submit(drop_last_reference_from_worker)
+    try:
+        future.result(timeout=5)
+    except concurrent.futures.TimeoutError as e:
+        pytest.fail(f"AsyncFile cleanup deadlocked: {e}")
+    gc.collect()
+
+    assert "cannot join current thread" not in capsys.readouterr().err
+
+
+def test_async_file_read_raises_after_close():
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+    asyncio.run(async_file.close())
+    with pytest.raises(ValueError, match="closed file"):
+        asyncio.run(async_file.read(1))
+
+
+def test_async_file_read_raises_when_lazy_open_returns_none(monkeypatch):
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+
+    async def mock_execute(*_args, **_kwargs):
+        await asyncio.sleep(0)
+
+    monkeypatch.setattr(async_file, "_execute", mock_execute)
+    with pytest.raises(RuntimeError, match="not opened"):
+        asyncio.run(async_file.read(1))
+
+
+def test_async_file_seek_raises_when_lazy_open_returns_none(monkeypatch):
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+
+    async def mock_execute(*_args, **_kwargs):
+        await asyncio.sleep(0)
+
+    monkeypatch.setattr(async_file, "_execute", mock_execute)
+    with pytest.raises(RuntimeError, match="not opened"):
+        asyncio.run(async_file.seek(0))
+
+
+def test_async_file_shutdown_exception_is_ignored(monkeypatch):
+    async_file = servestatic_utils.AsyncFile(__file__, "rb")
+
+    def mock_shutdown(*_args, **_kwargs):
+        msg = "shutdown failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(async_file.executor, "shutdown", mock_shutdown)
+    async_file._shutdown_executor()
+    assert async_file._executor_shutdown is False
+
+
+def test_asgi_initialize_preserves_user_application():
+    async def user_app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    app = ServeStaticASGI(user_app)
+    scope = AsgiHttpScopeEmulator({"path": "/"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(app(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b"ok"
+
+
+def build_symlink_escape_fixture():
+    tmp_dir = tempfile.mkdtemp()
+    static_dir = Path(tmp_dir) / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+
+    outside_content = b"outside-file-marker"
+    outside_path = Path(tmp_dir) / "outside.txt"
+    outside_path.write_bytes(outside_content)
+
+    link_path = static_dir / "link-outside.txt"
+    try:
+        os.symlink(outside_path, link_path)
+    except (OSError, NotImplementedError):
+        shutil.rmtree(tmp_dir)
+        pytest.skip("Symlink creation is unavailable in this environment")
+
+    return Path(tmp_dir), static_dir, outside_content
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_asgi_symlink_escape_is_blocked_by_default(autorefresh):
+    tmp_dir, static_dir, _outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStaticASGI(None, root=static_dir, autorefresh=autorefresh)
+        scope = AsgiHttpScopeEmulator({"path": "/link-outside.txt"})
+        receive = AsgiReceiveEmulator()
+        send = AsgiSendEmulator()
+        asyncio.run(app(scope, receive, send))
+        assert send.status == 404
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_asgi_symlink_escape_can_be_enabled(autorefresh):
+    tmp_dir, static_dir, outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStaticASGI(None, root=static_dir, autorefresh=autorefresh, allow_unsafe_symlinks=True)
+        scope = AsgiHttpScopeEmulator({"path": "/link-outside.txt"})
+        receive = AsgiReceiveEmulator()
+        send = AsgiSendEmulator()
+        asyncio.run(app(scope, receive, send))
+        assert send.status == 200
+        assert send.body == outside_content
+    finally:
+        shutil.rmtree(tmp_dir)

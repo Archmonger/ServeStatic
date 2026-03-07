@@ -5,7 +5,7 @@ hide:
 
 <!--
 
-If you see this page, you probably meant to visit the other CHANGELOG.md (all caps).
+If you see this page, you probably meant to visit the other LICENSE.md (all caps).
 
 -->
 

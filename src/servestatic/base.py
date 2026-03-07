@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from posixpath import normpath
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from wsgiref.headers import Headers
 
 from servestatic.media_types import MediaTypes
@@ -18,6 +18,7 @@ from servestatic.responders import (
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
@@ -25,9 +26,10 @@ class ServeStaticBase:
     # Ten years is what nginx sets a max age if you use 'expires max;'
     # so we'll follow its lead
     FOREVER = 10 * 365 * 24 * 60 * 60
+    DEFAULT_IMMUTABLE_FILE_TEST = re.compile(r"^.+\.[0-9a-f]{12}\..+$")
 
     __call__: Callable
-    """"Subclasses must implement `__call__`"""
+    """Subclasses must implement `__call__`."""
 
     def __init__(
         self,
@@ -51,6 +53,7 @@ class ServeStaticBase:
         add_headers_function: Callable[[Headers, str, str], None] | None = None,
         index_file: str | bool | None = None,
         immutable_file_test: Callable | str | None = None,
+        allow_unsafe_symlinks: bool = False,
     ):
         self.autorefresh = autorefresh
         self.max_age = max_age
@@ -59,6 +62,7 @@ class ServeStaticBase:
         self.add_headers_function = add_headers_function
         self._immutable_file_test = immutable_file_test
         self._immutable_file_test_regex: re.Pattern | None = None
+        self.allow_unsafe_symlinks = allow_unsafe_symlinks
         self.media_types = MediaTypes(extra_types=mimetypes)
         self.application = application
         self.files = {}
@@ -116,9 +120,11 @@ class ServeStaticBase:
             relative_path = path[len(root) :]
             relative_url = relative_path.replace("\\", "/")
             url = prefix + relative_url
-            self.add_file_to_dictionary(url, path, stat_cache=stat_cache)
+            self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
-    def add_file_to_dictionary(self, url, path, stat_cache=None):
+    def add_file_to_dictionary(self, url, path, root=None, stat_cache=None):
+        if root and not self.path_within_root(root, path):
+            return
         if self.is_compressed_variant(path, stat_cache=stat_cache):
             return
         if self.index_file is not None and url.endswith(f"/{self.index_file}"):
@@ -145,8 +151,27 @@ class ServeStaticBase:
         for root, prefix in self.directories:
             if url.startswith(prefix):
                 path = os.path.join(root, url[len(prefix) :])
-                if os.path.commonprefix((root, path)) == root:
+                if self.path_within_root(root, path):
                     yield path
+
+    def path_within_root(self, root, path):
+        normalized_root = os.path.normpath(os.fspath(root))
+        normalized_path = os.path.normpath(os.fspath(path))
+
+        if not self._path_is_within(normalized_root, normalized_path):
+            return False
+        if getattr(self, "allow_unsafe_symlinks", False):
+            return True
+
+        resolved_root = os.path.realpath(normalized_root)
+        resolved_path = os.path.realpath(normalized_path)
+        return self._path_is_within(resolved_root, resolved_path)
+
+    @staticmethod
+    def _path_is_within(root, path):
+        with contextlib.suppress(ValueError):
+            return os.path.commonpath((root, path)) == root
+        return False
 
     def find_file_at_path(self, path, url):
         if self.is_compressed_variant(path):
@@ -184,11 +209,12 @@ class ServeStaticBase:
 
     @staticmethod
     def is_compressed_variant(path, stat_cache=None):
-        if path[-3:] in {".gz", ".br"}:
-            uncompressed_path = path[:-3]
-            if stat_cache is None:
-                return os.path.isfile(uncompressed_path)
-            return uncompressed_path in stat_cache
+        for suffix in (".gz", ".br", ".zstd"):
+            if path.endswith(suffix):
+                uncompressed_path = path[: -len(suffix)]
+                if stat_cache is None:
+                    return os.path.isfile(uncompressed_path)
+                return uncompressed_path in stat_cache
         return False
 
     def get_static_file(self, path, url, stat_cache=None):
@@ -206,7 +232,7 @@ class ServeStaticBase:
             path,
             headers.items(),
             stat_cache=stat_cache,
-            encodings={"gzip": f"{path}.gz", "br": f"{path}.br"},
+            encodings={"zstd": f"{path}.zstd", "gzip": f"{path}.gz", "br": f"{path}.br"},
         )
 
     def add_mime_headers(self, headers, path, url):
@@ -229,7 +255,7 @@ class ServeStaticBase:
             if callable(self.user_immutable_file_test):
                 return self.user_immutable_file_test(path, url)
             return bool(self.user_immutable_file_test.search(url))
-        return False
+        return bool(self.DEFAULT_IMMUTABLE_FILE_TEST.search(url))
 
     def redirect(self, from_url, to_url):
         """

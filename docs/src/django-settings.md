@@ -108,13 +108,60 @@ The W3C [explicitly state](https://www.w3.org/TR/cors/#security) that this behav
 
 ---
 
+## `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`
+
+**Default:** `False`
+
+Controls whether symlinks that resolve outside configured static roots are allowed.
+
+By default, ServeStatic blocks symlink breakout so requests cannot escape the configured static directory tree. Set this to `True` only if you intentionally depend on symlinks that point outside your static roots and you trust those links.
+
+---
+
 ## `SERVESTATIC_SKIP_COMPRESS_EXTENSIONS`
 
-**Default:** `('jpg', 'jpeg', 'png', 'gif', 'webp','zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'swf', 'flv', 'woff', 'woff2')`
+**Default:** `('jpg', 'jpeg', 'png', 'gif', 'webp','zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'zstd', 'swf', 'flv', 'woff', 'woff2')`
 
 File extensions to skip when compressing.
 
 Because the compression process will only create compressed files where this results in an actual size saving, it would be safe to leave this list empty and attempt to compress all files. However, for files which we're confident won't benefit from compression, it speeds up the process if we just skip over them.
+
+---
+
+## `SERVESTATIC_USE_ZSTD`
+
+**Default:** `True`
+
+Enable or disable zstd output generation when `compression.zstd` is available (Python 3.14+).
+
+---
+
+## `SERVESTATIC_ZSTD_DICTIONARY`
+
+**Default:** `None`
+
+Optional zstd dictionary to improve compression ratio for your asset corpus.
+
+This setting can be either:
+
+- a filesystem path to a trained dictionary file, or
+- raw dictionary bytes / a prebuilt zstd dictionary object supplied by custom storage subclass logic.
+
+---
+
+## `SERVESTATIC_ZSTD_DICTIONARY_IS_RAW`
+
+**Default:** `False`
+
+Set to `True` if `SERVESTATIC_ZSTD_DICTIONARY` points to a raw-content dictionary.
+
+---
+
+## `SERVESTATIC_ZSTD_LEVEL`
+
+**Default:** `None`
+
+Optional zstd compression level.
 
 ---
 
@@ -196,9 +243,7 @@ If your deployment is more complicated than this (for instance, if you are using
 
 Stores only files with hashed names in `STATIC_ROOT`.
 
-By default, Django's hashed static files system creates two copies of each file in `STATIC_ROOT`: one using the original name, e.g. `app.js`, and one using the hashed name, e.g. `app.db8f2edc0c8a.js`. If `ServeStatic`'s compression backend is being used this will create another two copies of each of these files (using Gzip and Brotli compression) resulting in six output files for each input file.
-
-In some deployment scenarios it can be important to reduce the size of the build artifact as much as possible. This setting removes the "unhashed" version of the file (which should be not be referenced in any case) which should reduce the space required for static files by half.
+This setting removes the "unhashed" version of the file (which should be not be referenced in any case) which should reduce the space required for static files. In some deployment scenarios it can be important to reduce the size of the build artifact as much as possible.
 
 This setting is only effective if the `ServeStatic` storage backend is being used.
 
