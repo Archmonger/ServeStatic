@@ -5,6 +5,7 @@ import gzip
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from importlib import import_module
 from io import BytesIO
 
 try:
@@ -13,7 +14,7 @@ except ImportError:  # pragma: no cover
     brotli = None
 
 try:
-    from compression import zstd
+    zstd = import_module("compression.zstd")
 except ImportError:  # pragma: no cover
     zstd = None
 

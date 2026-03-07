@@ -4,8 +4,10 @@ import asyncio
 import contextlib
 import os
 import warnings
+from collections.abc import Awaitable, Callable
 from inspect import iscoroutinefunction
 from posixpath import basename, normpath
+from typing import cast
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
@@ -32,6 +34,8 @@ from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
+GetResponseCallable = Callable[[HttpRequest], Awaitable[object]]
+
 SERVESTATIC_APP_PATHS = frozenset({"servestatic", "servestatic.apps.ServeStaticConfig"})
 
 
@@ -51,6 +55,7 @@ class ServeStaticMiddleware(ServeStaticBase):
 
     async_capable = True
     sync_capable = False
+    get_response: GetResponseCallable
 
     def __init__(self, get_response=None, settings=django_settings):
         if not is_async_callable(get_response):
@@ -67,7 +72,7 @@ class ServeStaticMiddleware(ServeStaticBase):
                 stacklevel=2,
             )
 
-        self.get_response = get_response
+        self.get_response = cast("GetResponseCallable", get_response)
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)

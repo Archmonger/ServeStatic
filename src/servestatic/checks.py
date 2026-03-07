@@ -7,12 +7,13 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Iterable, Mapping
+from importlib import import_module
 
 from django.conf import settings
 from django.core.checks import Error, register
 
 try:
-    from compression import zstd
+    zstd = import_module("compression.zstd")
 except ImportError:  # pragma: no cover
     zstd = None
 

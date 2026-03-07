@@ -158,10 +158,16 @@ class AsyncFile:
 
     @open_lazy
     async def read(self, size=-1):
+        if self.file_obj is None:
+            msg = "File object was not opened"
+            raise RuntimeError(msg)
         return await self._execute(self.file_obj.read, size)
 
     @open_lazy
     async def seek(self, offset, whence=0):
+        if self.file_obj is None:
+            msg = "File object was not opened"
+            raise RuntimeError(msg)
         return await self._execute(self.file_obj.seek, offset, whence)
 
     @open_lazy
