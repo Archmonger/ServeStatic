@@ -135,7 +135,7 @@ Optional zstd dictionary to improve compression ratio for your asset corpus.
 This setting can be either:
 
 - a filesystem path to a trained dictionary file, or
-- raw dictionary bytes / a pre-built zstd dictionary object supplied by custom storage subclass logic.
+- raw dictionary bytes / a prebuilt zstd dictionary object supplied by custom storage subclass logic.
 
 ---
 
