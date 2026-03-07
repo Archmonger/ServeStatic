@@ -28,6 +28,7 @@ Don't forget to remove deprecated code on each major release!
 - Added Django system checks to test for common misconfigurations.
 - Added a new `allow_unsafe_symlinks` configuration option for WSGI/ASGI
 - Added a new `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS` configuration option for Django.
+- Added `jxl` image support.
 
 ### Changed
 
