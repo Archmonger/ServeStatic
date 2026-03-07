@@ -15,7 +15,11 @@ Don't forget to remove deprecated code on each major release!
 
 - Nothing (yet)
 
-## [4.1.0] - 2026-03-06
+## [4.1.0] - 2026-03-07
+
+!!! tip
+
+    This release includes some changes to the default behavior of `ServeStatic` for security hardening. If you are affected by any of these changes, please read the relevant sections in the documentation on `allow_unsafe_symlinks`.
 
 ### Added
 
@@ -27,7 +31,7 @@ Don't forget to remove deprecated code on each major release!
 
 ### Changed
 
-- Tightened event-loop handling for ASGI file iterator.
+- Improved event-loop handling for ASGI file iterator.
 - Installing `servestatic` as a Django app is now the suggested configuration. A warning will appear if it is not detected in `INSTALLED_APPS` when `DEBUG` is `True`.
 - `servestatic.runserver_nostatic` is no longer the recommended Django app installation path. This import path will be retained to ease `WhiteNoise` to `ServeStatic` migration, but now the documentation recommends to use the top-level `servestatic` module instead.
 - For security purposes, `ServeStatic` will no longer follow unsafe symlinks by default. If your symlinks point to files outside of your static root, it is highly recommended to copy them instead. This behavior can be disabled for trusted deployments using `allow_unsafe_symlinks` / `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`.
@@ -39,7 +43,7 @@ Don't forget to remove deprecated code on each major release!
 ### Security
 
 - Hardened `autorefresh` path matching to prevent potential path traversal or path clobbering.
-- Hardened static file resolution to block symlink breakout outside configured static roots by default.
+- Hardened static file resolution to block symlink breakout by default.
 
 ## [4.0.0] - 2026-03-05
 
