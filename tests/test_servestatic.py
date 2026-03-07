@@ -341,6 +341,53 @@ def copytree(src, dst):
             shutil.copy2(src_path, dst_path)
 
 
+def build_symlink_escape_fixture():
+    tmp_dir = tempfile.mkdtemp()
+    static_dir = os.path.join(tmp_dir, "static")
+    os.makedirs(static_dir, exist_ok=True)
+
+    outside_content = b"outside-file-marker"
+    outside_path = os.path.join(tmp_dir, "outside.txt")
+    with open(outside_path, "wb") as outside_file:
+        outside_file.write(outside_content)
+
+    link_path = os.path.join(static_dir, "link-outside.txt")
+    try:
+        os.symlink(outside_path, link_path)
+    except (OSError, NotImplementedError):
+        shutil.rmtree(tmp_dir)
+        pytest.skip("Symlink creation is unavailable in this environment")
+
+    return tmp_dir, static_dir, outside_content
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_symlink_escape_is_blocked_by_default(autorefresh):
+    tmp_dir, static_dir, _outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStatic(None, root=static_dir, autorefresh=autorefresh)
+        app_server = AppServer(app)
+        with closing(app_server):
+            response = app_server.get(f"/{AppServer.PREFIX}/link-outside.txt")
+        assert response.status_code == 404
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
+@pytest.mark.parametrize("autorefresh", [True, False])
+def test_symlink_escape_can_be_enabled(autorefresh):
+    tmp_dir, static_dir, outside_content = build_symlink_escape_fixture()
+    try:
+        app = ServeStatic(None, root=static_dir, autorefresh=autorefresh, allow_unsafe_symlinks=True)
+        app_server = AppServer(app)
+        with closing(app_server):
+            response = app_server.get(f"/{AppServer.PREFIX}/link-outside.txt")
+        assert response.status_code == 200
+        assert response.content == outside_content
+    finally:
+        shutil.rmtree(tmp_dir)
+
+
 def test_immutable_file_test_accepts_regex():
     instance = ServeStatic(None, immutable_file_test=r"\.test$")
     assert instance.immutable_file_test("", "/myfile.test")
@@ -406,6 +453,27 @@ def test_url_is_canonical_rejects_backslashes():
     assert not DummyServeStaticBase.url_is_canonical(r"/static\file.js")
 
 
+def test_path_is_within_returns_false_when_commonpath_raises_value_error():
+    assert not DummyServeStaticBase._path_is_within("/tmp/root", "relative/path")
+
+
+def test_path_within_root_normalizes_drive_root_separator(monkeypatch):
+    app = DummyServeStaticBase(None)
+
+    def fake_path_is_within(root, path):
+        return root == "C:\\" and path.startswith("C:\\")
+
+    monkeypatch.setattr(app, "_path_is_within", fake_path_is_within)
+    monkeypatch.setattr(os.path, "realpath", lambda value: value)
+
+    assert app.path_within_root("C:\\", "C:\\static\\file.js")
+
+
+def test_is_compressed_variant_detects_zstd_suffix_with_cache():
+    cache = {"/tmp/app.js": fake_stat_entry(st_mtime=1)}
+    assert DummyServeStaticBase.is_compressed_variant("/tmp/app.js.zstd", stat_cache=cache)
+
+
 def test_immutable_file_test_supports_callable():
     app = DummyServeStaticBase(None, immutable_file_test=lambda path, url: url.endswith(".ok"))
     assert app.immutable_file_test("ignored", "/file.ok")
@@ -429,6 +497,18 @@ def test_get_static_file_omits_allow_all_origins_header_when_disabled():
     static_file = app.get_static_file(__file__, "/coverage.py", stat_cache={__file__: fake_stat_entry(st_mtime=1)})
     headers = dict(static_file.alternatives[0][2])
     assert "Access-Control-Allow-Origin" not in headers
+
+
+def test_get_static_file_prefers_zstd_when_requested():
+    app = DummyServeStaticBase(None)
+    stat_cache = {
+        __file__: fake_stat_entry(st_size=1000, st_mtime=1),
+        f"{__file__}.zstd": fake_stat_entry(st_size=200, st_mtime=1),
+    }
+    static_file = app.get_static_file(__file__, "/coverage.py", stat_cache=stat_cache)
+    path, headers = static_file.get_path_and_headers({"HTTP_ACCEPT_ENCODING": "zstd, gzip"})
+    assert path == f"{__file__}.zstd"
+    assert Headers(headers)["Content-Encoding"] == "zstd"
 
 
 def test_last_modified_not_set_when_mtime_is_zero():
@@ -533,6 +613,17 @@ def test_file_size_matches_range_with_range_header():
     response = responder.get_response("GET", {"HTTP_RANGE": "bytes=0-13"})
     file_size = len(response.file.read())
     assert file_size == 14
+
+
+def test_single_byte_range_is_supported():
+    stat_cache = {__file__: fake_stat_entry()}
+    responder = StaticFile(__file__, [], stat_cache=stat_cache)
+    response = responder.get_response("GET", {"HTTP_RANGE": "bytes=0-0"})
+    assert int(response.status) == 206
+    assert response.file is not None
+    with open(__file__, "rb") as source:
+        assert response.file.read() == source.read(1)
+    response.file.close()
 
 
 def test_chunked_file_size_matches_range_with_range_header():

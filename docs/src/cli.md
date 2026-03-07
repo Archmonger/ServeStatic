@@ -14,7 +14,8 @@ You can either run this during development and commit your generated/compressed 
 $ servestatic --help
 usage: servestatic [-h] [--all] [--hash] [--manifest] [--merge-manifest]
                    [--compress] [--clear] [-q] [--copy-original] [--no-gzip]
-                   [--no-brotli]
+                   [--no-brotli] [--no-zstd] [--zstd-dict ZSTD_DICT]
+                   [--zstd-dict-raw] [--zstd-level ZSTD_LEVEL]
                    [-e EXCLUDE]
                    src dest
 
@@ -34,7 +35,8 @@ options:
   --merge-manifest      Merge the new manifest with an existing manifest in the
                         dest directory. Fails if the existing manifest is not
                         found. (default: False)
-  --compress            Generate compressed versions (gzip/brotli) of files.
+  --compress            Generate compressed versions (gzip/zstd/brotli) of
+                        files.
                         (default: False)
   --clear               Empty the destination directory before processing.
                         (default: False)
@@ -46,6 +48,16 @@ options:
                         --compress). (default: True)
   --no-brotli           Don't produce brotli '.br' files (only applies with
                         --compress). (default: True)
+  --no-zstd             Don't produce zstd '.zstd' files (only applies with
+                        --compress). (default: True)
+  --zstd-dict ZSTD_DICT
+                        Path to a zstd dictionary file (only applies with
+                        --compress). (default: None)
+  --zstd-dict-raw       Treat the zstd dictionary as raw content (only applies
+                        with --compress). (default: False)
+  --zstd-level ZSTD_LEVEL
+                        Compression level for zstd output (only applies with
+                        --compress). (default: None)
   -e EXCLUDE, --exclude EXCLUDE
                         Glob pattern(s) to exclude from processing
                         (compression/hashing). These files are still copied.
@@ -54,9 +66,13 @@ options:
 
 ## Compression Details
 
-When ServeStatic builds its list of available files, it optionally checks for corresponding files with a `.gz` and a `.br` suffix (e.g., `scripts/app.js`, `scripts/app.js.gz` and `scripts/app.js.br`). If it finds them, it will assume that they are (respectively) gzip and [brotli](https://en.wikipedia.org/wiki/Brotli) compressed versions of the original file and it will serve them in preference to the uncompressed version whenever clients indicate they support that compression format.
+When ServeStatic builds its list of available files, it optionally checks for corresponding files with `.gz`, `.zstd`, and `.br` suffixes (e.g., `scripts/app.js`, `scripts/app.js.gz`, `scripts/app.js.zstd`, and `scripts/app.js.br`). If it finds them, it will serve those compressed versions when clients indicate support via `Accept-Encoding`.
 
-In order for brotli compression to work, the [Brotli](https://pypi.org/project/Brotli/) python package must be installed.
+On Python 3.14+, zstd support is built in via the standard library.
+
+On older Python versions, Brotli support is available by installing the [Brotli](https://pypi.org/project/Brotli/) package.
+
+You can also pass a custom zstd dictionary with `--zstd-dict` and optionally mark it raw with `--zstd-dict-raw`.
 
 ## Hash Details
 

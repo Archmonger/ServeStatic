@@ -13,6 +13,39 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- Nothing (yet)
+
+## [4.1.0] - 2026-03-07
+
+!!! tip
+
+    This release includes some changes to the default behavior of `ServeStatic` for security hardening. If you are affected by any of these changes, please read the relevant sections in the documentation on `allow_unsafe_symlinks`.
+
+### Added
+
+- Added support for `zstd` compression on Python 3.14+.
+- Added support for the top-level `servestatic` module to run as a Django app.
+- Added Django system checks to test for common misconfigurations.
+- Added a new `allow_unsafe_symlinks` configuration option for WSGI/ASGI
+- Added a new `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS` configuration option for Django.
+- Added `jxl` image support.
+
+### Changed
+
+- Improved event-loop handling for ASGI file iterator.
+- Installing `servestatic` as a Django app is now the suggested configuration. A warning will appear if it is not detected in `INSTALLED_APPS` when `DEBUG` is `True`.
+- `servestatic.runserver_nostatic` is no longer the recommended Django app installation path. This import path will be retained to ease `WhiteNoise` to `ServeStatic` migration, but now the documentation recommends to use the top-level `servestatic` module instead.
+- For security purposes, `ServeStatic` will no longer follow unsafe symlinks by default. If your symlinks point to files outside of your static root, it is highly recommended to copy them instead. This behavior can be disabled for trusted deployments using `allow_unsafe_symlinks` / `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`.
+
+### Fixed
+
+- Fixed a range-request edge case where the last byte could be requested but would not be served.
+
+### Security
+
+- Hardened `autorefresh` path matching to prevent potential path traversal or path clobbering.
+- Hardened static file resolution to block symlink breakout by default.
+
 ## [4.0.0] - 2026-03-05
 
 ### Added
@@ -129,7 +162,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...HEAD
+[4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...4.0.0
 [3.1.0]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...3.1.0
 [3.0.2]: https://github.com/Archmonger/ServeStatic/compare/3.0.1...3.0.2

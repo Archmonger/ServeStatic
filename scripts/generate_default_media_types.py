@@ -36,6 +36,7 @@ def main() -> int:
 EXTRA_MIMETYPES = {
     # Nginx uses application/javascript, but HTML specification recommends text/javascript:
     ".js": "text/javascript",
+    ".jxl": "image/jxl",
     ".md": "text/markdown",
     ".mjs": "text/javascript",
     ".woff": "application/font-woff",

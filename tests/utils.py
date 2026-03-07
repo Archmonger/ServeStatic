@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
-import threading
 from collections import UserDict
-from wsgiref.simple_server import WSGIRequestHandler, make_server
+from urllib.parse import quote
 from wsgiref.util import shift_path_info
 
-import requests
+import httpx
 
 TEST_FILE_PATH = os.path.join(os.path.dirname(__file__), "test_files")
 
@@ -18,12 +17,25 @@ class AppServer:
     """
 
     PREFIX = "subdir"
+    DEFAULT_ACCEPT_ENCODING = "gzip, deflate, br"
 
     def __init__(self, application):
         self.application = application
-        self.server = make_server("127.0.0.1", 0, self.serve_under_prefix, handler_class=WSGIRequestHandler)
+        self.client = httpx.Client(
+            transport=httpx.WSGITransport(app=self.serve_under_prefix, raise_app_exceptions=False),
+            base_url="http://testserver",
+        )
 
     def serve_under_prefix(self, environ, start_response):
+        path_info = environ.get("PATH_INFO", "")
+        try:
+            path_info.encode("iso-8859-1")
+            path_info = ""
+        except UnicodeEncodeError:
+            # WSGI servers expose PATH_INFO as latin-1 decoded bytes. Recreate
+            # that shape for non-ASCII paths so Django can recover UTF-8 bytes.
+            environ["PATH_INFO"] = path_info.encode("utf-8").decode("iso-8859-1")
+
         prefix = shift_path_info(environ)
         if prefix == self.PREFIX:
             return self.application(environ, start_response)
@@ -34,17 +46,52 @@ class AppServer:
         return self.request("get", *args, **kwargs)
 
     def request(self, method, path, *args, **kwargs):
-        domain = self.server.server_address[0]
-        port = self.server.server_address[1]
-        url = f"http://{domain}:{port}{path}"
-        thread = threading.Thread(target=self.server.handle_request)
-        thread.start()
-        response = requests.request(method, url, *args, **kwargs, timeout=5)
-        thread.join()
-        return response
+        # Keep compatibility with previous requests-based helpers.
+        allow_redirects = kwargs.pop("allow_redirects", True)
+        headers = dict(kwargs.pop("headers", {}) or {})
+
+        # requests percent-encodes non-ASCII URL paths before they hit WSGI.
+        path = quote(path, safe="/%?=&:+,;@#")
+
+        # Always send Accept-Encoding unless tests explicitly set it to None.
+        has_accept_encoding = any(key.lower() == "accept-encoding" for key in headers)
+        if not has_accept_encoding:
+            headers["Accept-Encoding"] = self.DEFAULT_ACCEPT_ENCODING
+
+        # Preserve existing test semantics where `None` means "no accepted encodings".
+        for key, value in list(headers.items()):
+            if key.lower() == "accept-encoding" and value is None:
+                headers[key] = ""
+
+        # A value of None means "omit this header" in existing tests.
+        headers = {key: value for key, value in headers.items() if value is not None}
+
+        response = self.client.request(
+            method,
+            path,
+            *args,
+            headers=headers,
+            follow_redirects=allow_redirects,
+            **kwargs,
+        )
+        return _ResponseAdapter(response)
 
     def close(self):
-        self.server.server_close()
+        self.client.close()
+
+
+class _ResponseAdapter:
+    """Compat adapter that presents a requests-like interface over httpx responses."""
+
+    def __init__(self, response: httpx.Response):
+        self._response = response
+
+    def __getattr__(self, item):
+        return getattr(self._response, item)
+
+    @property
+    def url(self):
+        return str(self._response.url)
 
 
 class AsgiAppServer:

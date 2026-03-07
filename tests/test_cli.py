@@ -252,6 +252,18 @@ def test_cli_clear_same_dir(tmp_path, capsys):
     assert "cannot be the same" in captured.err
 
 
+def test_cli_same_dir_without_clear(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content")
+
+    with pytest.raises(SystemExit):
+        main(["--manifest", str(src), str(src)])
+
+    captured = capsys.readouterr()
+    assert "cannot be the same" in captured.err
+
+
 def test_cli_merge_manifest_success(tmp_path):
     src = tmp_path / "src"
     src.mkdir()
@@ -393,3 +405,44 @@ def test_cli_compress_logs_worker_errors(tmp_path, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "Error compressing" in captured.out
+
+
+def test_cli_passes_zstd_options_to_compressor(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+    dict_file = tmp_path / "dict.bin"
+    dict_file.write_bytes(b"dict")
+
+    captured_args: dict[str, object] = {}
+
+    class DummyCompressor:
+        def __init__(self, **kwargs):
+            captured_args.update(kwargs)
+
+        @staticmethod
+        def should_compress(_filename):
+            return False
+
+        @staticmethod
+        def compress(_path):
+            return []
+
+    monkeypatch.setattr(servestatic_cli, "Compressor", DummyCompressor)
+
+    main([
+        "--compress",
+        "--zstd-dict",
+        str(dict_file),
+        "--zstd-dict-raw",
+        "--zstd-level",
+        "9",
+        str(src),
+        str(dest),
+    ])
+
+    assert captured_args["use_zstd"] is True
+    assert captured_args["zstd_dict"] == str(dict_file)
+    assert captured_args["zstd_dict_is_raw"] is True
+    assert captured_args["zstd_level"] == 9
