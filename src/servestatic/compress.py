@@ -75,18 +75,25 @@ class Compressor:
         log: Callable[[str], None] = print,
         quiet: bool = False,
     ) -> None:
+        logger = (lambda _: None) if quiet else log
         if extensions is None:
             extensions = self.SKIP_COMPRESS_EXTENSIONS
         self.extension_re = self.get_extension_re(extensions)
         self.use_gzip = use_gzip
+        if use_brotli and brotli is None:
+            logger("Warning: Brotli compression requested but brotli is not installed. Skipping Brotli output.")
         self.use_brotli = use_brotli and (brotli is not None)
+        if use_zstd and zstd is None:
+            logger(
+                "Warning: Zstandard compression requested but compression.zstd is unavailable. Skipping Zstandard output."
+            )
         if zstd_dict is not None and zstd is None:
             msg = "Zstandard dictionary support requires Python 3.14+ with compression.zstd available"
             raise RuntimeError(msg)
         self.use_zstd = use_zstd and (zstd is not None)
         self.zstd_level = zstd_level
         self.zstd_dict = self.load_zstd_dictionary(zstd_dict, is_raw=zstd_dict_is_raw)
-        self.log = (lambda _: None) if quiet else log
+        self.log = logger
 
     @staticmethod
     def load_zstd_dictionary(

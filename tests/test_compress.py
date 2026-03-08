@@ -68,8 +68,9 @@ def test_with_falsey_extensions():
 
 
 def test_custom_log():
-    compressor = Compressor(log="test")
-    assert compressor.log == "test"
+    new_logger = mock.Mock()
+    compressor = Compressor(log=new_logger)
+    assert compressor.log == new_logger
 
 
 def test_compress():

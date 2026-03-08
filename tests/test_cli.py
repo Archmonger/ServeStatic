@@ -3,6 +3,7 @@ import json
 import pytest
 
 import servestatic.cli as servestatic_cli
+import servestatic.compress as compress_module
 from servestatic.cli import main
 
 
@@ -446,3 +447,47 @@ def test_cli_passes_zstd_options_to_compressor(tmp_path, monkeypatch):
     assert captured_args["zstd_dict"] == str(dict_file)
     assert captured_args["zstd_dict_is_raw"] is True
     assert captured_args["zstd_level"] == 9
+
+
+def test_cli_warns_when_brotli_requested_but_unavailable(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+
+    monkeypatch.setattr(compress_module, "brotli", None)
+
+    main(["--compress", "--no-gzip", "--no-zstd", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Warning: Brotli compression requested but brotli is not installed" in captured.out
+
+
+def test_cli_warns_when_zstd_requested_but_unavailable(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+
+    monkeypatch.setattr(compress_module, "zstd", None)
+
+    main(["--compress", "--no-gzip", "--no-brotli", str(src), str(dest)])
+
+    captured = capsys.readouterr()
+    assert "Warning: Zstandard compression requested but compression.zstd is unavailable" in captured.out
+
+
+def test_cli_errors_when_zstd_dictionary_requested_but_unavailable(tmp_path, monkeypatch):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+    dict_file = tmp_path / "dict.bin"
+    dict_file.write_bytes(b"dict")
+
+    monkeypatch.setattr(compress_module, "zstd", None)
+
+    with pytest.raises(
+        RuntimeError, match=r"Zstandard dictionary support requires Python 3.14\+ with compression\.zstd available"
+    ):
+        main(["--compress", "--zstd-dict", str(dict_file), str(src), str(dest)])
