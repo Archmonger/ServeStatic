@@ -12,7 +12,7 @@ from servestatic.compress import Compressor
 from servestatic.manifest_hash import ManifestHashGenerator
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Process static files: copy, optionally hash, and compress.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

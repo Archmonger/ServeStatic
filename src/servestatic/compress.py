@@ -7,6 +7,10 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib import import_module
 from io import BytesIO
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 try:
     import brotli
@@ -61,16 +65,16 @@ class Compressor:
 
     def __init__(
         self,
-        extensions=None,
-        use_gzip=True,
-        use_brotli=True,
-        use_zstd=True,
-        zstd_dict=None,
-        zstd_dict_is_raw=False,
-        zstd_level=None,
-        log=print,
-        quiet=False,
-    ):
+        extensions: Iterable[str] | None = None,
+        use_gzip: bool = True,
+        use_brotli: bool = True,
+        use_zstd: bool = True,
+        zstd_dict: str | os.PathLike[str] | bytes | bytearray | memoryview | object | None = None,
+        zstd_dict_is_raw: bool = False,
+        zstd_level: int | None = None,
+        log: Callable[[str], None] = print,
+        quiet: bool = False,
+    ) -> None:
         if extensions is None:
             extensions = self.SKIP_COMPRESS_EXTENSIONS
         self.extension_re = self.get_extension_re(extensions)
@@ -85,7 +89,11 @@ class Compressor:
         self.log = (lambda _: None) if quiet else log
 
     @staticmethod
-    def load_zstd_dictionary(zstd_dict, *, is_raw=False):
+    def load_zstd_dictionary(
+        zstd_dict: str | os.PathLike[str] | bytes | bytearray | memoryview | object | None,
+        *,
+        is_raw: bool = False,
+    ) -> object | None:
         if zstd_dict is None:
             return None
         if zstd is None:
@@ -100,15 +108,16 @@ class Compressor:
         return zstd_dict
 
     @staticmethod
-    def get_extension_re(extensions):
+    def get_extension_re(extensions: Iterable[str]) -> re.Pattern[str]:
         if not extensions:
             return re.compile(r"^$")
         return re.compile(rf"\.({'|'.join(map(re.escape, extensions))})$", re.IGNORECASE)
 
-    def should_compress(self, filename):
+    def should_compress(self, filename: str) -> bool:
         return not self.extension_re.search(filename)
 
-    def compress(self, path):
+    def compress(self, path: str | os.PathLike[str]) -> list[str]:
+        path = os.fspath(path)
         filenames = []
         with open(path, "rb") as f:
             stat_result = os.fstat(f.fileno())
@@ -129,7 +138,7 @@ class Compressor:
         return filenames
 
     @staticmethod
-    def compress_gzip(data):
+    def compress_gzip(data: bytes) -> bytes:
         output = BytesIO()
         # Explicitly set mtime to 0 so gzip content is fully determined
         # by file content (0 = "no timestamp" according to gzip spec)
@@ -138,14 +147,14 @@ class Compressor:
         return output.getvalue()
 
     @staticmethod
-    def compress_brotli(data):
+    def compress_brotli(data: bytes) -> bytes:
         if brotli is None:
             msg = "Brotli is not installed"
             raise RuntimeError(msg)
         return brotli.compress(data)
 
     @staticmethod
-    def compress_zstd(data, level=None, zstd_dict=None):
+    def compress_zstd(data: bytes, level: int | None = None, zstd_dict: object | None = None) -> bytes:
         if zstd is None:
             msg = "Zstandard is not available"
             raise RuntimeError(msg)
@@ -156,7 +165,7 @@ class Compressor:
             kwargs["zstd_dict"] = zstd_dict
         return zstd.compress(data, **kwargs)
 
-    def is_compressed_effectively(self, encoding_name, path, orig_size, data):
+    def is_compressed_effectively(self, encoding_name: str, path: str, orig_size: int, data: bytes) -> bool:
         compressed_size = len(data)
         if orig_size == 0:
             is_effective = False
@@ -170,7 +179,7 @@ class Compressor:
         return is_effective
 
     @staticmethod
-    def write_data(path, data, suffix, stat_result):
+    def write_data(path: str, data: bytes, suffix: str, stat_result: os.stat_result) -> str:
         filename = path + suffix
         with open(filename, "wb") as f:
             f.write(data)
@@ -178,7 +187,7 @@ class Compressor:
         return filename
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Search for all files inside <root> *not* matching "
         "<extensions> and produce compressed versions with "

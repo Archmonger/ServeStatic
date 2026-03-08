@@ -7,13 +7,16 @@ from servestatic.base import ServeStaticBase
 from servestatic.utils import decode_path_info
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Iterable
+    from wsgiref.types import StartResponse, WSGIApplication, WSGIEnvironment
+
+    from servestatic.responders import Redirect, StaticFile
 
 
 class ServeStatic(ServeStaticBase):
-    application: Callable
+    application: WSGIApplication
 
-    def __call__(self, environ, start_response):
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> Iterable[bytes]:
         # Determine if the request is for a static file
         path = decode_path_info(environ.get("PATH_INFO", ""))
         static_file = self.find_file(path) if self.autorefresh else self.files.get(path)
@@ -25,7 +28,7 @@ class ServeStatic(ServeStaticBase):
         # Could not find a static file. Serve the default application instead.
         return self.application(environ, start_response)
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Ensure the WSGI application is initialized."""
         # If no application is provided, default to a "404 Not Found" app
         self.application = self.application or NotFoundWSGI()
@@ -34,13 +37,14 @@ class ServeStatic(ServeStaticBase):
 class FileServerWSGI:
     """Primitive WSGI application that streams a StaticFile over HTTP in chunks."""
 
-    def __init__(self, static_file):
+    def __init__(self, static_file: StaticFile | Redirect) -> None:
         self.static_file = static_file
 
-    def __call__(self, environ, start_response):
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> Iterable[bytes]:
         response = self.static_file.get_response(environ["REQUEST_METHOD"], environ)
         status_line = f"{response.status} {response.status.phrase}"
-        start_response(status_line, list(response.headers))
+        headers = [(key, value) for key, value in response.headers if value is not None]
+        start_response(status_line, headers)
         if response.file is not None:
             # Try to use a more efficient transmit method, if available
             file_wrapper = environ.get("wsgi.file_wrapper", FileWrapper)
@@ -51,7 +55,7 @@ class FileServerWSGI:
 class NotFoundWSGI:
     """A WSGI application that returns a 404 Not Found response."""
 
-    def __call__(self, environ, start_response):
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> Iterable[bytes]:
         status = "404 Not Found"
         headers = [("Content-Type", "text/plain; charset=utf-8")]
         start_response(status, headers)
