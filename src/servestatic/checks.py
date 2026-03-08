@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.core.checks import Error, register
+from django.core.checks import Warning as CheckWarning
 
 if TYPE_CHECKING:
     from django.apps import AppConfig
@@ -23,6 +24,10 @@ except ImportError:  # pragma: no cover
 
 SERVESTATIC_MIDDLEWARE = "servestatic.middleware.ServeStaticMiddleware"
 GZIP_MIDDLEWARE = "django.middleware.gzip.GZipMiddleware"
+LEGACY_SERVESTATIC_APPS = {
+    "servestatic.runserver_nostatic",
+    "servestatic.runserver_nostatic.apps.ServeStaticRunserverNoStaticAliasConfig",
+}
 
 
 def _is_non_negative_int(value: object) -> bool:
@@ -191,6 +196,24 @@ def check_middleware_configuration(
                 "'django.middleware.gzip.GZipMiddleware' in MIDDLEWARE."
             ),
             id="servestatic.E001",
+        )
+    ]
+
+
+@register()
+def check_deprecated_app_configuration(
+    app_configs: Iterable[AppConfig] | None = None,
+    **kwargs: object,
+) -> list[CheckWarning]:
+    installed_apps = set(getattr(settings, "INSTALLED_APPS", []))
+    if not installed_apps.intersection(LEGACY_SERVESTATIC_APPS):
+        return []
+
+    return [
+        CheckWarning(
+            "Deprecated ServeStatic app path detected.",
+            hint="Replace 'servestatic.runserver_nostatic' with 'servestatic' in INSTALLED_APPS.",
+            id="servestatic.W001",
         )
     ]
 

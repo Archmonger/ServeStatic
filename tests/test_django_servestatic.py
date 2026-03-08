@@ -473,6 +473,18 @@ def test_django_check_reports_immutable_file_test_invalid_type():
     assert len(errors) == 1
 
 
+@override_settings(INSTALLED_APPS=["servestatic.runserver_nostatic", "django.contrib.staticfiles"])
+def test_django_check_warns_for_deprecated_servestatic_runserver_nostatic_app():
+    warnings = [check_message for check_message in run_checks() if check_message.id == "servestatic.W001"]
+    assert len(warnings) == 1
+
+
+@override_settings(INSTALLED_APPS=["servestatic", "django.contrib.staticfiles"])
+def test_django_check_does_not_warn_for_canonical_servestatic_app():
+    warnings = [check_message for check_message in run_checks() if check_message.id == "servestatic.W001"]
+    assert not warnings
+
+
 def test_middleware_warns_when_servestatic_app_is_missing(async_middleware_response):
     class Settings:
         DEBUG = True
