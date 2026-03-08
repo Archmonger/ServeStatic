@@ -19,13 +19,13 @@
 
 _Production-grade static file server for Python WSGI & ASGI._
 
-_This project is a fork of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, bug fixes, security updates, new features, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
+_This project is a [fork](https://github.com/evansd/whitenoise/pull/359#issuecomment-2226889088) of [WhiteNoise](https://github.com/evansd/whitenoise) for [ASGI support, bug fixes, security updates, new features, and performance upgrades](https://archmonger.github.io/ServeStatic/latest/changelog/)._
 
 ---
 
-`ServeStatic` simplifies static file serving with minimal lines of configuration. It enables you to create a self-contained unit (WSGI, ASGI, Django, or 'standalone') without requiring external services like Nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
+`ServeStatic` simplifies static file serving with minimal lines of configuration. It enables you to create a self-contained unit without requiring external services like Nginx or Amazon S3. This can simplify any production deployment, but is especially useful for platforms like Heroku, OpenShift, and other PaaS providers.
 
-It is designed to work seamlessly with CDNs to ensure high performance for traffic-intensive sites, and is compatible with any ASGI/WSGI app. A command-line interface is provided to perform common tasks such as compression, file-name hashing, and manifest generation. Extra features and auto-configuration are available for [Django](https://www.djangoproject.com/) users.
+It is designed to work seamlessly with CDNs to ensure high performance for traffic-intensive sites. It can be run in "standalone" mode, or alongside any pre-existing ASGI/WSGI app. A command-line interface is provided to perform common tasks such as multi-format compression, file-name hashing, and manifest generation. Extra features and auto-configuration are available for [Django](https://www.djangoproject.com/) users.
 
 When using `ServeStatic`, best practices are automatically handled such as:
 

@@ -26,8 +26,8 @@ Don't forget to remove deprecated code on each major release!
 - Added support for `zstd` compression on Python 3.14+.
 - Added support for the top-level `servestatic` module to run as a Django app.
 - Added Django system checks to test for common misconfigurations.
-- Added a new `allow_unsafe_symlinks` configuration option for WSGI/ASGI
-- Added a new `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS` configuration option for Django.
+- Added `allow_unsafe_symlinks` configuration option for WSGI/ASGI
+- Added `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS` configuration option for Django.
 - Added `jxl` image support.
 
 ### Changed
@@ -35,7 +35,6 @@ Don't forget to remove deprecated code on each major release!
 - Improved event-loop handling for ASGI file iterator.
 - Installing `servestatic` as a Django app is now the suggested configuration. A warning will appear if it is not detected in `INSTALLED_APPS` when `DEBUG` is `True`.
 - `servestatic.runserver_nostatic` is no longer the recommended Django app installation path. This import path will be retained to ease `WhiteNoise` to `ServeStatic` migration, but now the documentation recommends to use the top-level `servestatic` module instead.
-- For security purposes, `ServeStatic` will no longer follow unsafe symlinks by default. If your symlinks point to files outside of your static root, it is highly recommended to copy them instead. This behavior can be disabled for trusted deployments using `allow_unsafe_symlinks` / `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`.
 
 ### Fixed
 
@@ -44,7 +43,7 @@ Don't forget to remove deprecated code on each major release!
 ### Security
 
 - Hardened `autorefresh` path matching to prevent potential path traversal or path clobbering.
-- Hardened static file resolution to block symlink breakout by default.
+- Hardened static file resolution to block symlink breakout by default. If your symlinks point to files outside of your static root, it is highly recommended to copy them instead.
 
 ## [4.0.0] - 2026-03-05
 
