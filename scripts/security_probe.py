@@ -2,7 +2,14 @@
 This script performs a series of security probes against both the WSGI and ASGI versions of `ServeStatic` to check
 for vulnerabilities. The results are printed in a report format, indicating whether each probe passed or failed
 for both WSGI and ASGI implementations.
+
+This can be run via the command `hatch run "scripts/security_probe.py"` from the project root.
 """
+
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["httpx", "tabulate"]
+# ///
 
 from __future__ import annotations
 
@@ -13,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
+from tabulate import tabulate
 
 from servestatic import ServeStatic, ServeStaticASGI
 
@@ -74,18 +82,15 @@ def prepare_fixture() -> tuple[Path, Path, str, bool]:
 def check_sync_probes(
     client: httpx.Client, outside_secret: str, symlink_created: bool
 ) -> dict[str, tuple[bool | None, str]]:
-    outcomes: dict[str, tuple[bool | None, str]] = {}
-
     response = client.get("/static/app.js")
     ok = response.status_code == 200 and outside_secret.encode() not in response.content
-    outcomes["baseline_static"] = (ok, f"status={response.status_code}")
-
+    outcomes: dict[str, tuple[bool | None, str]] = {"baseline_static": (ok, f"status={response.status_code}")}
     response = client.get("/static/%2e%2e/outside-secret.txt")
-    ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+    ok = response.status_code != 200 or outside_secret.encode() not in response.content
     outcomes["path_traversal_encoded_dotdot"] = (ok, f"status={response.status_code}")
 
     response = client.get("/static/..\\outside-secret.txt")
-    ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+    ok = response.status_code != 200 or outside_secret.encode() not in response.content
     outcomes["path_traversal_backslash"] = (ok, f"status={response.status_code}")
 
     response = client.get("/static/app.js.gz")
@@ -118,7 +123,7 @@ def check_sync_probes(
 
     if symlink_created:
         response = client.get("/static/link-outside.txt")
-        ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+        ok = response.status_code != 200 or outside_secret.encode() not in response.content
         outcomes["symlink_escape_from_static_root"] = (ok, f"status={response.status_code}")
     else:
         outcomes["symlink_escape_from_static_root"] = (None, "skipped (symlink unavailable)")
@@ -129,18 +134,15 @@ def check_sync_probes(
 async def check_async_probes(
     client: httpx.AsyncClient, outside_secret: str, symlink_created: bool
 ) -> dict[str, tuple[bool | None, str]]:
-    outcomes: dict[str, tuple[bool | None, str]] = {}
-
     response = await client.get("/static/app.js")
     ok = response.status_code == 200 and outside_secret.encode() not in response.content
-    outcomes["baseline_static"] = (ok, f"status={response.status_code}")
-
+    outcomes: dict[str, tuple[bool | None, str]] = {"baseline_static": (ok, f"status={response.status_code}")}
     response = await client.get("/static/%2e%2e/outside-secret.txt")
-    ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+    ok = response.status_code != 200 or outside_secret.encode() not in response.content
     outcomes["path_traversal_encoded_dotdot"] = (ok, f"status={response.status_code}")
 
     response = await client.get("/static/..\\outside-secret.txt")
-    ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+    ok = response.status_code != 200 or outside_secret.encode() not in response.content
     outcomes["path_traversal_backslash"] = (ok, f"status={response.status_code}")
 
     response = await client.get("/static/app.js.gz")
@@ -173,7 +175,7 @@ async def check_async_probes(
 
     if symlink_created:
         response = await client.get("/static/link-outside.txt")
-        ok = not (response.status_code == 200 and outside_secret.encode() in response.content)
+        ok = response.status_code != 200 or outside_secret.encode() not in response.content
         outcomes["symlink_escape_from_static_root"] = (ok, f"status={response.status_code}")
     else:
         outcomes["symlink_escape_from_static_root"] = (None, "skipped (symlink unavailable)")
@@ -188,28 +190,25 @@ def status_label(value: bool | None) -> str:
 
 
 def print_report(results: dict[str, ProbeOutcome]) -> None:
-    print("# ServeStatic Security Probe Report")
+    table_data = []
+    table_data.extend(
+        [
+            probe_name,
+            result.expected,
+            f"{status_label(result.wsgi_ok)} ({result.wsgi_detail})",
+            f"{status_label(result.asgi_ok)} ({result.asgi_detail})",
+        ]
+        for probe_name, result in results.items()
+    )
+    print(tabulate(table_data, headers=["Probe", "Expected", "WSGI", "ASGI"], tablefmt="github"))
     print()
-    print("| Probe | Expected | WSGI | ASGI |")
-    print("|---|---|---|---|")
-    for probe_name, result in results.items():
-        print(
-            f"| {probe_name} | {result.expected} | {status_label(result.wsgi_ok)} ({result.wsgi_detail}) | "
-            f"{status_label(result.asgi_ok)} ({result.asgi_detail}) |"
-        )
-
-    findings = []
-    for probe_name, result in results.items():
-        if result.wsgi_ok is False or result.asgi_ok is False:
-            findings.append(probe_name)
-
-    print()
+    findings = [name for name, result in results.items() if result.wsgi_ok is False or result.asgi_ok is False]
     if findings:
-        print("Potential Findings:")
-        for finding in findings:
-            print(f"- {finding}")
+        print("Summary: Issues detected in the following probes!\n")
+        for name in findings:
+            print(f"\t- {name}")
     else:
-        print("No exploitable issues detected by this probe set.")
+        print("Summary: No issues detected.")
 
 
 def run_probe() -> int:
@@ -270,5 +269,4 @@ def run_probe() -> int:
     return 1 if failures else 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(run_probe())
+raise SystemExit(run_probe())
