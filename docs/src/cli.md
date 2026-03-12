@@ -32,15 +32,14 @@ options:
   --hash                Generate hashed versions of files. (default: False)
   --manifest            Generate a manifest file (staticfiles.json). (default:
                         False)
-  --merge-manifest      Merge the new manifest with an existing manifest in the
-                        dest directory. Fails if the existing manifest is not
-                        found. (default: False)
   --compress            Generate compressed versions (gzip/zstd/brotli) of
                         files.
                         (default: False)
   --clear               Empty the destination directory before processing.
                         (default: False)
-  -q, --quiet           Don't produce log output. (default: False)
+  --merge-manifest      Merge the new manifest with an existing manifest in the
+                        dest directory. Fails if the existing manifest is not
+                        found. (default: False)
   --copy-original       Copy the original unhashed files into the dest directory
                         alongside the hashed versions (only applies with
                         --hash). (default: False)
@@ -58,6 +57,7 @@ options:
   --zstd-level ZSTD_LEVEL
                         Compression level for zstd output (only applies with
                         --compress). (default: None)
+  -q, --quiet           Don't produce log output. (default: False)
   -e EXCLUDE, --exclude EXCLUDE
                         Glob pattern(s) to exclude from processing
                         (compression/hashing). These files are still copied.
@@ -76,7 +76,7 @@ You can also pass a custom zstd dictionary with `--zstd-dict` and optionally mar
 
 ## Hash Details
 
-This command will output a standard cache-busting static manifest configuration exactly mirroring Django's expected structures `ManifestStaticFilesStorage`.
+This command will output a cache-busting static manifest, which can be used to correlate the original file path to the hashed path.
 
 Every file provided in your directory gets duplicate versions bearing a unique MD5 hash signature of the internal stream state appended inside its extension structure (e.g., `test.css` -> `test.296ab49302a4.css`).
 

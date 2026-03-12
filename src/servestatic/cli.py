@@ -17,6 +17,8 @@ def main(argv: list[str] | None = None) -> int:
         description="Process static files: copy, optionally hash, and compress.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+
+    # Operation flags
     parser.add_argument(
         "--all",
         action="store_true",
@@ -33,11 +35,6 @@ def main(argv: list[str] | None = None) -> int:
         help="Generate a manifest file (staticfiles.json).",
     )
     parser.add_argument(
-        "--merge-manifest",
-        action="store_true",
-        help="Merge the new manifest with an existing manifest in the dest directory. Fails if the existing manifest is not found.",
-    )
-    parser.add_argument(
         "--compress",
         action="store_true",
         help="Generate compressed versions (gzip/zstd/brotli) of files.",
@@ -47,12 +44,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Empty the destination directory before processing.",
     )
-    parser.add_argument("-q", "--quiet", action="store_true", help="Don't produce log output.")
+    parser.add_argument(
+        "--merge-manifest",
+        action="store_true",
+        help="Merge the new manifest with an existing manifest in the dest directory. Fails if the existing manifest is not found.",
+    )
     parser.add_argument(
         "--copy-original",
         action="store_true",
         help="Copy the original unhashed files into the dest directory alongside the hashed versions (only applies with --hash).",
     )
+
     # Compression specific flags
     parser.add_argument(
         "--no-gzip",
@@ -86,13 +88,17 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         help="Compression level for zstd output (only applies with --compress).",
     )
-    # Exclusion
+
+    # General flags
+    parser.add_argument("-q", "--quiet", action="store_true", help="Don't produce log output.")
     parser.add_argument(
         "-e",
         "--exclude",
         action="append",
         help="Glob pattern(s) to exclude from processing (compression/hashing). These files are still copied.",
     )
+
+    # Positional arguments
     parser.add_argument("src", help="Source directory containing static files.")
     parser.add_argument("dest", help="Destination directory for processed files.")
 
