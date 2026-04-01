@@ -46,6 +46,16 @@ Note that `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `colle
 
 ---
 
+## `SERVESTATIC_USE_STATIC_ROOT`
+
+**Default:** `not (settings.py:SERVESTATIC_USE_MANIFEST or settings.py:SERVESTATIC_USE_FINDERS)`
+
+Find and serve all files within Django's `STATIC_ROOT` (file scan is only run during startup). This defaults to `True` if you do not have no other method configured.
+
+This allows users to have their `STATIC_ROOT` directory contain files which are created _after_ `manage.py collectstatic` is ran (e.g. by `django-compressor`).
+
+---
+
 ## `SERVESTATIC_MAX_AGE`
 
 **Default:** `60 if not settings.py:DEBUG else 0`

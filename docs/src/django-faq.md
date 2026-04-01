@@ -1,6 +1,6 @@
 ## How to I use `ServeStatic` with Django Compressor?
 
-For performance and security reasons `ServeStatic` does not check for new files after startup (unless using Django <span class="title-ref">DEBUG</span> mode). As such, all static files must be generated in advance. If you're using Django Compressor, this can be performed using its [offline compression](https://django-compressor.readthedocs.io/en/stable/usage.html#offline-compression) feature.
+For performance reasons `ServeStatic` does not check for new files after startup by default. As such, when using Django Compressor you must generate your compressed files by using the [offline compression](https://django-compressor.readthedocs.io/en/stable/usage.html#offline-compression) feature and then ensure that `SERVESTATIC_USE_STATIC_ROOT` is set to `True`.
 
 ---
 

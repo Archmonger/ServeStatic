@@ -102,6 +102,9 @@ class ServeStaticMiddleware(ServeStaticBase):
             "SERVESTATIC_USE_MANIFEST",
             not debug and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
         )
+        self.use_static_root = getattr(
+            settings, "SERVESTATIC_USE_STATIC_ROOT", not (self.use_manifest or self.use_finders)
+        )
         self.static_prefix: str = getattr(settings, "SERVESTATIC_STATIC_PREFIX", self.default_static_prefix(settings))
         self.static_root = getattr(settings, "STATIC_ROOT", None)
         self.keep_only_hashed_files = getattr(django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False)
@@ -123,12 +126,17 @@ class ServeStaticMiddleware(ServeStaticBase):
         # Set the static prefix
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
-        # Add the files from STATIC_ROOT, if needed
+        # Recognize the static root as a directory we are allowed to serve from
         if self.static_root:
             self.static_root = os.path.abspath(self.static_root)
             self.insert_directory(self.static_root, self.static_prefix)
 
-            if not self.use_manifest and not self.use_finders:
+        # Add the files from STATIC_ROOT, if needed
+        if self.use_static_root:
+            if not self.static_root:  # nocov
+                msg = "SERVESTATIC_USE_STATIC_ROOT is set to True but STATIC_ROOT is not configured."
+                warnings.warn(msg, stacklevel=2)
+            else:
                 self.add_files(self.static_root, prefix=self.static_prefix)
 
         # Add files from the manifest, if needed

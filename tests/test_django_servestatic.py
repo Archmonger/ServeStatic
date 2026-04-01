@@ -560,13 +560,12 @@ def test_middleware_blocks_symlink_escape_by_default(async_middleware_response):
         class Settings:
             DEBUG = False
             INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
-            SERVESTATIC_ROOT = static_dir
             SERVESTATIC_AUTOREFRESH = True
             SERVESTATIC_USE_MANIFEST = False
             SERVESTATIC_USE_FINDERS = False
             SERVESTATIC_STATIC_PREFIX = "/"
             STATIC_URL = "/"
-            STATIC_ROOT = None
+            STATIC_ROOT = static_dir
 
         middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
         response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
@@ -582,14 +581,13 @@ def test_middleware_can_enable_symlink_escape(async_middleware_response):
         class Settings:
             DEBUG = False
             INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
-            SERVESTATIC_ROOT = static_dir
             SERVESTATIC_AUTOREFRESH = True
             SERVESTATIC_ALLOW_UNSAFE_SYMLINKS = True
             SERVESTATIC_USE_MANIFEST = False
             SERVESTATIC_USE_FINDERS = False
             SERVESTATIC_STATIC_PREFIX = "/"
             STATIC_URL = "/"
-            STATIC_ROOT = None
+            STATIC_ROOT = static_dir
 
         middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
         response = asyncio.run(middleware(build_dummy_request("/link-outside.txt")))
@@ -607,13 +605,12 @@ def test_middleware_blocks_finder_symlink_escape_in_autorefresh(monkeypatch, asy
         class Settings:
             DEBUG = False
             INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
-            SERVESTATIC_ROOT = static_dir
             SERVESTATIC_AUTOREFRESH = True
             SERVESTATIC_USE_MANIFEST = False
             SERVESTATIC_USE_FINDERS = False
             SERVESTATIC_STATIC_PREFIX = "/"
             STATIC_URL = "/"
-            STATIC_ROOT = None
+            STATIC_ROOT = static_dir
 
         middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
         middleware.use_finders = True
@@ -1037,3 +1034,72 @@ def test_manifest_with_keep_only_hashed_2():
         finally:
             static_root: Path = settings.STATIC_ROOT
             shutil.rmtree(static_root, ignore_errors=True)
+
+
+@pytest.mark.skipif(django.VERSION >= (5, 0), reason="Django <5.0 only")
+@pytest.mark.usefixtures("static_files")
+def test_django_compressor_files_served_when_use_manifest_true(static_files):
+    with override_settings(
+        SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_USE_STATIC_ROOT=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=False
+    ):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            call_command("collectstatic", verbosity=0, interactive=False)
+
+            # "django-compressor" runs here: write a new file directly into STATIC_ROOT
+            compressor_path = os.path.join(storage.staticfiles_storage.location, "CACHE", "css", "output.css")
+            os.makedirs(os.path.dirname(compressor_path), exist_ok=True)
+            with open(compressor_path, "w", encoding="utf-8") as f:
+                f.write("body { color: blue; }")
+
+            original_url = "/static/CACHE/css/output.css"
+
+            # Check if SERVESTATIC_USE_STATIC_ROOT allows the new CACHE file
+            scope = AsgiHttpScopeEmulator({"path": original_url, "headers": []})
+            receive = AsgiReceiveEmulator()
+            send = AsgiSendEmulator()
+            asyncio.run(AsgiAppServer(get_asgi_application())(scope, receive, send))
+            assert send.status == 200
+
+        finally:
+            static_root: Path = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
+            reset_lazy_object(storage.staticfiles_storage)
+
+
+@pytest.mark.skipif(django.VERSION < (5, 0), reason="Django >=5.0 only")
+@pytest.mark.usefixtures("static_files")
+def test_django_compressor_files_served_when_use_manifest_true_2(static_files):
+    with override_settings(
+        SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_USE_STATIC_ROOT=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=False
+    ):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            call_command("collectstatic", verbosity=0, interactive=False)
+
+            # "django-compressor" runs here: write a new file directly into STATIC_ROOT
+            compressor_path = os.path.join(storage.staticfiles_storage.location, "CACHE", "css", "output.css")
+            os.makedirs(os.path.dirname(compressor_path), exist_ok=True)
+            with open(compressor_path, "w", encoding="utf-8") as f:
+                f.write("body { color: blue; }")
+
+            original_url = "/static/CACHE/css/output.css"
+
+            # Check if SERVESTATIC_USE_STATIC_ROOT allows the new CACHE file
+            async def executor():
+                scope = AsgiHttpScopeEmulator({"path": original_url, "headers": []})
+                communicator = ApplicationCommunicator(get_asgi_application(), scope)
+                await communicator.send_input(scope)
+                response_start = await communicator.receive_output()
+                response_body = await communicator.receive_output()
+                return response_start | response_body
+
+            response = asyncio.run(executor())
+            assert response["status"] == 200
+
+        finally:
+            static_root: Path = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
+            reset_lazy_object(storage.staticfiles_storage)

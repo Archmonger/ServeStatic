@@ -15,6 +15,12 @@ Don't forget to remove deprecated code on each major release!
 
 - Nothing (yet)
 
+## [4.2.0] - 2026-04-01
+
+### Added
+
+- Added new Django setting `SERVESTATIC_USE_STATIC_ROOT` to allow users to opt in to having `ServeStatic` scan all files within `STATIC_ROOT` at start-up. This is now enabled by default.
+
 ## [4.1.0] - 2026-03-07
 
 !!! tip
