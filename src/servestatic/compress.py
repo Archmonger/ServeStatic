@@ -174,11 +174,7 @@ class Compressor:
 
     def is_compressed_effectively(self, encoding_name: str, path: str, orig_size: int, data: bytes) -> bool:
         compressed_size = len(data)
-        if orig_size == 0:
-            is_effective = False
-        else:
-            ratio = compressed_size / orig_size
-            is_effective = ratio <= 0.95
+        is_effective = False if orig_size == 0 else compressed_size / orig_size <= 0.95
         if is_effective:
             self.log(f"{encoding_name} compressed {path} ({orig_size // 1024}K -> {compressed_size // 1024}K)")
         else:
@@ -273,6 +269,8 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":  # pragma: no cover
     from warnings import warn
 
+    # Note: To simplify WhiteNoise -> ServeStatic migration, the capability to run this file directly will be retained long-term,
+    # but it is not recommended. Future updates will be made to our new CLI, and not to this interface.
     warn(
         "Calling this file directly is deprecated. Use the 'servestatic --compress' command instead.",
         DeprecationWarning,
