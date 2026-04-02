@@ -138,6 +138,33 @@ Because the compression process will only create compressed files where this res
 
 ---
 
+## `SERVESTATIC_MINIFY`
+
+**Default:** `False`
+
+If set to `True`, ServeStatic will minify CSS and JS files during the `post_process` step
+before compressing. This feature requires the optional `rcssmin` and `rjsmin` packages to be installed,
+which can be done via `pip install servestatic[minify]`. If enabled without the required
+packages, it will raise an `ImportError`.
+
+---
+
+## `SERVESTATIC_USE_GZIP`
+
+**Default:** `True`
+
+Enable or disable gzip output generation (`.gz`).
+
+---
+
+## `SERVESTATIC_USE_BROTLI`
+
+**Default:** `True`
+
+Enable or disable brotli output generation (`.br`) when `brotli` is available.
+
+---
+
 ## `SERVESTATIC_USE_ZSTD`
 
 **Default:** `True`

@@ -40,6 +40,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Generate compressed versions (gzip/zstd/brotli) of files.",
     )
     parser.add_argument(
+        "--minify",
+        action="store_true",
+        help="Minify CSS and JS files.",
+    )
+    parser.add_argument(
         "--clear",
         action="store_true",
         help="Empty the destination directory before processing.",
@@ -248,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
             zstd_dict=args.zstd_dict,
             zstd_dict_is_raw=args.zstd_dict_raw,
             zstd_level=args.zstd_level,
+            minify=args.minify,
             quiet=args.quiet,
             log=log,
             # We explicitly rely on the compressor class's default extension exclusion filter

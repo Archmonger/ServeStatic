@@ -12,11 +12,11 @@ You can either run this during development and commit your generated/compressed 
 
 ```console linenums="0"
 $ servestatic --help
-usage: servestatic [-h] [--all] [--hash] [--manifest] [--merge-manifest]
-                   [--compress] [--clear] [-q] [--copy-original] [--no-gzip]
-                   [--no-brotli] [--no-zstd] [--zstd-dict ZSTD_DICT]
-                   [--zstd-dict-raw] [--zstd-level ZSTD_LEVEL]
-                   [-e EXCLUDE]
+usage: servestatic [-h] [--all] [--hash] [--manifest] [--compress] [--clear]
+                   [--merge-manifest] [--copy-original] [--no-gzip]
+                   [--no-brotli] [--no-zstd] [--minify]
+                   [--zstd-dict ZSTD_DICT] [--zstd-dict-raw]
+                   [--zstd-level ZSTD_LEVEL] [-q] [-e EXCLUDE]
                    src dest
 
 Process static files: copy, optionally hash, and compress.
@@ -33,16 +33,16 @@ options:
   --manifest            Generate a manifest file (staticfiles.json). (default:
                         False)
   --compress            Generate compressed versions (gzip/zstd/brotli) of
-                        files.
-                        (default: False)
+                        files. (default: False)
+  --minify              Minify CSS and JS files. (default: False)
   --clear               Empty the destination directory before processing.
                         (default: False)
-  --merge-manifest      Merge the new manifest with an existing manifest in the
-                        dest directory. Fails if the existing manifest is not
-                        found. (default: False)
-  --copy-original       Copy the original unhashed files into the dest directory
-                        alongside the hashed versions (only applies with
-                        --hash). (default: False)
+  --merge-manifest      Merge the new manifest with an existing manifest in
+                        the dest directory. Fails if the existing manifest is
+                        not found. (default: False)
+  --copy-original       Copy the original unhashed files into the dest
+                        directory alongside the hashed versions (only applies
+                        with --hash). (default: False)
   --no-gzip             Don't produce gzip '.gz' files (only applies with
                         --compress). (default: True)
   --no-brotli           Don't produce brotli '.br' files (only applies with

@@ -29,6 +29,7 @@ classifiers = [
 dependencies = ["asgiref"]
 dynamic = ["version"]
 optional-dependencies.brotli = ["brotli"]
+optional-dependencies.minify = ["rcssmin", "rjsmin"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Source = "https://github.com/Archmonger/ServeStatic"
@@ -52,7 +53,15 @@ installer = "uv"
 # >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pytest-sugar", "httpx", "brotli", "pytest-timeout"]
+extra-dependencies = [
+  "pytest-sugar",
+  "httpx",
+  "brotli",
+  "pytest-timeout",
+  "brotli",
+  "rcssmin",
+  "rjsmin",
+]
 randomize = true
 matrix-name-format = "{variable}-{value}"
 timeout = 15

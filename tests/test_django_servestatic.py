@@ -387,6 +387,8 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_CHARSET": ""}, "servestatic.E017"),
         ({"SERVESTATIC_ALLOW_ALL_ORIGINS": "yes"}, "servestatic.E018"),
         ({"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": "jpg,png"}, "servestatic.E019"),
+        ({"SERVESTATIC_USE_GZIP": "yes"}, "servestatic.E032"),
+        ({"SERVESTATIC_USE_BROTLI": "yes"}, "servestatic.E033"),
         ({"SERVESTATIC_USE_ZSTD": "yes"}, "servestatic.E020"),
         ({"SERVESTATIC_ZSTD_DICTIONARY": 123}, "servestatic.E021"),
         ({"SERVESTATIC_ZSTD_DICTIONARY_IS_RAW": "yes"}, "servestatic.E022"),
@@ -397,6 +399,7 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_KEEP_ONLY_HASHED_FILES": "yes"}, "servestatic.E027"),
         ({"SERVESTATIC_MANIFEST_STRICT": "yes"}, "servestatic.E028"),
         ({"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": "yes"}, "servestatic.E029"),
+        ({"SERVESTATIC_MINIFY": "yes"}, "servestatic.E031"),
     ],
 )
 def test_django_check_reports_invalid_setting_types(overrides, error_id):

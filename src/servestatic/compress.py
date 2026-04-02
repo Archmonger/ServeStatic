@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import os
 import re
@@ -21,6 +22,16 @@ try:
     zstd = import_module("compression.zstd")
 except ImportError:  # pragma: no cover
     zstd = None
+
+try:
+    import rcssmin  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    rcssmin = None
+
+try:
+    import rjsmin  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    rjsmin = None
 
 
 class Compressor:
@@ -69,6 +80,7 @@ class Compressor:
         use_gzip: bool = True,
         use_brotli: bool = True,
         use_zstd: bool = True,
+        minify: bool = False,
         zstd_dict: str | os.PathLike[str] | bytes | bytearray | memoryview | object | None = None,
         zstd_dict_is_raw: bool = False,
         zstd_level: int | None = None,
@@ -94,6 +106,10 @@ class Compressor:
         self.zstd_level = zstd_level
         self.zstd_dict = self.load_zstd_dictionary(zstd_dict, is_raw=zstd_dict_is_raw)
         self.log = logger
+        self.minify = minify
+        if self.minify and (rcssmin is None or rjsmin is None):
+            error_msg = "Minification requested but rcssmin or rjsmin is not installed."
+            raise ImportError(error_msg)
 
     @staticmethod
     def load_zstd_dictionary(
@@ -129,19 +145,31 @@ class Compressor:
         with open(path, "rb") as f:
             stat_result = os.fstat(f.fileno())
             data = f.read()
+
+        if self.minify:
+            if path.endswith(".css"):
+                with contextlib.suppress(UnicodeDecodeError):
+                    data = rcssmin.cssmin(data.decode("utf-8")).encode("utf-8")  # type: ignore
+            elif path.endswith(".js"):
+                with contextlib.suppress(UnicodeDecodeError):
+                    data = rjsmin.jsmin(data.decode("utf-8")).encode("utf-8")  # type: ignore
+
         size = len(data)
         if self.use_zstd:
             compressed = self.compress_zstd(data, level=self.zstd_level, zstd_dict=self.zstd_dict)
             if self.is_compressed_effectively("Zstandard", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".zstd", stat_result))
+
         if self.use_brotli:
             compressed = self.compress_brotli(data)
             if self.is_compressed_effectively("Brotli", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".br", stat_result))
+
         if self.use_gzip:
             compressed = self.compress_gzip(data)
             if self.is_compressed_effectively("Gzip", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".gz", stat_result))
+
         return filenames
 
     @staticmethod

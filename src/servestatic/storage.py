@@ -26,10 +26,13 @@ _PostProcessT = Iterator[tuple[str, str | None, bool | Exception]]
 def get_compressor_kwargs(*, quiet: bool) -> dict[str, Any]:
     return {
         "extensions": getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None),
+        "use_gzip": getattr(settings, "SERVESTATIC_USE_GZIP", True),
+        "use_brotli": getattr(settings, "SERVESTATIC_USE_BROTLI", True),
         "use_zstd": getattr(settings, "SERVESTATIC_USE_ZSTD", True),
         "zstd_dict": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY", None),
         "zstd_dict_is_raw": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY_IS_RAW", False),
         "zstd_level": getattr(settings, "SERVESTATIC_ZSTD_LEVEL", None),
+        "minify": getattr(settings, "SERVESTATIC_MINIFY", False),
         "quiet": quiet,
     }
 
