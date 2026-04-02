@@ -1,6 +1,8 @@
 ## How to I use `ServeStatic` with Django Compressor?
 
-For performance reasons `ServeStatic` does not check for new files after startup by default. As such, when using Django Compressor you must generate your compressed files by using the [offline compression](https://django-compressor.readthedocs.io/en/stable/usage.html#offline-compression) feature and then ensure that `SERVESTATIC_USE_STATIC_ROOT` is set to `True`.
+When using Django Compressor you must generate your compressed files by using the [offline compression](https://django-compressor.readthedocs.io/en/stable/usage.html#offline-compression) feature and then ensure that `SERVESTATIC_USE_STATIC_ROOT` is set to `True`.
+
+Alternatively, if you are only utilizing Django Compressor for its minification features and not its file concatenation features, you can set `SERVESTATIC_MINIFY` to `True` and remove your usage of Django Compressor entirely.
 
 ---
 

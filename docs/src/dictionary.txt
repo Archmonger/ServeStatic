@@ -41,3 +41,5 @@ misconfigurations
 encodings
 symlink
 symlinks
+minification
+minify
