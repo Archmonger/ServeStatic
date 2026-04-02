@@ -170,7 +170,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...HEAD
+[4.2.0]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...4.0.0
 [3.1.0]: https://github.com/Archmonger/ServeStatic/compare/3.0.2...3.1.0
