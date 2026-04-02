@@ -56,6 +56,8 @@ If the problems persist then your issue is with Django itself (try the [docs](ht
 
 `ServeStatic` will only work with storage backends that stores their files on the local filesystem in `STATIC_ROOT`. It will not work with backends that store files remotely, for instance on Amazon S3.
 
+---
+
 ## Why does `ServeStatic` make my tests run slow?
 
 `ServeStatic` is designed to do as much work as possible upfront when the application starts so that it can serve files as efficiently as possible while the application is running. This makes sense for long-running production processes, but you might find that the added startup time is a problem during test runs when application instances are frequently being created and destroyed.
@@ -63,6 +65,8 @@ If the problems persist then your issue is with Django itself (try the [docs](ht
 The simplest way to fix this is to make sure that during testing the `SERVESTATIC_AUTOREFRESH` setting is set to `True`. (By default it is `True` when `DEBUG` is enabled and `False` otherwise.) This stops `ServeStatic` from scanning your static files on start up but other than that its behaviour should be exactly the same.
 
 It is also worth making sure you don't have unnecessary files in your `STATIC_ROOT` directory. In particular, be careful not to include a `node_modules` directory which can contain a very large number of files and significantly slow down your application startup. If you need to include specific files from `node_modules` then you can create symlinks from within your static directory to just the files you need.
+
+---
 
 ## Why do I get "ValueError: Missing staticfiles manifest entry for ..."?
 
@@ -75,6 +79,8 @@ python manage.py findstatic --verbosity 2 foo
 which will show you all the paths which Django searches for the file "foo".
 
 If, for some reason, you want Django to silently ignore such errors you can set `SERVESTATIC_MANIFEST_STRICT` to `False`.
+
+---
 
 ## How do I use `ServeStatic` with Webpack/Browserify/etc?
 
@@ -105,6 +111,8 @@ This means that Django can find the processed files, but doesn't need to know an
 The final `manage.py collectstatic` step writes "hash-versioned" and compressed copies of the static files into `static_root` ready for production.
 
 Note, both the `static_build` and `static_root` directories should be excluded from version control (e.g. through `.gitignore`) and only the `static_src` directory should be checked in.
+
+---
 
 ## How do I deploy an application which is not at the root of the domain?
 
