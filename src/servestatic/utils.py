@@ -6,7 +6,7 @@ import contextlib
 import functools
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Concatenate, ParamSpec, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, Iterator
@@ -176,7 +176,7 @@ class AsyncFile:
         return await self._execute(self.file_obj.seek, offset, whence)
 
     @open_lazy
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> AsyncFile:  # noqa: PYI034
         return self
 
     async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:

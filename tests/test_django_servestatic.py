@@ -1103,3 +1103,54 @@ def test_django_compressor_files_served_when_use_manifest_true_2(static_files):
             static_root: Path = settings.STATIC_ROOT
             shutil.rmtree(static_root, ignore_errors=True)
             reset_lazy_object(storage.staticfiles_storage)
+
+
+def test_static_file_range_without_content_length():
+    import pytest
+
+    from servestatic.responders import StaticFile
+
+    sf = StaticFile.__new__(StaticFile)
+    with pytest.raises(ValueError, match="Content-Length header is required for range requests"):
+        sf.get_range_response("bytes=0-10", [("Content-Length", None)], None)
+
+
+def test_static_file_arange_without_content_length():
+    import asyncio
+
+    import pytest
+
+    from servestatic.responders import StaticFile
+
+    sf = StaticFile.__new__(StaticFile)
+    with pytest.raises(ValueError, match="Content-Length header is required for range requests"):
+        asyncio.run(sf.aget_range_response("bytes=0-10", [("Content-Length", None)], None))
+
+
+def test_aserve_with_none_header():
+    import asyncio
+
+    from django.http import HttpRequest
+
+    from servestatic.middleware import ServeStaticMiddleware
+    from servestatic.responders import Response
+
+    class FakeStaticFile:
+        async def aget_response(self, method, meta):
+            return Response(200, [("X-Test", None)], None)
+
+    request = HttpRequest()
+    request.method = "GET"
+    request.META = {}
+
+    response = asyncio.run(ServeStaticMiddleware.aserve(FakeStaticFile(), request))
+    assert "X-Test" not in response
+
+
+def test_get_static_url_value_error():
+    from unittest import mock
+
+    from servestatic.middleware import ServeStaticMiddleware
+
+    with mock.patch("servestatic.middleware.staticfiles_storage.url", side_effect=ValueError):
+        assert ServeStaticMiddleware.get_static_url("foo") is None

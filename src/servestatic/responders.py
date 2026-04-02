@@ -9,7 +9,7 @@ from email.utils import formatdate, parsedate
 from http import HTTPStatus
 from io import BufferedIOBase
 from time import mktime
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 from wsgiref.headers import Headers
 
@@ -107,7 +107,7 @@ class AsyncSlicedFile:
     async def close(self) -> None:
         await self.fileobj.close()
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> AsyncSlicedFile:  # noqa: PYI034
         return self
 
     async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
