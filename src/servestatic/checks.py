@@ -235,8 +235,6 @@ def check_setting_configuration(
     errors.extend(_validate_servestatic_charset())
     errors.extend(_validate_bool_setting("SERVESTATIC_ALLOW_ALL_ORIGINS", "servestatic.E018"))
     errors.extend(_validate_servestatic_skip_compress_extensions())
-    errors.extend(_validate_bool_setting("SERVESTATIC_USE_GZIP", "servestatic.E032"))
-    errors.extend(_validate_bool_setting("SERVESTATIC_USE_BROTLI", "servestatic.E033"))
     errors.extend(_validate_bool_setting("SERVESTATIC_USE_ZSTD", "servestatic.E020"))
     errors.extend(_validate_servestatic_zstd_dictionary())
     errors.extend(_validate_bool_setting("SERVESTATIC_ZSTD_DICTIONARY_IS_RAW", "servestatic.E022"))
@@ -249,5 +247,7 @@ def check_setting_configuration(
     errors.extend(_validate_bool_setting("SERVESTATIC_ALLOW_UNSAFE_SYMLINKS", "servestatic.E029"))
     errors.extend(_validate_bool_setting("SERVESTATIC_USE_STATIC_ROOT", "servestatic.E030"))
     errors.extend(_validate_bool_setting("SERVESTATIC_MINIFY", "servestatic.E031"))
+    errors.extend(_validate_bool_setting("SERVESTATIC_USE_GZIP", "servestatic.E032"))
+    errors.extend(_validate_bool_setting("SERVESTATIC_USE_BROTLI", "servestatic.E033"))
 
     return errors
