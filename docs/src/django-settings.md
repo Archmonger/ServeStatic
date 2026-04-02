@@ -30,7 +30,7 @@ Find and serve files using Django's manifest file.
 
 This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
 
-When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-3-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
 
 ---
 
@@ -142,10 +142,7 @@ Because the compression process will only create compressed files where this res
 
 **Default:** `False`
 
-If set to `True`, ServeStatic will minify CSS and JS files during the `post_process` step
-before compressing. This feature requires the optional `rcssmin` and `rjsmin` packages to be installed,
-which can be done via `pip install servestatic[minify]`. If enabled without the required
-packages, it will raise an `ImportError`.
+If set to `True`, ServeStatic will minify CSS and JS files during the `post_process` step before compressing. This feature requires the optional `rcssmin` and `rjsmin` packages to be installed, which can be done via `pip install servestatic[minify]`. If enabled without the required packages, it will raise an `ImportError`.
 
 ---
 

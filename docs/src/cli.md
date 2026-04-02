@@ -1,12 +1,12 @@
 # CLI Reference
 
-ServeStatic comes with a handy command line utility which can generate compressed versions of your static files and hash the file names (for cache busting, mimicking Django's `ManifestStaticFilesStorage`).
+ServeStatic comes with a handy command line utility for common static file operations: manifest generation, compression, minification, and hashing.
 
 You can either run this during development and commit your generated/compressed files to your repository, or you can run this as part of your build and deploy processes.
 
 !!! note
 
-    This CLI is intended for non-Django deployments. For Django users, compression and hashing is handled completely automatically within Django's `collectstatic` command if you're using ServeStatic's `CompressedManifestStaticFilesStorage` storage backend.
+    This CLI is intended for non-Django deployments. For Django users, these features are handled automatically within Django's `collectstatic` command when using ServeStatic's `CompressedManifestStaticFilesStorage` storage backend.
 
 ## Usage
 
