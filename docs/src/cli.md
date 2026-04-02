@@ -1,22 +1,22 @@
 # CLI Reference
 
-ServeStatic comes with a handy command line utility which can generate compressed versions of your static files and hash the file names (for cache busting, mimicking Django's `ManifestStaticFilesStorage`).
+ServeStatic comes with a handy command line utility for common static file operations: manifest generation, compression, minification, and hashing.
 
 You can either run this during development and commit your generated/compressed files to your repository, or you can run this as part of your build and deploy processes.
 
 !!! note
 
-    This CLI is intended for non-Django deployments. For Django users, compression and hashing is handled completely automatically within Django's `collectstatic` command if you're using ServeStatic's `CompressedManifestStaticFilesStorage` storage backend.
+    This CLI is intended for non-Django deployments. For Django users, these features are handled automatically within Django's `collectstatic` command when using ServeStatic's `CompressedManifestStaticFilesStorage` storage backend.
 
 ## Usage
 
 ```console linenums="0"
 $ servestatic --help
-usage: servestatic [-h] [--all] [--hash] [--manifest] [--merge-manifest]
-                   [--compress] [--clear] [-q] [--copy-original] [--no-gzip]
-                   [--no-brotli] [--no-zstd] [--zstd-dict ZSTD_DICT]
-                   [--zstd-dict-raw] [--zstd-level ZSTD_LEVEL]
-                   [-e EXCLUDE]
+usage: servestatic [-h] [--all] [--hash] [--manifest] [--compress] [--clear]
+                   [--merge-manifest] [--copy-original] [--no-gzip]
+                   [--no-brotli] [--no-zstd] [--minify]
+                   [--zstd-dict ZSTD_DICT] [--zstd-dict-raw]
+                   [--zstd-level ZSTD_LEVEL] [-q] [-e EXCLUDE]
                    src dest
 
 Process static files: copy, optionally hash, and compress.
@@ -32,18 +32,17 @@ options:
   --hash                Generate hashed versions of files. (default: False)
   --manifest            Generate a manifest file (staticfiles.json). (default:
                         False)
-  --merge-manifest      Merge the new manifest with an existing manifest in the
-                        dest directory. Fails if the existing manifest is not
-                        found. (default: False)
   --compress            Generate compressed versions (gzip/zstd/brotli) of
-                        files.
-                        (default: False)
+                        files. (default: False)
+  --minify              Minify CSS and JS files. (default: False)
   --clear               Empty the destination directory before processing.
                         (default: False)
-  -q, --quiet           Don't produce log output. (default: False)
-  --copy-original       Copy the original unhashed files into the dest directory
-                        alongside the hashed versions (only applies with
-                        --hash). (default: False)
+  --merge-manifest      Merge the new manifest with an existing manifest in
+                        the dest directory. Fails if the existing manifest is
+                        not found. (default: False)
+  --copy-original       Copy the original unhashed files into the dest
+                        directory alongside the hashed versions (only applies
+                        with --hash). (default: False)
   --no-gzip             Don't produce gzip '.gz' files (only applies with
                         --compress). (default: True)
   --no-brotli           Don't produce brotli '.br' files (only applies with
@@ -58,6 +57,7 @@ options:
   --zstd-level ZSTD_LEVEL
                         Compression level for zstd output (only applies with
                         --compress). (default: None)
+  -q, --quiet           Don't produce log output. (default: False)
   -e EXCLUDE, --exclude EXCLUDE
                         Glob pattern(s) to exclude from processing
                         (compression/hashing). These files are still copied.
@@ -76,7 +76,7 @@ You can also pass a custom zstd dictionary with `--zstd-dict` and optionally mar
 
 ## Hash Details
 
-This command will output a standard cache-busting static manifest configuration exactly mirroring Django's expected structures `ManifestStaticFilesStorage`.
+This command will output a cache-busting static manifest, which can be used to correlate the original file path to the hashed path.
 
 Every file provided in your directory gets duplicate versions bearing a unique MD5 hash signature of the internal stream state appended inside its extension structure (e.g., `test.css` -> `test.296ab49302a4.css`).
 

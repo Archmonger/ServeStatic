@@ -11,7 +11,7 @@ class ServeStaticRunserverNoStaticAliasConfig(ServeStaticConfig):
     name = "servestatic.runserver_nostatic"
     label = "servestatic_runserver_nostatic"
 
-    def ready(self):
+    def ready(self) -> None:
         super().ready()
         warn(
             "The 'servestatic.runserver_nostatic' app is deprecated. Use 'servestatic' instead.",

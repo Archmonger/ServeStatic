@@ -299,6 +299,20 @@ def test_overlong_trailing_ranges_return_entire_file(server, files):
     assert response.content == files.js_content
 
 
+def test_request_last_byte(server, files):
+    last_byte = len(files.js_content) - 1
+    response = server.get(files.js_url, headers={"Range": f"bytes={last_byte}-{last_byte}"})
+    assert response.status_code == 206
+    assert response.content == files.js_content[-1:]
+
+
+def test_request_last_byte_plus_one_is_out_of_range(server, files):
+    last_byte_plus_one = len(files.js_content)
+    response = server.get(files.js_url, headers={"Range": f"bytes={last_byte_plus_one}-{last_byte_plus_one}"})
+    assert response.status_code == 416
+    assert response.headers["Content-Range"] == f"bytes */{len(files.js_content)}"
+
+
 def test_out_of_range_error(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=10000-11000"})
     assert response.status_code == 416

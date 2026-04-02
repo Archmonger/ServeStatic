@@ -20,13 +20,16 @@ from django.core.files.base import ContentFile
 from servestatic.compress import Compressor
 from servestatic.utils import stat_files
 
-_PostProcessT = Iterator[tuple[str, str, bool] | tuple[str, None, RuntimeError]]
+_PostProcessT = Iterator[tuple[str, str | None, bool | Exception]]
 
 
 def get_compressor_kwargs(*, quiet: bool) -> dict[str, Any]:
     return {
         "extensions": getattr(settings, "SERVESTATIC_SKIP_COMPRESS_EXTENSIONS", None),
+        "use_gzip": getattr(settings, "SERVESTATIC_USE_GZIP", True),
+        "use_brotli": getattr(settings, "SERVESTATIC_USE_BROTLI", True),
         "use_zstd": getattr(settings, "SERVESTATIC_USE_ZSTD", True),
+        "minify": getattr(settings, "SERVESTATIC_MINIFY", False),
         "zstd_dict": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY", None),
         "zstd_dict_is_raw": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY_IS_RAW", False),
         "zstd_level": getattr(settings, "SERVESTATIC_ZSTD_LEVEL", None),
@@ -76,14 +79,14 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
     those without the hash in their name)
     """
 
-    _new_files = None
+    _new_files: set[str] | None = None
     compressor: Compressor | None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.manifest_strict = getattr(settings, "SERVESTATIC_MANIFEST_STRICT", True)
         super().__init__(*args, **kwargs)
 
-    def post_process(self, *args, **kwargs):  # pyright: ignore [reportIncompatibleMethodOverride]
+    def post_process(self, *args: Any, **kwargs: Any) -> _PostProcessT:  # pyright: ignore [reportIncompatibleMethodOverride]
         files = super().post_process(*args, **kwargs)
 
         if not kwargs.get("dry_run"):
@@ -97,7 +100,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
         self.add_stats_to_manifest()
 
-    def add_stats_to_manifest(self):
+    def add_stats_to_manifest(self) -> None:
         """Adds additional `stats` field to Django's manifest file."""
         current = self.read_manifest()
         current = json.loads(current) if current else {}
@@ -110,7 +113,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         manifest_storage.delete(self.manifest_name)
         manifest_storage._save(self.manifest_name, ContentFile(new))  # pyright: ignore [reportAttributeAccessIssue]
 
-    def stat_static_root(self):
+    def stat_static_root(self) -> dict[str, os.stat_result]:
         """Stats all the files within the static root folder."""
         static_root = getattr(settings, "STATIC_ROOT", None)
         if static_root is None:
@@ -127,7 +130,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         # Remove the static root folder from the path
         return {path[len(static_root) + 1 :]: stat for path, stat in stats.items()}
 
-    def load_manifest_stats(self):
+    def load_manifest_stats(self) -> dict[str, list[int] | tuple[int, ...]]:
         """Derivative of Django's `load_manifest` but for the `stats` field."""
         content = self.read_manifest()
         if content is None:
@@ -138,7 +141,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         msg = f"Couldn't load stats from manifest '{self.manifest_name}'"
         raise ValueError(msg)
 
-    def post_process_with_compression(self, files):
+    def post_process_with_compression(self, files: _PostProcessT) -> _PostProcessT:
         # Files may get hashed multiple times, we want to keep track of all the
         # intermediate files generated during the process and which of these
         # are the final names used for each file. As not every intermediate
@@ -164,23 +167,23 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         for name, compressed_name in self.compress_files(files_to_compress):
             yield name, compressed_name, True
 
-    def hashed_name(self, *args, **kwargs):
+    def hashed_name(self, *args: Any, **kwargs: Any) -> str:
         name = super().hashed_name(*args, **kwargs)
         if self._new_files is not None:
             self._new_files.add(self.clean_name(name))
         return name
 
-    def start_tracking_new_files(self, new_files):
+    def start_tracking_new_files(self, new_files: set[str]) -> None:
         self._new_files = new_files
 
-    def stop_tracking_new_files(self):
+    def stop_tracking_new_files(self) -> None:
         self._new_files = None
 
     @property
-    def keep_only_hashed_files(self):
+    def keep_only_hashed_files(self) -> bool:
         return getattr(settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False)
 
-    def delete_files(self, files_to_delete):
+    def delete_files(self, files_to_delete: set[str]) -> None:
         for name in files_to_delete:
             try:
                 os.unlink(self.path(name))
@@ -188,10 +191,10 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
                 if e.errno != errno.ENOENT:
                     raise
 
-    def create_compressor(self, **kwargs):  # noqa: PLR6301
+    def create_compressor(self, **kwargs: Any) -> Compressor:  # noqa: PLR6301
         return Compressor(**kwargs)
 
-    def compress_files(self, paths):
+    def compress_files(self, paths: set[str]) -> Iterator[tuple[str, str]]:
         self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
 
         def _compress_path(path: str) -> list[tuple[str, str]]:
@@ -208,7 +211,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
             for future in as_completed(futures):
                 yield from future.result()
 
-    def make_helpful_exception(self, exception, name):
+    def make_helpful_exception(self, exception: Exception, name: str) -> Exception:
         """
         If a CSS file contains references to images, fonts etc that can't be found
         then Django's `post_process` blows up with a not particularly helpful

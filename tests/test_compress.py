@@ -68,8 +68,9 @@ def test_with_falsey_extensions():
 
 
 def test_custom_log():
-    compressor = Compressor(log="test")
-    assert compressor.log == "test"
+    new_logger = mock.Mock()
+    compressor = Compressor(log=new_logger)
+    assert compressor.log == new_logger
 
 
 def test_compress():
@@ -90,6 +91,73 @@ def test_main_error(files_dir):
         compress_main([files_dir, "--quiet"])
 
     assert excinfo.value.args == ("woops",)
+
+
+def test_compress_minify_raises_when_dependency_missing(monkeypatch):
+    monkeypatch.setattr(compress_module, "rcssmin", None)
+    monkeypatch.setattr(compress_module, "rjsmin", None)
+    with pytest.raises(ImportError, match=r"Minification requested but rcssmin or rjsmin is not installed\."):
+        Compressor(minify=True)
+
+
+def test_compress_minify_reduces_size(tmp_path):
+    pytest.importorskip("rcssmin")
+    pytest.importorskip("rjsmin")
+
+    css_content = b"body { color: red; } /* comment */\n" * 100
+    js_content = b"function foo() { \n    console.log('hi'); \n} // comment \n" * 100
+
+    css_path = tmp_path / "test.css"
+    css_path.write_bytes(css_content)
+    js_path = tmp_path / "test.js"
+    js_path.write_bytes(js_content)
+    other_path = tmp_path / "test.txt"
+    other_path.write_bytes(css_content)
+
+    compressor_no_minify = Compressor(minify=False, use_gzip=True, use_brotli=False, use_zstd=False, quiet=True)
+    compressor_minify = Compressor(minify=True, use_gzip=True, use_brotli=False, use_zstd=False, quiet=True)
+
+    compressor_no_minify.compress(css_path)
+    css_gz_path = tmp_path / "test.css.gz"
+    size_css_no_minify = css_gz_path.stat().st_size
+    css_gz_path.unlink()
+
+    compressor_minify.compress(css_path)
+    size_css_minify = css_gz_path.stat().st_size
+
+    assert size_css_minify < size_css_no_minify
+
+    compressor_no_minify.compress(js_path)
+    js_gz_path = tmp_path / "test.js.gz"
+    size_js_no_minify = js_gz_path.stat().st_size
+    js_gz_path.unlink()
+
+    compressor_minify.compress(js_path)
+    size_js_minify = js_gz_path.stat().st_size
+
+    assert size_js_minify < size_js_no_minify
+
+    compressor_no_minify.compress(other_path)
+    other_gz_path = tmp_path / "test.txt.gz"
+    size_other_no_minify = other_gz_path.stat().st_size
+    other_gz_path.unlink()
+
+    compressor_minify.compress(other_path)
+    size_other_minify = other_gz_path.stat().st_size
+
+    assert size_other_minify == size_other_no_minify
+
+
+def test_compress_minify_ignores_decode_error(tmp_path):
+    pytest.importorskip("rcssmin")
+    pytest.importorskip("rjsmin")
+
+    css_path = tmp_path / "test.css"
+    # An invalid utf-8 sequence shouldn't crash the compressor
+    css_path.write_bytes(b"\xff\xfe" * 100)
+
+    compressor = Compressor(minify=True, use_gzip=True, use_brotli=False, use_zstd=False, quiet=True)
+    compressor.compress(css_path)
 
 
 def test_compress_brotli_raises_when_dependency_missing(monkeypatch):

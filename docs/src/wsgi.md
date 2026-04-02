@@ -14,9 +14,7 @@ application.add_files("/path/to/more/static/files", prefix="more-files/")
 
 Alternatively, you can use ServeStatic as a standalone file server by not providing a WSGI app. For example:
 
-```python
-from servestatic import ServeStatic
-
+```python linenums="0"
 application = ServeStatic(None, root="/path/to/static/files")
 ```
 

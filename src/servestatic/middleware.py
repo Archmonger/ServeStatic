@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import os
 import warnings
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from inspect import iscoroutinefunction
 from posixpath import basename, normpath
 from typing import cast
@@ -12,13 +12,14 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 from asgiref.sync import markcoroutinefunction
+from django.conf import LazySettings
 from django.conf import settings as django_settings
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
     staticfiles_storage,
 )
-from django.http import FileResponse, HttpRequest
+from django.http import FileResponse, HttpRequest, HttpResponseBase
 
 from servestatic.responders import AsyncSlicedFile, MissingFileError, Redirect, StaticFile
 from servestatic.storage import CompressedManifestStaticFilesStorage
@@ -34,7 +35,7 @@ from servestatic.wsgi import ServeStaticBase
 
 __all__ = ["ServeStaticMiddleware"]
 
-GetResponseCallable = Callable[[HttpRequest], Awaitable[object]]
+GetResponseCallable = Callable[[HttpRequest], Awaitable[HttpResponseBase]]
 
 SERVESTATIC_APP_PATHS = frozenset({
     "servestatic",
@@ -44,15 +45,17 @@ SERVESTATIC_APP_PATHS = frozenset({
 })
 
 
-def has_servestatic_app(installed_apps) -> bool:
+def has_servestatic_app(installed_apps: Iterable[str]) -> bool:
     return bool(set(installed_apps) & SERVESTATIC_APP_PATHS)
 
 
-def is_async_callable(value) -> bool:
+def is_async_callable(value: object) -> bool:
     return iscoroutinefunction(value) or (callable(value) and iscoroutinefunction(value.__call__))
 
 
-def finder_path_is_allowed(directories, url, path, path_within_root) -> bool:
+def finder_path_is_allowed(
+    directories: list[tuple[str, str]], url: str, path: str, path_within_root: Callable[[str, str], bool]
+) -> bool:
     return any(root and url.startswith(prefix) and path_within_root(root, path) for root, prefix in directories)
 
 
@@ -66,7 +69,9 @@ class ServeStaticMiddleware(ServeStaticBase):
     sync_capable = False
     get_response: GetResponseCallable
 
-    def __init__(self, get_response=None, settings=django_settings):
+    def __init__(
+        self, get_response: GetResponseCallable | None = None, settings: LazySettings = django_settings
+    ) -> None:
         if not is_async_callable(get_response):
             msg = "ServeStaticMiddleware requires an async compatible version of Django."
             raise ValueError(msg)
@@ -97,6 +102,9 @@ class ServeStaticMiddleware(ServeStaticBase):
             "SERVESTATIC_USE_MANIFEST",
             not debug and isinstance(staticfiles_storage, ManifestStaticFilesStorage),
         )
+        self.use_static_root = getattr(
+            settings, "SERVESTATIC_USE_STATIC_ROOT", not (self.use_manifest or self.use_finders)
+        )
         self.static_prefix: str = getattr(settings, "SERVESTATIC_STATIC_PREFIX", self.default_static_prefix(settings))
         self.static_root = getattr(settings, "STATIC_ROOT", None)
         self.keep_only_hashed_files = getattr(django_settings, "SERVESTATIC_KEEP_ONLY_HASHED_FILES", False)
@@ -118,12 +126,17 @@ class ServeStaticMiddleware(ServeStaticBase):
         # Set the static prefix
         self.static_prefix = ensure_leading_trailing_slash(self.static_prefix)
 
-        # Add the files from STATIC_ROOT, if needed
+        # Recognize the static root as a directory we are allowed to serve from
         if self.static_root:
             self.static_root = os.path.abspath(self.static_root)
             self.insert_directory(self.static_root, self.static_prefix)
 
-            if not self.use_manifest and not self.use_finders:
+        # Add the files from STATIC_ROOT, if needed
+        if self.use_static_root:
+            if not self.static_root:  # nocov
+                msg = "SERVESTATIC_USE_STATIC_ROOT is set to True but STATIC_ROOT is not configured."
+                warnings.warn(msg, stacklevel=2)
+            else:
                 self.add_files(self.static_root, prefix=self.static_prefix)
 
         # Add files from the manifest, if needed
@@ -138,7 +151,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         if root:
             self.add_files(root)
 
-    async def __call__(self, request):
+    async def __call__(self, request: HttpRequest) -> HttpResponseBase:
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
         if self.autorefresh:
@@ -159,8 +172,8 @@ class ServeStaticMiddleware(ServeStaticBase):
         return await self.get_response(request)
 
     @staticmethod
-    async def aserve(static_file: StaticFile | Redirect, request: HttpRequest):
-        response = await static_file.aget_response(request.method, request.META)
+    async def aserve(static_file: StaticFile | Redirect, request: HttpRequest) -> AsyncServeStaticFileResponse:
+        response = await static_file.aget_response(request.method or "GET", request.META)
         status = int(response.status)
         http_response = AsyncServeStaticFileResponse(
             response.file or EmptyAsyncIterator(),
@@ -169,10 +182,11 @@ class ServeStaticMiddleware(ServeStaticBase):
         # Remove default content-type
         del http_response["content-type"]
         for key, value in response.headers:
-            http_response[key] = value
+            if value is not None:
+                http_response[key] = value
         return http_response
 
-    def add_files_from_finders(self):
+    def add_files_from_finders(self) -> None:
         files: dict[str, tuple[str, str | None]] = {}
         for finder in finders.get_finders():
             for path, storage in finder.list(None):
@@ -191,7 +205,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         for url, (path, root) in files.items():
             self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
-    def add_files_from_manifest(self):
+    def add_files_from_manifest(self) -> None:
         if not isinstance(staticfiles_storage, ManifestStaticFilesStorage):
             msg = "SERVESTATIC_USE_MANIFEST is set to True but staticfiles storage is not using a manifest."
             raise TypeError(msg)
@@ -200,7 +214,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         # Fetch `stat_cache` from the manifest file, if possible
         stat_cache = None
         if isinstance(staticfiles_storage, CompressedManifestStaticFilesStorage):
-            manifest_stats: dict = staticfiles_storage.load_manifest_stats()
+            manifest_stats: dict[str, list[int] | tuple[int, ...]] = staticfiles_storage.load_manifest_stats()
             if manifest_stats:
                 stat_cache = {staticfiles_storage.path(k): os.stat_result(v) for k, v in manifest_stats.items()}
 
@@ -226,7 +240,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         if staticfiles_storage.location:
             self.insert_directory(staticfiles_storage.location, self.static_prefix)
 
-    def candidate_paths_for_url(self, url):
+    def candidate_paths_for_url(self, url: str) -> Iterator[str]:
         if self.use_finders and url.startswith(self.static_prefix):
             relative_url = url[len(self.static_prefix) :]
             path = url2pathname(relative_url)
@@ -236,7 +250,7 @@ class ServeStaticMiddleware(ServeStaticBase):
                 yield path
         yield from super().candidate_paths_for_url(url)
 
-    def immutable_file_test(self, path, url):
+    def immutable_file_test(self, path: str, url: str) -> bool:
         """
         Determine whether given URL represents an immutable file (i.e. a
         file with a hash of its contents as part of its name) which can
@@ -255,7 +269,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         return bool(static_url and basename(static_url) == basename(url))
 
     @staticmethod
-    def get_name_without_hash(filename):
+    def get_name_without_hash(filename: str) -> str:
         """
         Removes the version hash from a filename e.g, transforms
         'css/application.f3ea4bcc2.css' into 'css/application.css'
@@ -269,12 +283,13 @@ class ServeStaticMiddleware(ServeStaticBase):
         return name + ext
 
     @staticmethod
-    def get_static_url(name):
+    def get_static_url(name: str) -> str | None:
         with contextlib.suppress(ValueError):
             return staticfiles_storage.url(name)
+        return None
 
     @staticmethod
-    def default_static_prefix(settings) -> str:
+    def default_static_prefix(settings: LazySettings) -> str:
         force_script_name = getattr(settings, "FORCE_SCRIPT_NAME", None)
         static_url = getattr(settings, "STATIC_URL", None)
         static_prefix = urlparse(static_url or "").path
@@ -295,10 +310,10 @@ class AsyncServeStaticFileResponse(FileResponse):
     - Enables async compatibility.
     """
 
-    def set_headers(self, *args, **kwargs):
+    def set_headers(self, *args: object, **kwargs: object) -> None:
         pass
 
-    def _set_streaming_content(self, value):
+    def _set_streaming_content(self, value: object) -> None:
         # Django 4.2+ supports async file responses, but they need to be converted from
         # a file-like object to an iterator, otherwise Django will assume the content is
         # a traditional (sync) file object.
@@ -307,7 +322,7 @@ class AsyncServeStaticFileResponse(FileResponse):
 
         super()._set_streaming_content(value)  # pyright: ignore [reportAttributeAccessIssue]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bytes]:
         """The way that Django 4.2+ converts async to sync is inefficient, so
         we override it with a better implementation. Django only uses this method
         when running via WSGI."""

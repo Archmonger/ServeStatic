@@ -6,36 +6,39 @@ import contextlib
 import functools
 import os
 from concurrent.futures import ThreadPoolExecutor
-from io import IOBase
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar, cast
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncIterable, Callable, Iterable
+    from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, Iterator
     from io import IOBase
+    from os import PathLike
 
     from servestatic.responders import AsyncSlicedFile
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 # This is the same size as wsgiref.FileWrapper
 ASGI_BLOCK_SIZE = 8192
 
 
-def get_block_size():
+def get_block_size() -> int:
     return ASGI_BLOCK_SIZE
 
 
 # Follow Django in treating URLs as UTF-8 encoded (which requires undoing the
 # implicit ISO-8859-1 decoding applied in Python 3). Strictly speaking, URLs
 # should only be ASCII anyway, but UTF-8 can be found in the wild.
-def decode_path_info(path_info):
+def decode_path_info(path_info: str) -> str:
     return path_info.encode("iso-8859-1", "replace").decode("utf-8", "replace")
 
 
-def ensure_leading_trailing_slash(path):
+def ensure_leading_trailing_slash(path: str | None) -> str:
     path = (path or "").strip("/")
     return f"/{path}/" if path else "/"
 
 
-def scantree(root):
+def scantree(root: str | PathLike[str]) -> Iterator[tuple[str, os.stat_result]]:
     """
     Recurse the given directory yielding (pathname, os.stat(pathname)) pairs
     """
@@ -46,7 +49,7 @@ def scantree(root):
             yield entry.path, entry.stat()
 
 
-def stat_files(paths: Iterable[str]) -> dict:
+def stat_files(paths: Iterable[str]) -> dict[str, os.stat_result]:
     """Stat a list of file paths via threads."""
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -64,10 +67,10 @@ class AsyncToSyncIterator:
     or may be closed unexpectedly.
     """
 
-    def __init__(self, iterator: AsyncIterable):
+    def __init__(self, iterator: AsyncIterable[bytes]) -> None:
         self.iterator = iterator
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bytes]:
         # Create a dedicated event loop to run the async iterator on.
         loop = asyncio.new_event_loop()
         thread_executor = concurrent.futures.ThreadPoolExecutor(
@@ -85,13 +88,15 @@ class AsyncToSyncIterator:
             thread_executor.shutdown(wait=True)
 
 
-def open_lazy(f):
+def open_lazy(
+    f: Callable[Concatenate[AsyncFile, P], Awaitable[T]],
+) -> Callable[Concatenate[AsyncFile, P], Awaitable[T]]:
     """Decorator that ensures the file is open before calling a function.
     This can be turned into a @staticmethod on `AsyncFile` once we drop Python 3.9 compatibility.
     """
 
     @functools.wraps(f)
-    async def wrapper(self: AsyncFile, *args, **kwargs):
+    async def wrapper(self: AsyncFile, *args: P.args, **kwargs: P.kwargs) -> T:
         if self.closed:
             msg = "I/O operation on closed file."
             raise ValueError(msg)
@@ -110,7 +115,7 @@ class AsyncFile:
 
     def __init__(
         self,
-        file_path,
+        file_path: str | PathLike[str],
         mode: str = "r",
         buffering: int = -1,
         encoding: str | None = None,
@@ -118,8 +123,8 @@ class AsyncFile:
         newline: str | None = None,
         closefd: bool = True,
         opener: Callable[[str, int], int] | None = None,
-    ):
-        self.open_args = (
+    ) -> None:
+        self.open_args: tuple[object, ...] = (
             file_path,
             mode,
             buffering,
@@ -135,7 +140,7 @@ class AsyncFile:
         self.closed = False
         self._executor_shutdown = False
 
-    def _shutdown_executor(self):
+    def _shutdown_executor(self) -> None:
         if self._executor_shutdown:
             return
         try:
@@ -144,61 +149,61 @@ class AsyncFile:
             return
         self._executor_shutdown = True
 
-    async def _execute(self, func, *args):
+    async def _execute(self, func: Callable[..., T], *args: object) -> T:
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
         return await self.loop.run_in_executor(self.executor, func, *args)
 
-    async def close(self):
+    async def close(self) -> None:
         self.closed = True
         if self.file_obj is not None:
             await self._execute(self.file_obj.close)
         self._shutdown_executor()
 
     @open_lazy
-    async def read(self, size=-1):
+    async def read(self, size: int = -1) -> bytes:
         if self.file_obj is None:
             msg = "File object was not opened"
             raise RuntimeError(msg)
         return await self._execute(self.file_obj.read, size)
 
     @open_lazy
-    async def seek(self, offset, whence=0):
+    async def seek(self, offset: int, whence: int = 0) -> int:
         if self.file_obj is None:
             msg = "File object was not opened"
             raise RuntimeError(msg)
         return await self._execute(self.file_obj.seek, offset, whence)
 
     @open_lazy
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncFile:  # noqa: PYI034
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         await self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._shutdown_executor()
 
 
 class EmptyAsyncIterator:
     """Placeholder async iterator for responses that have no content."""
 
-    def __aiter__(self):
+    def __aiter__(self) -> EmptyAsyncIterator:
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> bytes:
         raise StopAsyncIteration
 
 
 class AsyncFileIterator:
     """Async iterator that yields chunks of data from the provided async file."""
 
-    def __init__(self, async_file: AsyncFile | AsyncSlicedFile):
+    def __init__(self, async_file: AsyncFile | AsyncSlicedFile) -> None:
         self.async_file = async_file
         self.block_size = get_block_size()
 
-    async def __aiter__(self):
+    async def __aiter__(self) -> AsyncIterator[bytes]:
         async with self.async_file as file:
             while True:
                 chunk = await file.read(self.block_size)

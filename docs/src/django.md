@@ -4,7 +4,7 @@ This guide walks you through setting up a Django project with ServeStatic. In mo
 
 We mention Heroku in a few places, but there's nothing Heroku-specific about ServeStatic and the instructions below should apply whatever your hosting platform.
 
-## Step 1: Enable ServeStatic
+## Step 1: Install Middleware
 
 Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list.
 
@@ -20,22 +20,21 @@ MIDDLEWARE = [
 ]
 ```
 
-To enable ServeStatic's configuration checks, add `servestatic` to `INSTALLED_APPS`:
+## Step 2: Install Django App
+
+In development Django's `runserver` automatically takes over static file handling. In most cases this is fine, however this means that some of the improvements that ServeStatic makes to static file handling won't be available in development and it opens up the possibility for differences in behaviour between development and production environments. For this reason it's a good idea to use ServeStatic in development as well.
+
+You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to add `servestatic` to the top of your `INSTALLED_APPS` list:
 
 ```python linenums="0"
 INSTALLED_APPS = [
     "servestatic",
+    "django.contrib.staticfiles",
     # ...
 ]
 ```
 
-That's it! ServeStatic is now configured to serve your static files. For optimal performance, proceed to the next step to enable compression and caching.
-
-??? question "How should I order my middleware?"
-
-    You might find other third-party middleware that suggests it should be given highest priority at the top of the middleware list. Unless you understand exactly what is happening you should always place `ServeStaticMiddleware` above all middleware other than `SecurityMiddleware`.
-
-## Step 2: Add compression and caching support
+## Step 3: Add compression and caching support
 
 ServeStatic comes with a storage backend which compresses your files and hashes them to unique names, so they can safely be cached forever. To use it, set it as your staticfiles storage backend in your settings file.
 
@@ -66,7 +65,7 @@ If you need to compress files outside of the static files storage system you can
 
     ServeStatic only sends compressed responses for encodings requested by the client, so enabling these formats remains backward-compatible.
 
-## Step 3: Make sure Django's `staticfiles` is configured correctly
+## Step 4: Make sure Django's `staticfiles` is configured correctly
 
 If you're familiar with Django you'll know what to do. If you're just getting started with a new Django project then you'll need add the following to the bottom of your `settings.py` file:
 
@@ -90,29 +89,13 @@ For further details see the Django [staticfiles](https://docs.djangoproject.com/
 
 ---
 
-## Step 4: Optional configuration
-
-### Modify ServeStatic's Django settings
+## Step 5: Optional configuration
 
 ServeStatic has a number of configuration options that you can set in your `settings.py` file.
 
 See the [reference documentation](./django-settings.md) for a full list of options.
 
-### Enable ServeStatic during development
-
-In development Django's `runserver` automatically takes over static file handling. In most cases this is fine, however this means that some of the improvements that ServeStatic makes to static file handling won't be available in development and it opens up the possibility for differences in behaviour between development and production environments. For this reason it's a good idea to use ServeStatic in development as well.
-
-You can disable Django's static file handling and allow ServeStatic to take over simply by passing the `--nostatic` option to the `runserver` command, but you need to remember to add this option every time you call `runserver`. An easier way is to add `servestatic` to the top of your `INSTALLED_APPS` list:
-
-```python linenums="0"
-INSTALLED_APPS = [
-    "servestatic",
-    "django.contrib.staticfiles",
-    # ...
-]
-```
-
-### Utilize a Content Delivery Network (CDN)
+## Step 6: Utilize a Content Delivery Network (CDN)
 
 <!--cdn-start-->
 

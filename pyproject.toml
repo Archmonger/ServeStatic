@@ -29,6 +29,7 @@ classifiers = [
 dependencies = ["asgiref"]
 dynamic = ["version"]
 optional-dependencies.brotli = ["brotli"]
+optional-dependencies.minify = ["rcssmin", "rjsmin"]
 urls.Changelog = "https://archmonger.github.io/ServeStatic/latest/changelog/"
 urls.Documentation = "https://archmonger.github.io/ServeStatic/"
 urls.Source = "https://github.com/Archmonger/ServeStatic"
@@ -52,7 +53,15 @@ installer = "uv"
 # >>> Hatch Test Suite <<<
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pytest-sugar", "httpx", "brotli", "pytest-timeout"]
+extra-dependencies = [
+  "pytest-sugar",
+  "httpx",
+  "brotli",
+  "pytest-timeout",
+  "brotli",
+  "rcssmin",
+  "rjsmin",
+]
 randomize = true
 matrix-name-format = "{variable}-{value}"
 timeout = 15
@@ -91,7 +100,7 @@ matrix.django.dependencies = [
 template = "docs"
 detached = true
 dependencies = [
-  "mkdocs<2.0", # Mkdocs has some breaking changes planned that would brick mkdocs-material
+  "mkdocs<2.0",                                # Mkdocs has some breaking changes planned that would brick mkdocs-material
   "mkdocs-git-revision-date-localized-plugin",
   "mkdocs-material",
   "mkdocs-include-markdown-plugin",
@@ -100,7 +109,7 @@ dependencies = [
   "mkdocs-git-authors-plugin",
   "mkdocs-minify-plugin",
   "mike",
-  "click==8.2.1", # Newer versions of click do not work with mkdocs<2.0
+  "click==8.2.1",                              # Newer versions of click do not work with mkdocs<2.0
 ]
 
 [tool.hatch.envs.docs.scripts]

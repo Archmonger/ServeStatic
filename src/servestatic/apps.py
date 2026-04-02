@@ -11,6 +11,6 @@ from django.apps import AppConfig
 class ServeStaticConfig(AppConfig):
     name = "servestatic"
 
-    def ready(self):
+    def ready(self) -> None:
         super().ready()
         from servestatic import checks  # noqa: F401

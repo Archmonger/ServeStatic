@@ -9,16 +9,25 @@ from email.utils import formatdate, parsedate
 from http import HTTPStatus
 from io import BufferedIOBase
 from time import mktime
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 from wsgiref.headers import Headers
 
 from servestatic.utils import AsyncFile
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
-class Response:
+
+class Response:  # noqa: B903
     __slots__ = ("file", "headers", "status")
 
-    def __init__(self, status, headers, file):
+    def __init__(
+        self,
+        status: HTTPStatus,
+        headers: list[tuple[str, str | None]],
+        file: BufferedIOBase | AsyncFile | AsyncSlicedFile | None,
+    ) -> None:
         self.status = status
         self.headers = headers
         self.file = file
@@ -49,14 +58,14 @@ class SlicedFile(BufferedIOBase):
     been reached.
     """
 
-    def __init__(self, fileobj: BufferedIOBase, start: int, end: int):
+    def __init__(self, fileobj: BufferedIOBase, start: int, end: int) -> None:
         self.fileobj = fileobj
         self.seeked = False
         self.start = start
         self.end = end
         self.remaining = end - start + 1
 
-    def read(self, size=-1):  # pyright: ignore [reportIncompatibleMethodOverride]
+    def read(self, size: int = -1) -> bytes:  # pyright: ignore [reportIncompatibleMethodOverride]
         if not self.seeked:
             self.fileobj.seek(self.start)
             self.seeked = True
@@ -67,7 +76,7 @@ class SlicedFile(BufferedIOBase):
         self.remaining -= len(data)
         return data
 
-    def close(self):
+    def close(self) -> None:
         super().close()
         self.fileobj.close()
 
@@ -77,14 +86,14 @@ class AsyncSlicedFile:
     Variant of `SlicedFile` that works on async files.
     """
 
-    def __init__(self, fileobj: AsyncFile, start: int, end: int):
+    def __init__(self, fileobj: AsyncFile, start: int, end: int) -> None:
         self.fileobj = fileobj
         self.seeked = False
         self.start = start
         self.end = end
         self.remaining = end - start + 1
 
-    async def read(self, size=-1):
+    async def read(self, size: int = -1) -> bytes:
         if not self.seeked:
             await self.fileobj.seek(self.start)
             self.seeked = True
@@ -95,26 +104,32 @@ class AsyncSlicedFile:
         self.remaining -= len(data)
         return data
 
-    async def close(self):
+    async def close(self) -> None:
         await self.fileobj.close()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> AsyncSlicedFile:  # noqa: PYI034
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         await self.close()
 
 
 class StaticFile:
-    def __init__(self, path, headers, encodings=None, stat_cache=None):
+    def __init__(
+        self,
+        path: str,
+        headers: list[tuple[str, str]],
+        encodings: Mapping[str, str] | None = None,
+        stat_cache: Mapping[str, os.stat_result] | None = None,
+    ) -> None:
         files = self.get_file_stats(path, encodings, stat_cache)
-        headers = self.get_headers(headers, files)
-        self.last_modified = parsedate(headers["Last-Modified"])
-        self.etag = headers["ETag"]
-        self.not_modified_response = self.get_not_modified_response(headers)
-        self.alternatives = self.get_alternatives(headers, files)
+        headers_obj = self.get_headers(headers, files)
+        self.last_modified = parsedate(headers_obj["Last-Modified"])
+        self.etag = headers_obj["ETag"]
+        self.not_modified_response = self.get_not_modified_response(headers_obj)
+        self.alternatives = self.get_alternatives(headers_obj, files)
 
-    def get_response(self, method, request_headers):
+    def get_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
         if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
@@ -130,7 +145,7 @@ class StaticFile:
                 return self.get_range_response(range_header, headers, file_handle)
         return Response(HTTPStatus.OK, headers, file_handle)
 
-    async def aget_response(self, method, request_headers):
+    async def aget_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
         """Variant of `get_response` that works with async HTTP requests.
         To minimize code duplication, `request_headers` conforms to WSGI header spec."""
         if method not in {"GET", "HEAD"}:
@@ -150,12 +165,18 @@ class StaticFile:
                 return await self.aget_range_response(range_header, headers, file_handle)
         return Response(HTTPStatus.OK, headers, file_handle)
 
-    def get_range_response(self, range_header, base_headers, file_handle):
-        headers = []
+    def get_range_response(
+        self,
+        range_header: str,
+        base_headers: list[tuple[str, str | None]],
+        file_handle: BufferedIOBase | None,
+    ) -> Response:
+        headers: list[tuple[str, str | None]] = []
         size: int | None = None
         for item in base_headers:
             if item[0] == "Content-Length":
-                size = int(item[1])
+                if item[1] is not None:
+                    size = int(item[1])
             else:
                 headers.append(item)
         if size is None:
@@ -172,13 +193,19 @@ class StaticFile:
         ))
         return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
 
-    async def aget_range_response(self, range_header, base_headers, file_handle):
+    async def aget_range_response(
+        self,
+        range_header: str,
+        base_headers: list[tuple[str, str | None]],
+        file_handle: AsyncFile | None,
+    ) -> Response:
         """Variant of `get_range_response` that works with async file objects."""
-        headers = []
+        headers: list[tuple[str, str | None]] = []
         size: int | None = None
         for item in base_headers:
             if item[0] == "Content-Length":
-                size = int(item[1])
+                if item[1] is not None:
+                    size = int(item[1])
             else:
                 headers.append(item)
         if size is None:
@@ -187,15 +214,16 @@ class StaticFile:
         start, end = self.get_byte_range(range_header, size)
         if start > end:
             return await self.aget_range_not_satisfiable_response(file_handle, size)
+        sliced_file: AsyncSlicedFile | None = None
         if file_handle is not None:
-            file_handle = AsyncSlicedFile(file_handle, start, end)
+            sliced_file = AsyncSlicedFile(file_handle, start, end)
         headers.extend((
             ("Content-Range", f"bytes {start}-{end}/{size}"),
             ("Content-Length", str(end - start + 1)),
         ))
-        return Response(HTTPStatus.PARTIAL_CONTENT, headers, file_handle)
+        return Response(HTTPStatus.PARTIAL_CONTENT, headers, sliced_file)
 
-    def get_byte_range(self, range_header, size):
+    def get_byte_range(self, range_header: str, size: int) -> tuple[int, int]:
         start, end = self.parse_byte_range(range_header)
         if start < 0:
             start = max(start + size, 0)
@@ -203,7 +231,7 @@ class StaticFile:
         return start, end
 
     @staticmethod
-    def parse_byte_range(range_header):
+    def parse_byte_range(range_header: str) -> tuple[int, int | None]:
         units, _, range_spec = range_header.strip().partition("=")
         if units != "bytes":
             raise ValueError
@@ -221,7 +249,7 @@ class StaticFile:
         return start, end
 
     @staticmethod
-    def get_range_not_satisfiable_response(file_handle, size):
+    def get_range_not_satisfiable_response(file_handle: BufferedIOBase | None, size: int) -> Response:
         if file_handle is not None:
             file_handle.close()
         return Response(
@@ -231,7 +259,7 @@ class StaticFile:
         )
 
     @staticmethod
-    async def aget_range_not_satisfiable_response(file_handle, size):
+    async def aget_range_not_satisfiable_response(file_handle: AsyncFile | None, size: int) -> Response:
         """Variant of `get_range_not_satisfiable_response` that works with
         async file objects. Async file handles do not need to be closed, since they
         are only opened via context managers while being dispatched."""
@@ -242,9 +270,13 @@ class StaticFile:
         )
 
     @staticmethod
-    def get_file_stats(path, encodings, stat_cache):
+    def get_file_stats(
+        path: str,
+        encodings: Mapping[str, str] | None,
+        stat_cache: Mapping[str, os.stat_result] | None,
+    ) -> dict[str | None, FileEntry]:
         # Primary file has an encoding of None
-        files = {None: FileEntry(path, stat_cache)}
+        files: dict[str | None, FileEntry] = {None: FileEntry(path, stat_cache)}
         if encodings:
             for encoding, alt_path in encodings.items():
                 try:
@@ -254,7 +286,7 @@ class StaticFile:
         return files
 
     @staticmethod
-    def get_headers(headers_list, files):
+    def get_headers(headers_list: list[tuple[str, str]], files: Mapping[str | None, FileEntry]) -> Headers:
         headers = Headers(headers_list)
         main_file = files[None]
         if len(files) > 1:
@@ -273,12 +305,15 @@ class StaticFile:
         return headers
 
     @staticmethod
-    def get_not_modified_response(headers):
+    def get_not_modified_response(headers: Headers) -> Response:
         not_modified_headers = [(key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers]
         return Response(status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None)
 
     @staticmethod
-    def get_alternatives(base_headers, files):
+    def get_alternatives(
+        base_headers: Headers,
+        files: Mapping[str | None, FileEntry],
+    ) -> list[tuple[re.Pattern[str], str, list[tuple[str, str | None]]]]:
         # Sort by size so that the smallest compressed alternative matches first
         alternatives = []
         files_by_size = sorted(files.items(), key=lambda i: i[1].size)
@@ -293,7 +328,7 @@ class StaticFile:
             alternatives.append((encoding_re, file_entry.path, headers.items()))
         return alternatives
 
-    def is_not_modified(self, request_headers):
+    def is_not_modified(self, request_headers: Mapping[str, str]) -> bool:
         previous_etag = request_headers.get("HTTP_IF_NONE_MATCH")
         if previous_etag is not None:
             return previous_etag == self.etag
@@ -308,7 +343,7 @@ class StaticFile:
             return last_requested_ts >= self.last_modified
         return False
 
-    def get_path_and_headers(self, request_headers):
+    def get_path_and_headers(self, request_headers: Mapping[str, str]) -> tuple[str, list[tuple[str, str | None]]]:
         accept_encoding = request_headers.get("HTTP_ACCEPT_ENCODING", "")
         if accept_encoding == "*":
             accept_encoding = ""
@@ -330,22 +365,22 @@ class StaticFile:
 class Redirect:
     location = "Location"
 
-    def __init__(self, location, headers=None):
-        headers = list(headers.items()) if headers else []
-        headers.append((self.location, quote(location.encode("utf8"))))
-        self.response = Response(HTTPStatus.FOUND, headers, None)
+    def __init__(self, location: str, headers: Mapping[str, str] | None = None) -> None:
+        response_headers: list[tuple[str, str | None]] = list(headers.items()) if headers else []
+        response_headers.append((self.location, quote(location.encode("utf8"))))
+        self.response = Response(HTTPStatus.FOUND, response_headers, None)
 
-    def get_response(self, method, request_headers):
+    def get_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
         query_string = request_headers.get("QUERY_STRING")
         if query_string:
             headers = list(self.response.headers)
             i, value = next((i, value) for (i, (name, value)) in enumerate(headers) if name == self.location)
-            value = f"{value}?{query_string}"
+            value = f"{value or ''}?{query_string}"
             headers[i] = (self.location, value)
             return Response(self.response.status, headers, None)
         return self.response
 
-    async def aget_response(self, method, request_headers):
+    async def aget_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
         return self.get_response(method, request_headers)
 
 
@@ -364,7 +399,7 @@ class IsDirectoryError(MissingFileError):
 class FileEntry:
     __slots__ = ("mtime", "path", "size")
 
-    def __init__(self, path, stat_cache=None):
+    def __init__(self, path: str, stat_cache: Mapping[str, os.stat_result] | None = None) -> None:
         self.path = path
         stat_function = os.stat if stat_cache is None else stat_cache.__getitem__
         stat_ = self.stat_regular_file(path, stat_function)
@@ -372,7 +407,7 @@ class FileEntry:
         self.mtime = stat_.st_mtime
 
     @staticmethod
-    def stat_regular_file(path, stat_function):
+    def stat_regular_file(path: str, stat_function: Callable[[str], os.stat_result]) -> os.stat_result:
         """
         Wrap `stat_function` to raise appropriate errors if `path` is not a
         regular file

@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from importlib import import_module
 from io import BytesIO
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 try:
     import brotli
@@ -17,6 +22,16 @@ try:
     zstd = import_module("compression.zstd")
 except ImportError:  # pragma: no cover
     zstd = None
+
+try:
+    import rcssmin  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    rcssmin = None
+
+try:
+    import rjsmin  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover
+    rjsmin = None
 
 
 class Compressor:
@@ -61,31 +76,47 @@ class Compressor:
 
     def __init__(
         self,
-        extensions=None,
-        use_gzip=True,
-        use_brotli=True,
-        use_zstd=True,
-        zstd_dict=None,
-        zstd_dict_is_raw=False,
-        zstd_level=None,
-        log=print,
-        quiet=False,
-    ):
+        extensions: Iterable[str] | None = None,
+        use_gzip: bool = True,
+        use_brotli: bool = True,
+        use_zstd: bool = True,
+        minify: bool = False,
+        zstd_dict: str | os.PathLike[str] | bytes | bytearray | memoryview | object | None = None,
+        zstd_dict_is_raw: bool = False,
+        zstd_level: int | None = None,
+        log: Callable[[str], None] = print,
+        quiet: bool = False,
+    ) -> None:
+        logger = (lambda _: None) if quiet else log
         if extensions is None:
             extensions = self.SKIP_COMPRESS_EXTENSIONS
         self.extension_re = self.get_extension_re(extensions)
         self.use_gzip = use_gzip
+        if use_brotli and brotli is None:
+            logger("Warning: Brotli compression requested but brotli is not installed. Skipping Brotli output.")
         self.use_brotli = use_brotli and (brotli is not None)
+        if use_zstd and zstd is None:
+            logger(
+                "Warning: Zstandard compression requested but compression.zstd is unavailable. Skipping Zstandard output."
+            )
         if zstd_dict is not None and zstd is None:
             msg = "Zstandard dictionary support requires Python 3.14+ with compression.zstd available"
             raise RuntimeError(msg)
         self.use_zstd = use_zstd and (zstd is not None)
         self.zstd_level = zstd_level
         self.zstd_dict = self.load_zstd_dictionary(zstd_dict, is_raw=zstd_dict_is_raw)
-        self.log = (lambda _: None) if quiet else log
+        self.log = logger
+        self.minify = minify
+        if self.minify and (rcssmin is None or rjsmin is None):
+            error_msg = "Minification requested but rcssmin or rjsmin is not installed."
+            raise ImportError(error_msg)
 
     @staticmethod
-    def load_zstd_dictionary(zstd_dict, *, is_raw=False):
+    def load_zstd_dictionary(
+        zstd_dict: str | os.PathLike[str] | bytes | bytearray | memoryview | object | None,
+        *,
+        is_raw: bool = False,
+    ) -> object | None:
         if zstd_dict is None:
             return None
         if zstd is None:
@@ -100,36 +131,49 @@ class Compressor:
         return zstd_dict
 
     @staticmethod
-    def get_extension_re(extensions):
+    def get_extension_re(extensions: Iterable[str]) -> re.Pattern[str]:
         if not extensions:
             return re.compile(r"^$")
         return re.compile(rf"\.({'|'.join(map(re.escape, extensions))})$", re.IGNORECASE)
 
-    def should_compress(self, filename):
+    def should_compress(self, filename: str) -> bool:
         return not self.extension_re.search(filename)
 
-    def compress(self, path):
+    def compress(self, path: str | os.PathLike[str]) -> list[str]:
+        path = os.fspath(path)
         filenames = []
         with open(path, "rb") as f:
             stat_result = os.fstat(f.fileno())
             data = f.read()
+
+        if self.minify:
+            if path.endswith(".css"):
+                with contextlib.suppress(UnicodeDecodeError):
+                    data = rcssmin.cssmin(data.decode("utf-8")).encode("utf-8")  # type: ignore
+            elif path.endswith(".js"):
+                with contextlib.suppress(UnicodeDecodeError):
+                    data = rjsmin.jsmin(data.decode("utf-8")).encode("utf-8")  # type: ignore
+
         size = len(data)
         if self.use_zstd:
             compressed = self.compress_zstd(data, level=self.zstd_level, zstd_dict=self.zstd_dict)
             if self.is_compressed_effectively("Zstandard", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".zstd", stat_result))
+
         if self.use_brotli:
             compressed = self.compress_brotli(data)
             if self.is_compressed_effectively("Brotli", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".br", stat_result))
+
         if self.use_gzip:
             compressed = self.compress_gzip(data)
             if self.is_compressed_effectively("Gzip", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".gz", stat_result))
+
         return filenames
 
     @staticmethod
-    def compress_gzip(data):
+    def compress_gzip(data: bytes) -> bytes:
         output = BytesIO()
         # Explicitly set mtime to 0 so gzip content is fully determined
         # by file content (0 = "no timestamp" according to gzip spec)
@@ -138,14 +182,14 @@ class Compressor:
         return output.getvalue()
 
     @staticmethod
-    def compress_brotli(data):
+    def compress_brotli(data: bytes) -> bytes:
         if brotli is None:
             msg = "Brotli is not installed"
             raise RuntimeError(msg)
         return brotli.compress(data)
 
     @staticmethod
-    def compress_zstd(data, level=None, zstd_dict=None):
+    def compress_zstd(data: bytes, level: int | None = None, zstd_dict: object | None = None) -> bytes:
         if zstd is None:
             msg = "Zstandard is not available"
             raise RuntimeError(msg)
@@ -156,13 +200,9 @@ class Compressor:
             kwargs["zstd_dict"] = zstd_dict
         return zstd.compress(data, **kwargs)
 
-    def is_compressed_effectively(self, encoding_name, path, orig_size, data):
+    def is_compressed_effectively(self, encoding_name: str, path: str, orig_size: int, data: bytes) -> bool:
         compressed_size = len(data)
-        if orig_size == 0:
-            is_effective = False
-        else:
-            ratio = compressed_size / orig_size
-            is_effective = ratio <= 0.95
+        is_effective = False if orig_size == 0 else compressed_size / orig_size <= 0.95
         if is_effective:
             self.log(f"{encoding_name} compressed {path} ({orig_size // 1024}K -> {compressed_size // 1024}K)")
         else:
@@ -170,7 +210,7 @@ class Compressor:
         return is_effective
 
     @staticmethod
-    def write_data(path, data, suffix, stat_result):
+    def write_data(path: str, data: bytes, suffix: str, stat_result: os.stat_result) -> str:
         filename = path + suffix
         with open(filename, "wb") as f:
             f.write(data)
@@ -178,7 +218,7 @@ class Compressor:
         return filename
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Search for all files inside <root> *not* matching "
         "<extensions> and produce compressed versions with "
@@ -257,6 +297,8 @@ def main(argv=None):
 if __name__ == "__main__":  # pragma: no cover
     from warnings import warn
 
+    # Note: To simplify WhiteNoise -> ServeStatic migration, the capability to run this file directly will be retained long-term,
+    # but it is not recommended. Future updates will be made to our new CLI, and not to this interface.
     warn(
         "Calling this file directly is deprecated. Use the 'servestatic --compress' command instead.",
         DeprecationWarning,

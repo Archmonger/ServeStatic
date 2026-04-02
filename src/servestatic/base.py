@@ -18,7 +18,7 @@ from servestatic.responders import (
 from servestatic.utils import ensure_leading_trailing_slash, scantree
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
 
@@ -52,9 +52,9 @@ class ServeStaticBase:
         mimetypes: dict[str, str] | None = None,
         add_headers_function: Callable[[Headers, str, str], None] | None = None,
         index_file: str | bool | None = None,
-        immutable_file_test: Callable | str | None = None,
+        immutable_file_test: Callable[[str, str], bool] | str | None = None,
         allow_unsafe_symlinks: bool = False,
-    ):
+    ) -> None:
         self.autorefresh = autorefresh
         self.max_age = max_age
         self.allow_all_origins = allow_all_origins
@@ -65,8 +65,8 @@ class ServeStaticBase:
         self.allow_unsafe_symlinks = allow_unsafe_symlinks
         self.media_types = MediaTypes(extra_types=mimetypes)
         self.application = application
-        self.files = {}
-        self.directories = []
+        self.files: dict[str, StaticFile | Redirect] = {}
+        self.directories: list[tuple[str, str]] = []
 
         if index_file is True:
             self.index_file: str | None = "index.html"
@@ -85,12 +85,13 @@ class ServeStaticBase:
 
         self.initialize()
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Perform any necessary setup/initialization steps."""
         msg = "Subclasses must implement this method."
         raise NotImplementedError(msg)
 
-    def insert_directory(self, root, prefix):
+    def insert_directory(self, root: str | os.PathLike[str], prefix: str) -> None:
+        root = os.fspath(root)
         # Exit early if the directory is already in the list
         for existing_root, existing_prefix in self.directories:
             if existing_root == root and existing_prefix == prefix:
@@ -101,7 +102,7 @@ class ServeStaticBase:
         # match first when they're checked in "autorefresh" mode
         self.directories.insert(0, (root, prefix))
 
-    def add_files(self, root, prefix=None):
+    def add_files(self, root: str | os.PathLike[str], prefix: str | None = None) -> None:
         root = os.path.abspath(root)
         root = root.rstrip(os.path.sep) + os.path.sep
         prefix = ensure_leading_trailing_slash(prefix)
@@ -112,7 +113,7 @@ class ServeStaticBase:
         else:
             warnings.warn(f"No directory at: {root}", stacklevel=3)
 
-    def update_files_dictionary(self, root, prefix):
+    def update_files_dictionary(self, root: str, prefix: str) -> None:
         # Build a mapping from paths to the results of `os.stat` calls
         # so we only have to touch the filesystem once
         stat_cache = dict(scantree(root))
@@ -122,7 +123,13 @@ class ServeStaticBase:
             url = prefix + relative_url
             self.add_file_to_dictionary(url, path, root=root, stat_cache=stat_cache)
 
-    def add_file_to_dictionary(self, url, path, root=None, stat_cache=None):
+    def add_file_to_dictionary(
+        self,
+        url: str,
+        path: str,
+        root: str | os.PathLike[str] | None = None,
+        stat_cache: dict[str, os.stat_result] | None = None,
+    ) -> None:
         if root and not self.path_within_root(root, path):
             return
         if self.is_compressed_variant(path, stat_cache=stat_cache):
@@ -136,7 +143,7 @@ class ServeStaticBase:
         static_file = self.get_static_file(path, url, stat_cache=stat_cache)
         self.files[url] = static_file
 
-    def find_file(self, url):
+    def find_file(self, url: str) -> StaticFile | Redirect | None:
         # Optimization: bail early if the URL can never match a file
         if self.index_file is None and url.endswith("/"):
             return
@@ -147,14 +154,14 @@ class ServeStaticBase:
                 return self.find_file_at_path(path, url)
         return None
 
-    def candidate_paths_for_url(self, url):
+    def candidate_paths_for_url(self, url: str) -> Iterator[str]:
         for root, prefix in self.directories:
             if url.startswith(prefix):
                 path = os.path.join(root, url[len(prefix) :])
                 if self.path_within_root(root, path):
                     yield path
 
-    def path_within_root(self, root, path):
+    def path_within_root(self, root: str | os.PathLike[str], path: str | os.PathLike[str]) -> bool:
         normalized_root = os.path.normpath(os.fspath(root))
         normalized_path = os.path.normpath(os.fspath(path))
 
@@ -168,12 +175,12 @@ class ServeStaticBase:
         return self._path_is_within(resolved_root, resolved_path)
 
     @staticmethod
-    def _path_is_within(root, path):
+    def _path_is_within(root: str, path: str) -> bool:
         with contextlib.suppress(ValueError):
             return os.path.commonpath((root, path)) == root
         return False
 
-    def find_file_at_path(self, path, url):
+    def find_file_at_path(self, path: str, url: str) -> StaticFile | Redirect:
         if self.is_compressed_variant(path):
             raise MissingFileError(path)
 
@@ -195,7 +202,7 @@ class ServeStaticBase:
         return self.get_static_file(path, url)
 
     @staticmethod
-    def url_is_canonical(url):
+    def url_is_canonical(url: str) -> bool:
         """
         Check that the URL path is in canonical format i.e. has normalised
         slashes and no path traversal elements
@@ -208,7 +215,7 @@ class ServeStaticBase:
         return normalised == url
 
     @staticmethod
-    def is_compressed_variant(path, stat_cache=None):
+    def is_compressed_variant(path: str, stat_cache: dict[str, os.stat_result] | None = None) -> bool:
         for suffix in (".gz", ".br", ".zstd"):
             if path.endswith(suffix):
                 uncompressed_path = path[: -len(suffix)]
@@ -217,7 +224,7 @@ class ServeStaticBase:
                 return uncompressed_path in stat_cache
         return False
 
-    def get_static_file(self, path, url, stat_cache=None):
+    def get_static_file(self, path: str, url: str, stat_cache: dict[str, os.stat_result] | None = None) -> StaticFile:
         # Optimization: bail early if file does not exist
         if stat_cache is None and not os.path.exists(path):
             raise MissingFileError(path)
@@ -235,18 +242,18 @@ class ServeStaticBase:
             encodings={"zstd": f"{path}.zstd", "gzip": f"{path}.gz", "br": f"{path}.br"},
         )
 
-    def add_mime_headers(self, headers, path, url):
+    def add_mime_headers(self, headers: Headers, path: str, url: str) -> None:
         media_type = self.media_types.get_type(path)
         params = {"charset": str(self.charset)} if media_type.startswith("text/") else {}
         headers.add_header("Content-Type", str(media_type), **params)
 
-    def add_cache_headers(self, headers, path, url):
+    def add_cache_headers(self, headers: Headers, path: str, url: str) -> None:
         if self.immutable_file_test(path, url):
             headers["Cache-Control"] = f"max-age={self.FOREVER}, public, immutable"
         elif self.max_age is not None:
             headers["Cache-Control"] = f"max-age={self.max_age}, public"
 
-    def immutable_file_test(self, path, url):
+    def immutable_file_test(self, path: str, url: str) -> bool:
         """
         This should be implemented by sub-classes (see e.g. ServeStaticMiddleware)
         or by setting the `immutable_file_test` config option
@@ -257,7 +264,7 @@ class ServeStaticBase:
             return bool(self.user_immutable_file_test.search(url))
         return bool(self.DEFAULT_IMMUTABLE_FILE_TEST.search(url))
 
-    def redirect(self, from_url, to_url):
+    def redirect(self, from_url: str, to_url: str) -> Redirect:
         """
         Return a relative 302 redirect
 
@@ -265,8 +272,8 @@ class ServeStaticBase:
         being hosted under
         """
         if to_url == f"{from_url}/":
-            relative_url = from_url.split("/")[-1] + "/"
-        elif from_url == to_url + self.index_file:
+            relative_url = from_url.rsplit("/", maxsplit=1)[-1] + "/"
+        elif self.index_file is not None and from_url == to_url + self.index_file:
             relative_url = "./"
         else:
             msg = f"Cannot handle redirect: {from_url} > {to_url}"

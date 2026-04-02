@@ -30,7 +30,7 @@ Find and serve files using Django's manifest file.
 
 This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
 
-When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-2-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-3-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
 
 ---
 
@@ -43,6 +43,16 @@ Find and serve files using Django's [`finders`](https://docs.djangoproject.com/e
 It's possible to use this setting in production, but be mindful of the [`settings.py:STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`settings.py:STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings. By default, the finders API only searches the `'static'` directory in each app, which are not the copies post-processed by ServeStatic.
 
 Note that `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
+
+---
+
+## `SERVESTATIC_USE_STATIC_ROOT`
+
+**Default:** `not (settings.py:SERVESTATIC_USE_MANIFEST or settings.py:SERVESTATIC_USE_FINDERS)`
+
+Find and serve all files within Django's `STATIC_ROOT` (file scan is only run during startup). This defaults to `True` if you do not have no other method configured.
+
+This allows users to have their `STATIC_ROOT` directory contain files which are created _after_ `manage.py collectstatic` is ran (e.g. by `django-compressor`).
 
 ---
 
@@ -125,6 +135,30 @@ By default, ServeStatic blocks symlink breakout so requests cannot escape the co
 File extensions to skip when compressing.
 
 Because the compression process will only create compressed files where this results in an actual size saving, it would be safe to leave this list empty and attempt to compress all files. However, for files which we're confident won't benefit from compression, it speeds up the process if we just skip over them.
+
+---
+
+## `SERVESTATIC_MINIFY`
+
+**Default:** `False`
+
+If set to `True`, ServeStatic will minify CSS and JS files during the `post_process` step before compressing. This feature requires the optional `rcssmin` and `rjsmin` packages to be installed, which can be done via `pip install servestatic[minify]`. If enabled without the required packages, it will raise an `ImportError`.
+
+---
+
+## `SERVESTATIC_USE_GZIP`
+
+**Default:** `True`
+
+Enable or disable gzip output generation (`.gz`).
+
+---
+
+## `SERVESTATIC_USE_BROTLI`
+
+**Default:** `True`
+
+Enable or disable brotli output generation (`.br`) when `brotli` is available.
 
 ---
 

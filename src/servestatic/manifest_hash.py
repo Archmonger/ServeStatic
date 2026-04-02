@@ -4,6 +4,10 @@ import hashlib
 import os
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def generate_hash(content: bytes) -> str:
@@ -38,7 +42,9 @@ def get_hashed_name(path: str | Path, content: bytes | None = None) -> str:
 
 
 class ManifestHashGenerator:
-    def __init__(self, root: str | Path, keep_original=True, log=print, quiet=False):
+    def __init__(
+        self, root: str | Path, keep_original: bool = True, log: Callable[[str], None] = print, quiet: bool = False
+    ) -> None:
         self.root = Path(root).resolve()
         self.keep_original = keep_original
         self.log = (lambda _: None) if quiet else log

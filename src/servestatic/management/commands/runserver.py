@@ -16,12 +16,14 @@ from typing import TYPE_CHECKING, cast
 from django.apps import apps
 
 if TYPE_CHECKING:
-    from django.core.management.base import BaseCommand
+    from collections.abc import Iterator
+
+    from django.core.management.base import BaseCommand, CommandParser
 
 SERVESTATIC_APP_NAME = "servestatic"
 
 
-def find_fallback_runserver_command():
+def find_fallback_runserver_command() -> type[BaseCommand] | None:
     """
     Return the next highest priority "runserver" command class.
     """
@@ -32,7 +34,7 @@ def find_fallback_runserver_command():
     return None
 
 
-def iter_lower_priority_apps():
+def iter_lower_priority_apps() -> Iterator[str]:
     """
     Yield all app module names below the current app in INSTALLED_APPS.
     """
@@ -49,7 +51,7 @@ BaseRunserverCommand = cast("type[BaseCommand]", find_fallback_runserver_command
 
 
 class Command(BaseRunserverCommand):
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: CommandParser) -> None:
         super().add_arguments(parser)
         if not parser.description:
             parser.description = ""
