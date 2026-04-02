@@ -29,10 +29,10 @@ def get_compressor_kwargs(*, quiet: bool) -> dict[str, Any]:
         "use_gzip": getattr(settings, "SERVESTATIC_USE_GZIP", True),
         "use_brotli": getattr(settings, "SERVESTATIC_USE_BROTLI", True),
         "use_zstd": getattr(settings, "SERVESTATIC_USE_ZSTD", True),
+        "minify": getattr(settings, "SERVESTATIC_MINIFY", False),
         "zstd_dict": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY", None),
         "zstd_dict_is_raw": getattr(settings, "SERVESTATIC_ZSTD_DICTIONARY_IS_RAW", False),
         "zstd_level": getattr(settings, "SERVESTATIC_ZSTD_LEVEL", None),
-        "minify": getattr(settings, "SERVESTATIC_MINIFY", False),
         "quiet": quiet,
     }
 
