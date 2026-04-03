@@ -24,6 +24,16 @@ When running under ASGI, ServeStatic performs these checks asynchronously. Regar
 
 ---
 
+## `SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT`
+
+**Default:** `0`
+
+Determine how long to cache file scanning results (in seconds) when `SERVESTATIC_AUTOREFRESH` is enabled. This is designed to allow users to utilize `AUTOREFRESH` in production while minimizing I/O overhead.
+
+This can significantly improve performance when you need to use `SERVESTATIC_AUTOREFRESH` in production. Note that the cache is on a per-process basis. When using Django, the `servestatic` cache backend will be used if it exists.
+
+---
+
 ## `SERVESTATIC_USE_MANIFEST`
 
 **Default:** `not DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`

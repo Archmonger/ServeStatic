@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import re
+import time
 import warnings
 from posixpath import normpath
 from typing import TYPE_CHECKING
@@ -36,17 +37,9 @@ class ServeStaticBase:
         application: Callable | None,
         root: Path | str | None = None,
         prefix: str | None = None,
-        *,
-        # Re-check the filesystem on every request so that any changes are
-        # automatically picked up. NOTE: For use in development only, not supported
-        # in production
         autorefresh: bool = False,
+        autorefresh_cache_timeout: int = 0,
         max_age: int | None = 60,  # seconds
-        # Set 'Access-Control-Allow-Origin: *' header on all files.
-        # As these are all public static files this is safe (See
-        # https://www.w3.org/TR/cors/#security) and ensures that things (e.g
-        # webfonts in Firefox) still work as expected when your static files are
-        # served from a CDN, rather than your primary domain.
         allow_all_origins: bool = True,
         charset: str = "utf-8",
         mimetypes: dict[str, str] | None = None,
@@ -56,6 +49,7 @@ class ServeStaticBase:
         allow_unsafe_symlinks: bool = False,
     ) -> None:
         self.autorefresh = autorefresh
+        self.autorefresh_cache_timeout = autorefresh_cache_timeout
         self.max_age = max_age
         self.allow_all_origins = allow_all_origins
         self.charset = charset
@@ -67,6 +61,7 @@ class ServeStaticBase:
         self.application = application
         self.files: dict[str, StaticFile | Redirect] = {}
         self.directories: list[tuple[str, str]] = []
+        self._autorefresh_cache: dict[str, tuple[float, StaticFile | Redirect | None]] = {}
 
         if index_file is True:
             self.index_file: str | None = "index.html"
@@ -146,9 +141,31 @@ class ServeStaticBase:
     def find_file(self, url: str) -> StaticFile | Redirect | None:
         # Optimization: bail early if the URL can never match a file
         if self.index_file is None and url.endswith("/"):
-            return
+            return None
         if not self.url_is_canonical(url):
-            return
+            return None
+
+        if self.autorefresh_cache_timeout <= 0:
+            return self._get_file_from_path(url)
+
+        now = time.time()
+        if url in self._autorefresh_cache:
+            timestamp, cached_file = self._autorefresh_cache[url]
+            if now - timestamp < self.autorefresh_cache_timeout:
+                return cached_file
+
+        file = self._get_file_from_path(url)
+
+        self._autorefresh_cache[url] = (now, file)
+        # Basic cleanup of old entries to prevent infinite growth
+        if len(self._autorefresh_cache) > 10000:
+            self._autorefresh_cache = {
+                k: v for k, v in self._autorefresh_cache.items() if now - v[0] < self.autorefresh_cache_timeout
+            }
+
+        return file
+
+    def _get_file_from_path(self, url: str) -> StaticFile | Redirect | None:
         for path in self.candidate_paths_for_url(url):
             with contextlib.suppress(MissingFileError):
                 return self.find_file_at_path(path, url)

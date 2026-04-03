@@ -19,7 +19,17 @@ These can be set by passing keyword arguments to the constructor, or by sub-clas
 
 **Default:** `False`
 
-Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. For both performance and security reasons, this setting should not be used in production.
+Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. Use `autorefresh_cache_timeout` to improve performance whenever this setting is used in production.
+
+---
+
+### `autorefresh_cache_timeout`
+
+**Default:** `0`
+
+Determine how long to cache file scanning results (in seconds) when `autorefresh` is enabled. This is designed to allow users to utilize `autorefresh` in production while minimizing I/O overhead.
+
+This can significantly improve performance when you need to use `autorefresh` in production. When using ASGI or WSGI, the cache is on a per-process basis. When using Django, the `servestatic` cache backend will be used if it exists, otherwise Django's `default` cache will be used.
 
 ---
 
