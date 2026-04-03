@@ -996,6 +996,19 @@ def test_manifest_with_keep_only_hashed(static_files):
             shutil.rmtree(static_root, ignore_errors=True)
 
 
+@pytest.mark.usefixtures("static_files")
+def test_manifest_with_keep_only_hashed_query_string():
+    with override_settings(SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=True):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            # This should not raise an OSError (like [WinError 123] on Windows) due to `?` query strings in `hashed_name` mappings.
+            call_command("collectstatic", verbosity=0, interactive=False)
+        finally:
+            static_root = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
+
+
 @pytest.mark.skipif(django.VERSION < (5, 0), reason="Django 5.0+ only")
 @pytest.mark.usefixtures("static_files")
 def test_manifest_with_keep_only_hashed_2():
