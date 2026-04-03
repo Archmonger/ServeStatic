@@ -15,7 +15,11 @@ Don't forget to remove deprecated code on each major release!
 
 - Nothing (yet)
 
-## [4.2.1] - 2026-04-03
+## [4.3.0] - 2026-04-03
+
+### Added
+
+- Added `autorefresh_cache_timeout` argument (and equivalent `SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT` Django setting) to allow users to set a custom cache timeout for the `ServeStaticMiddleware` when `autorefresh` is enabled. This allows users to utilize `autorefresh` in production while minimizing I/O overhead.
 
 ### Fixed
 
@@ -175,8 +179,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.2.1...HEAD
-[4.2.1]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.2.1
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...HEAD
+[4.3.0]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...4.0.0
