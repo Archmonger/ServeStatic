@@ -19,7 +19,7 @@ Don't forget to remove deprecated code on each major release!
 
 ### Fixed
 
-- Fix a bug where the Django `collectstatic` command could crash when encountering static files with query parameters in their URLs.
+- Fix a bug where the Django `collectstatic` command could crash when encountering static files that reference a URL containing query parameters.
 
 ## [4.2.0] - 2026-04-01
 
