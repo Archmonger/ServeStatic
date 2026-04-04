@@ -1,113 +1,216 @@
 !!! Note
+
     The `ServeStaticMiddleware` class can take the same configuration options as the `ServeStatic` base class, but rather than accepting keyword arguments to its constructor it uses Django settings. The setting names are just the keyword arguments upper-cased with a `SERVESTATIC_` prefix.
+
 ---
+
 ## `SERVESTATIC_ROOT`
+
 **Default:** `None`
+
 Absolute path to a directory of files which will be served at the root of your application (ignored if not set).
+
 Don't use this for the bulk of your static files because you won't benefit from cache versioning, but it can be convenient for files like `robots.txt` or `favicon.ico` which you want to serve at a specific URL.
+
 ---
+
 ## `SERVESTATIC_AUTOREFRESH`
+
 **Default:** `DEBUG`
+
 Always check the filesystem to see if any files have changed before responding. This is especially useful in development environments to pick up changes to static files without restarting the server.
+
 When running under ASGI, ServeStatic performs these checks asynchronously. Regardless, keep in mind that this setting adds performance overhead. Additionally, it is [not recommended](https://www.redfoxsec.com/blog/understanding-file-upload-vulnerabilities) to use this setting to serve user-uploaded media files unless you have full confidence in your ability to validate and sanitize user data.
+
 ---
----
+
 ## `SERVESTATIC_USE_MANIFEST`
+
 **Default:** `not DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`
+
 Find and serve files using Django's manifest file.
+
 This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
+
 When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-3-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup. This will significantly reduce startup time, especially when you have a large number of static files.
+
 ---
+
 ## `SERVESTATIC_USE_FINDERS`
+
 **Default:** `DEBUG`
+
 Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API. Defaults to `True` if Django's `DEBUG` setting is enabled.
+
 It's possible to use this setting in production, but it will be less efficient than other methods. Also, be mindful of the [`STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings.
+
 By default, the finders API only searches the `'static'` directory in each Django app, which are not the copies post-processed by ServeStatic. Additionally, `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
+
 ---
+
 ## `SERVESTATIC_USE_STATIC_ROOT`
+
 **Default:** `not (SERVESTATIC_USE_MANIFEST or SERVESTATIC_USE_FINDERS)`
+
 Find and serve all files within Django's `STATIC_ROOT` (file scan is only run during startup). This defaults to `True` if you do not have no other method configured.
+
 This allows users to have their `STATIC_ROOT` directory contain files which are created _after_ `manage.py collectstatic` is ran (e.g. by `django-compressor`).
+
 ---
+
 ## `SERVESTATIC_MAX_AGE`
+
 **Default:** `60 if not DEBUG else 0`
+
 Time (in seconds) for which browsers and proxies should cache **non-versioned** files.
+
 Versioned files (i.e. files which have been given a unique name like `base.a4ef2389.css` by including a hash of their contents in the name) are detected automatically and set to be cached forever.
+
 The default is chosen to be short enough not to cause problems with stale versions but long enough that, if you're running `ServeStatic` behind a CDN, the CDN will still take the majority of the strain during times of heavy load.
+
 Set to `None` to disable setting any `Cache-Control` header on non-versioned files.
+
 ---
+
 ## `SERVESTATIC_INDEX_FILE`
+
 **Default:** `False`
+
 If `True`, serve an index file when a directory is requested. When set to `True`, ServeStatic will assume your index files are named `index.html`. However, if this value is set to a string, it will use that as the index file name.
+
 ---
+
 ## `SERVESTATIC_MIMETYPES`
+
 **Default:** `None`
+
 A dictionary mapping file extensions (lowercase) to the mimetype for that extension. For example: :
+
 ```json linenums="0"
 { ".foo": "application/x-foo" }
 ```
+
 Note that `ServeStatic` ships with its own default set of mimetypes and does not use the system-supplied ones (e.g. `/etc/mime.types`). This ensures that it behaves consistently regardless of the environment in which it's run. View the defaults in ServeStatic's `media_types.py` file.
+
 In addition to file extensions, mimetypes can be specified by supplying the entire filename, for example: :
+
 ```json linenums="0"
 { "some-special-file": "application/x-custom-type" }
 ```
+
 ---
+
 ## `SERVESTATIC_CHARSET`
+
 **Default:** `#!python 'utf-8'`
+
 Charset to add as part of the `Content-Type` header for all files whose mimetype allows a charset.
+
 ---
+
 ## `SERVESTATIC_ALLOW_ALL_ORIGINS`
+
 **Default:** `True`
+
 Toggles whether to send an `Access-Control-Allow-Origin: *` header for all static files.
+
 This allows cross-origin requests for static files which means your static files will continue to work as expected even if they are served via a CDN and therefore on a different domain. Without this your static files will _mostly_ work, but you may have problems with fonts loading in Firefox, or accessing images in canvas elements, or other mysterious things.
+
 The W3C [explicitly state](https://www.w3.org/TR/cors/#security) that this behaviour is safe for publicly accessible files.
+
 ---
+
 ## `SERVESTATIC_ALLOW_UNSAFE_SYMLINKS`
+
 **Default:** `False`
+
 Controls whether symlinks that resolve outside configured static roots are allowed.
+
 By default, ServeStatic blocks symlink breakout so requests cannot escape the configured static directory tree. Set this to `True` only if you intentionally depend on symlinks that point outside your static roots and you trust those links.
+
 ---
+
 ## `SERVESTATIC_SKIP_COMPRESS_EXTENSIONS`
+
 **Default:** `('jpg', 'jpeg', 'png', 'gif', 'webp','zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br', 'zstd', 'swf', 'flv', 'woff', 'woff2')`
+
 File extensions to skip when compressing.
+
 Because the compression process will only create compressed files where this results in an actual size saving, it would be safe to leave this list empty and attempt to compress all files. However, for files which we're confident won't benefit from compression, it speeds up the process if we just skip over them.
+
 ---
+
 ## `SERVESTATIC_MINIFY`
+
 **Default:** `False`
+
 If set to `True`, ServeStatic will minify CSS and JS files during the `post_process` step before compressing. This feature requires the optional `rcssmin` and `rjsmin` packages to be installed, which can be done via `pip install servestatic[minify]`. If enabled without the required packages, it will raise an `ImportError`.
+
 ---
+
 ## `SERVESTATIC_USE_GZIP`
+
 **Default:** `True`
+
 Enable or disable gzip output generation (`.gz`).
+
 ---
+
 ## `SERVESTATIC_USE_BROTLI`
+
 **Default:** `True`
+
 Enable or disable brotli output generation (`.br`) when `brotli` is available.
+
 ---
+
 ## `SERVESTATIC_USE_ZSTD`
+
 **Default:** `True`
+
 Enable or disable zstd output generation when `compression.zstd` is available (Python 3.14+).
+
 ---
+
 ## `SERVESTATIC_ZSTD_DICTIONARY`
+
 **Default:** `None`
+
 Optional zstd dictionary to improve compression ratio for your asset corpus.
+
 This setting can be either:
+
 - a filesystem path to a trained dictionary file, or
 - raw dictionary bytes / a prebuilt zstd dictionary object supplied by custom storage subclass logic.
+
 ---
+
 ## `SERVESTATIC_ZSTD_DICTIONARY_IS_RAW`
+
 **Default:** `False`
+
 Set to `True` if `SERVESTATIC_ZSTD_DICTIONARY` points to a raw-content dictionary.
+
 ---
+
 ## `SERVESTATIC_ZSTD_LEVEL`
+
 **Default:** `None`
+
 Optional zstd compression level.
+
 ---
+
 ## `SERVESTATIC_ADD_HEADERS_FUNCTION`
+
 **Default:** `None`
+
 Reference to a function which is passed the headers object for each static file, allowing it to modify them.
+
 The function should not return anything; changes should be made by modifying the headers dictionary directly.
+
 For example:
+
 ```python
 def force_download_pdfs(headers, path, url):
     """
@@ -116,18 +219,29 @@ def force_download_pdfs(headers, path, url):
             instance (which you can treat just as a dict) containing the headers for the current file
         path: The absolute path to the local file
         url: The host-relative URL of the file e.g. `/static/styles/app.css`
+
     """
     if path.endswith(".pdf"):
         headers["Content-Disposition"] = "attachment"
+
+
 SERVESTATIC_ADD_HEADERS_FUNCTION = force_download_pdfs
 ```
+
 ---
+
 ## `SERVESTATIC_IMMUTABLE_FILE_TEST`
+
 **Default:** See [`immutable_file_test`](./servestatic.md#immutable_file_test) in source
+
 Reference to function, or string.
+
 If a reference to a function, this is passed the path and URL for each static file and should return whether that file is immutable, i.e. guaranteed not to change, and so can be safely cached forever. The default is designed to work with Django's `ManifestStaticFilesStorage` backend, and any derivatives of that, so you should only need to change this if you are using a different system for versioning your static files.
+
 If a string, this is treated as a regular expression and each file's URL is matched against it.
+
 Example:
+
 ```python
 def immutable_file_test(path, url):
     """
@@ -138,23 +252,43 @@ def immutable_file_test(path, url):
     # Match filename with 12 hex digits before the extension
     # e.g. app.db8f2edc0c8a.js
     return re.match(r"^.+\.[0-9a-f]{12}\..+$", url)
+
+
 SERVESTATIC_IMMUTABLE_FILE_TEST = immutable_file_test
 ```
+
 ---
+
 ## `SERVESTATIC_STATIC_PREFIX`
+
 **Default:** `STATIC_URL`
+
 The URL prefix under which static files will be served.
+
 If this setting is unset, this value will automatically determined by analysing your `STATIC_URL` setting. For example, if `STATIC_URL = 'https://example.com/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
+
 Note that `FORCE_SCRIPT_NAME` is also taken into account when automatically determining this value. For example, if `FORCE_SCRIPT_NAME = 'subdir/'` and `STATIC_URL = 'subdir/static/'` then `SERVESTATIC_STATIC_PREFIX` will be `/static/`.
+
 If your deployment is more complicated than this (for instance, if you are using a CDN which is doing [path rewriting](https://blog.nginx.org/blog/creating-nginx-rewrite-rules)) then you may need to configure this value directly.
+
 ---
+
 ## `SERVESTATIC_KEEP_ONLY_HASHED_FILES`
+
 **Default:** `False`
+
 Stores only files with hashed names in `STATIC_ROOT`.
+
 This setting removes the "unhashed" version of the file (which should be not be referenced in any case) which should reduce the space required for static files. In some deployment scenarios it can be important to reduce the size of the build artifact as much as possible.
+
 This setting is only effective if the `ServeStatic` storage backend is being used.
+
 ---
+
 ## `SERVESTATIC_MANIFEST_STRICT`
+
 **Default:** `True`
+
 Set to `False` to prevent Django throwing an error if you reference a static file which doesn't exist in the manifest.
+
 This setting only takes effect when using `CompressedManifestStaticFilesStorage`, and it works by setting the [`manifest_strict`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#django.contrib.staticfiles.storage.ManifestStaticFilesStorage.manifest_strict) option on the underlying Django storage instance, as described in the Django documentation.
