@@ -26,11 +26,11 @@ When running under ASGI, ServeStatic performs these checks asynchronously. Regar
 
 ## `SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT`
 
-**Default:** `0`
+**Default:** `0 if DEBUG else 1`
 
 Determine how long (in seconds) to cache file metadata when `SERVESTATIC_AUTOREFRESH` is enabled. This is designed to allow users to reduce performance overhead when utilizing `AUTOREFRESH`.
 
-This setting can significantly improve performance when you need to use `SERVESTATIC_AUTOREFRESH` in production. Note that the cache is on a per-process basis. When using Django, the `servestatic` cache backend will be used if it exists.
+This setting can significantly improve performance when you need to use `SERVESTATIC_AUTOREFRESH`. The `servestatic` cache backend will be used if it exists, otherwise it will fall back to the `default` cache backend.
 
 In production, it is recommended to use this setting alongside a HTTP rate limiter to prevent malicious users from causing excessive disk I/O by making many requests for uncached files.
 
@@ -54,7 +54,7 @@ When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#st
 
 Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API. Defaults to `True` if Django's `DEBUG` setting is enabled.
 
-It's possible to use this setting in production, but it will be less efficient than the other methods. Also, be mindful of the [`STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings.
+It's possible to use this setting in production, but it will be less efficient than other methods. Also, be mindful of the [`STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings.
 
 By default, the finders API only searches the `'static'` directory in each Django app, which are not the copies post-processed by ServeStatic. Additionally, `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
 

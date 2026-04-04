@@ -90,7 +90,7 @@ class ServeStaticMiddleware(ServeStaticBase):
 
         self.get_response = cast("GetResponseCallable", get_response)
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
-        self.cache_timeout = getattr(settings, "SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT", 0)
+        self.cache_timeout = getattr(settings, "SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT", 0 if debug else 1)
         self.cache_alias = "servestatic" if "servestatic" in getattr(settings, "CACHES", {}) else DEFAULT_CACHE_ALIAS
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)

@@ -702,3 +702,31 @@ def test_autorefresh_cache_timeout():
         time.sleep(1.1)
         file_obj3 = app.find_file("/test.txt")
         assert file_obj3 is None
+
+
+def test_autorefresh_cache_size_limit():
+    app = DummyServeStaticBase(
+        application=None,
+        autorefresh=True,
+        autorefresh_cache_timeout=10,
+    )
+
+    import time
+
+    now = time.time()
+
+    # Add 10,000 expired items
+    for i in range(10000):
+        app._autorefresh_cache[f"/expired_{i}.txt"] = (now - 20, None)
+
+    # Add 1 valid item
+    app._autorefresh_cache["/valid.txt"] = (now, None)
+
+    # Adding one more item via find_file will trigger cleanup
+    # The length becomes 10002 inside find_file, triggering the condition
+    app.find_file("/new.txt")
+
+    # Only the valid items (and the new one just added) should remain
+    assert "/valid.txt" in app._autorefresh_cache
+    assert "/new.txt" in app._autorefresh_cache
+    assert len(app._autorefresh_cache) == 2
