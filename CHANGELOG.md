@@ -19,7 +19,7 @@ Don't forget to remove deprecated code on each major release!
 
 ### Added
 
-- Added `autorefresh_cache_timeout` argument (and equivalent `SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT` Django setting) to allow users to set a custom cache timeout for the `ServeStaticMiddleware` when `autorefresh` is enabled. This allows users to utilize `autorefresh` in production while minimizing I/O overhead.
+- Added `autorefresh_cache_timeout` argument (and equivalent `SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT` Django setting) to allow users to set a custom cache timeout for the `ServeStaticMiddleware` when `autorefresh` is enabled. This allows users to reduce performance overhead when utilizing `autorefresh` in production.
 
 ### Fixed
 

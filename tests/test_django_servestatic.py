@@ -1178,8 +1178,8 @@ def test_get_static_url_value_error():
     CACHES={
         "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
         "servestatic": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "servestatic-test-cache",
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": ".django_cache",
         },
     },
     SERVESTATIC_USE_MANIFEST=False,

@@ -18,9 +18,9 @@ Don't use this for the bulk of your static files because you won't benefit from 
 
 **Default:** `DEBUG`
 
-Always check the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server.
+Always check the filesystem to see if any files have changed before responding. This is especially useful in development environments to pick up changes to static files without restarting the server.
 
-When running under ASGI, ServeStatic performs these checks asynchronously. Regardless, this setting adds significant overhead making it far less efficient than the default of not checking for changes. Additionally, it is [not recommended](https://www.redfoxsec.com/blog/understanding-file-upload-vulnerabilities) to use this setting to serve user-uploaded media files unless you have full confidence in your ability to validate and sanitize these files.
+When running under ASGI, ServeStatic performs these checks asynchronously. Regardless, keep in mind that this setting adds performance overhead. Additionally, it is [not recommended](https://www.redfoxsec.com/blog/understanding-file-upload-vulnerabilities) to use this setting to serve user-uploaded media files unless you have full confidence in your ability to validate and sanitize user data.
 
 ---
 
@@ -28,9 +28,11 @@ When running under ASGI, ServeStatic performs these checks asynchronously. Regar
 
 **Default:** `0`
 
-Determine how long to cache file scanning results (in seconds) when `SERVESTATIC_AUTOREFRESH` is enabled. This is designed to allow users to utilize `AUTOREFRESH` in production while minimizing I/O overhead.
+Determine how long (in seconds) to cache file metadata when `SERVESTATIC_AUTOREFRESH` is enabled. This is designed to allow users to reduce performance overhead when utilizing `AUTOREFRESH`.
 
-This can significantly improve performance when you need to use `SERVESTATIC_AUTOREFRESH` in production. Note that the cache is on a per-process basis. When using Django, the `servestatic` cache backend will be used if it exists.
+This setting can significantly improve performance when you need to use `SERVESTATIC_AUTOREFRESH` in production. Note that the cache is on a per-process basis. When using Django, the `servestatic` cache backend will be used if it exists.
+
+In production, it is recommended to use this setting alongside a HTTP rate limiter to prevent malicious users from causing excessive disk I/O by making many requests for uncached files.
 
 ---
 

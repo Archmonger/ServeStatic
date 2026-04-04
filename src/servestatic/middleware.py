@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import os
 import warnings
 from collections.abc import Awaitable, Callable, Iterable, Iterator
@@ -160,7 +161,8 @@ class ServeStaticMiddleware(ServeStaticBase):
             return super().find_file(url)
 
         cache = caches[self.cache_alias]
-        cache_key = f"servestatic_find_file_{url}"
+        url_hash = hashlib.md5(url.encode("utf-8"), usedforsecurity=False).hexdigest()
+        cache_key = f"servestatic_find_file_{url_hash}"
 
         cached_val = cache.get(cache_key)
         if cached_val is not None:
