@@ -679,7 +679,7 @@ def test_autorefresh_cache_timeout():
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         test_file = os.path.join(tmp_dir, "test.txt")
-        with open(test_file, "w") as f:
+        with open(test_file, "w", encoding="utf-8") as f:
             f.write("initial content")
 
         app = DummyServeStaticBase(
