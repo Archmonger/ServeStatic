@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import hashlib
 import os
 import warnings
 from collections.abc import Awaitable, Callable, Iterable, Iterator
