@@ -400,7 +400,6 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_MINIFY": "yes"}, "servestatic.E031"),
         ({"SERVESTATIC_USE_GZIP": "yes"}, "servestatic.E032"),
         ({"SERVESTATIC_USE_BROTLI": "yes"}, "servestatic.E033"),
-        ({"SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT": -1}, "servestatic.E034"),
     ],
 )
 def test_django_check_reports_invalid_setting_types(overrides, error_id):
@@ -1171,91 +1170,3 @@ def test_get_static_url_value_error():
 
     with mock.patch("servestatic.middleware.staticfiles_storage.url", side_effect=ValueError):
         assert ServeStaticMiddleware.get_static_url("foo") is None
-
-
-@override_settings(
-    SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT=1,
-    CACHES={
-        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
-        "servestatic": {
-            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-            "LOCATION": ".django_cache",
-        },
-    },
-    SERVESTATIC_USE_MANIFEST=False,
-)
-def test_middleware_autorefresh_cache_timeout(tmp_path, async_middleware_response):
-    from django.core.cache import caches
-
-    from servestatic.middleware import ServeStaticMiddleware
-
-    with override_settings(SERVESTATIC_ROOT=str(tmp_path), SERVESTATIC_AUTOREFRESH=True):
-        m = ServeStaticMiddleware(async_middleware_response)
-
-        # Clear cache before test
-        cache = caches["servestatic"]
-        cache.clear()
-
-        # Create a test file
-        test_file = tmp_path / "test.txt"
-        test_file.write_text("initial")
-
-        # 1. The first lookup hits the filesystem and caches
-        file_obj1 = m.find_file("/test.txt")
-        assert file_obj1 is not None
-        assert file_obj1.alternatives[0][1] == str(test_file)
-
-        # 2. Delete the file. The second lookup should hit the Django cache
-        test_file.unlink()
-        file_obj2 = m.find_file("/test.txt")
-        assert file_obj2 is not None
-        assert file_obj2.alternatives[0][1] == file_obj1.alternatives[0][1]
-
-        # 3. Clear cache and try again. It should be gone.
-        cache.clear()
-        file_obj3 = m.find_file("/test.txt")
-        assert file_obj3 is None
-
-
-@override_settings(
-    SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT=60,
-    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
-    SERVESTATIC_USE_MANIFEST=False,
-)
-def test_middleware_autorefresh_cache_timeout_fallback_to_default(tmp_path, async_middleware_response):
-    from django.core.cache import caches
-
-    from servestatic.middleware import ServeStaticMiddleware
-
-    with override_settings(
-        SERVESTATIC_ROOT=str(tmp_path), SERVESTATIC_AUTOREFRESH=True, SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT=60
-    ):
-        m = ServeStaticMiddleware(async_middleware_response)
-
-        # Check properties to ensure fallback is used
-        assert getattr(m, "cache_alias", None) == "default"
-        assert getattr(m, "cache_timeout", 0) == 60
-
-        # Clear cache before test
-        cache = caches["default"]
-        cache.clear()
-
-        # Create a test file
-        test_file = tmp_path / "test2.txt"
-        test_file.write_text("initial")
-
-        # 1. The first lookup hits the filesystem and caches
-        file_obj1 = m.find_file("/test2.txt")
-        assert file_obj1 is not None
-        assert file_obj1.alternatives[0][1] == str(test_file)
-
-        # 2. Delete the file. The second lookup should hit the Django cache
-        test_file.unlink()
-        file_obj2 = m.find_file("/test2.txt")
-        assert file_obj2 is not None
-        assert file_obj2.alternatives[0][1] == file_obj1.alternatives[0][1]
-
-        # 3. Clear cache and try again. It should be gone.
-        cache.clear()
-        file_obj3 = m.find_file("/test2.txt")
-        assert file_obj3 is None

@@ -19,21 +19,7 @@ These can be set by passing keyword arguments to the constructor, or by sub-clas
 
 **Default:** `False`
 
-Always check the filesystem to see if any files have changed before responding. This is especially useful in development environments to pick up changes to static files without restarting the server.
-
-Keep in mind that this setting adds performance overhead. Additionally, it is [not recommended](https://www.redfoxsec.com/blog/understanding-file-upload-vulnerabilities) to use this setting to serve user-uploaded media files unless you have full confidence in your ability to validate and sanitize user data.
-
----
-
-### `autorefresh_cache_timeout`
-
-**Default:** `0`
-
-Determine how long (in seconds) to cache file metadata when `autorefresh` is enabled. This is designed to allow users to reduce performance overhead when utilizing `autorefresh`.
-
-This setting can significantly improve performance when you need to use `autorefresh` in production. Note that the cache is on a per-process basis.
-
-If using this setting in production, it is recommended to use a HTTP rate limiter to prevent malicious users from creating excessive disk I/O by making many requests for uncached files.
+Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. For both performance and security reasons, this setting should not be used in production.
 
 ---
 

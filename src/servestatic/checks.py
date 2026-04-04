@@ -72,15 +72,6 @@ def _validate_servestatic_max_age() -> list[Error]:
     return [Error("SERVESTATIC_MAX_AGE must be a non-negative integer or None.", id="servestatic.E014")]
 
 
-def _validate_servestatic_autorefresh_cache_timeout() -> list[Error]:
-    value = _get_setting("SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT")
-    if value is None or _is_non_negative_int(value):
-        return []
-    return [
-        Error("SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT must be a non-negative integer or None.", id="servestatic.E034")
-    ]
-
-
 def _validate_servestatic_index_file() -> list[Error]:
     value = _get_setting("SERVESTATIC_INDEX_FILE")
     if value is None or isinstance(value, bool):
@@ -236,7 +227,6 @@ def check_setting_configuration(
 
     errors.extend(_validate_servestatic_root())
     errors.extend(_validate_bool_setting("SERVESTATIC_AUTOREFRESH", "servestatic.E011"))
-    errors.extend(_validate_servestatic_autorefresh_cache_timeout())
     errors.extend(_validate_bool_setting("SERVESTATIC_USE_MANIFEST", "servestatic.E012"))
     errors.extend(_validate_bool_setting("SERVESTATIC_USE_FINDERS", "servestatic.E013"))
     errors.extend(_validate_servestatic_max_age())

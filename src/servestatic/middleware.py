@@ -20,7 +20,6 @@ from django.contrib.staticfiles.storage import (
     ManifestStaticFilesStorage,
     staticfiles_storage,
 )
-from django.core.cache import DEFAULT_CACHE_ALIAS, caches
 from django.http import FileResponse, HttpRequest, HttpResponseBase
 
 from servestatic.responders import AsyncSlicedFile, MissingFileError, Redirect, StaticFile
@@ -90,8 +89,6 @@ class ServeStaticMiddleware(ServeStaticBase):
 
         self.get_response = cast("GetResponseCallable", get_response)
         autorefresh = getattr(settings, "SERVESTATIC_AUTOREFRESH", debug)
-        self.cache_timeout = getattr(settings, "SERVESTATIC_AUTOREFRESH_CACHE_TIMEOUT", 0 if debug else 1)
-        self.cache_alias = "servestatic" if "servestatic" in getattr(settings, "CACHES", {}) else DEFAULT_CACHE_ALIAS
         max_age = getattr(settings, "SERVESTATIC_MAX_AGE", 0 if debug else 60)
         allow_all_origins = getattr(settings, "SERVESTATIC_ALLOW_ALL_ORIGINS", True)
         charset = getattr(settings, "SERVESTATIC_CHARSET", "utf-8")
@@ -117,7 +114,6 @@ class ServeStaticMiddleware(ServeStaticBase):
         super().__init__(
             application=lambda *_: None,
             autorefresh=autorefresh,
-            autorefresh_cache_timeout=0,  # Disable our base caching algorithm when using Django
             max_age=max_age,
             allow_all_origins=allow_all_origins,
             charset=charset,
@@ -155,23 +151,6 @@ class ServeStaticMiddleware(ServeStaticBase):
         # Add files from the root dir, if needed
         if root:
             self.add_files(root)
-
-    def find_file(self, url: str) -> StaticFile | Redirect | None:
-        if self.cache_timeout <= 0:
-            return super().find_file(url)
-
-        cache = caches[self.cache_alias]
-        url_hash = hashlib.md5(url.encode("utf-8"), usedforsecurity=False).hexdigest()
-        cache_key = f"servestatic_find_file_{url_hash}"
-
-        cached_val = cache.get(cache_key)
-        if cached_val is not None:
-            return None if cached_val == "NOT_FOUND" else cached_val
-
-        file = super().find_file(url)
-
-        cache.set(cache_key, file if file is not None else "NOT_FOUND", timeout=self.cache_timeout)
-        return file
 
     async def __call__(self, request: HttpRequest) -> HttpResponseBase:
         """If the URL contains a static file, serve it. Otherwise, continue to the next
