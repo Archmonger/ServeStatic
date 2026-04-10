@@ -37,16 +37,8 @@ class ServeStaticBase:
         root: Path | str | None = None,
         prefix: str | None = None,
         *,
-        # Re-check the filesystem on every request so that any changes are
-        # automatically picked up. NOTE: For use in development only, not supported
-        # in production
         autorefresh: bool = False,
-        max_age: int | None = 60,  # seconds
-        # Set 'Access-Control-Allow-Origin: *' header on all files.
-        # As these are all public static files this is safe (See
-        # https://www.w3.org/TR/cors/#security) and ensures that things (e.g
-        # webfonts in Firefox) still work as expected when your static files are
-        # served from a CDN, rather than your primary domain.
+        max_age: int | None = 60,
         allow_all_origins: bool = True,
         charset: str = "utf-8",
         mimetypes: dict[str, str] | None = None,

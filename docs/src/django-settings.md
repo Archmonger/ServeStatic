@@ -16,39 +16,41 @@ Don't use this for the bulk of your static files because you won't benefit from 
 
 ## `SERVESTATIC_AUTOREFRESH`
 
-**Default:** `settings.py:DEBUG`
+**Default:** `DEBUG`
 
-Recheck the filesystem to see if any files have changed before responding. This is designed to be used in development where it can be convenient to pick up changes to static files without restarting the server. For both performance and security reasons, this setting should not be used in production.
+Always check the filesystem to see if any files have changed before responding. This is especially useful in development environments to pick up changes to static files without restarting the server.
+
+When running under ASGI, ServeStatic performs these checks asynchronously. Regardless, keep in mind that this setting adds performance overhead. Additionally, it is [not recommended](https://www.redfoxsec.com/blog/understanding-file-upload-vulnerabilities) to use this setting to serve user-uploaded media files unless you have full confidence in your ability to validate and sanitize user data.
 
 ---
 
 ## `SERVESTATIC_USE_MANIFEST`
 
-**Default:** `not settings.py:DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`
+**Default:** `not DEBUG and isinstance(staticfiles_storage, ManifestStaticFilesStorage)`
 
 Find and serve files using Django's manifest file.
 
 This is the most efficient way to determine what files are available, but it requires that you are using a [manifest-compatible](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#manifeststaticfilesstorage) storage backend.
 
-When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-3-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup.
+When using ServeStatic's [`CompressedManifestStaticFilesStorage`](./django.md#step-3-add-compression-and-caching-support) storage backend, ServeStatic will no longer need to call `os.stat` on each file during startup. This will significantly reduce startup time, especially when you have a large number of static files.
 
 ---
 
 ## `SERVESTATIC_USE_FINDERS`
 
-**Default:** `settings.py:DEBUG`
+**Default:** `DEBUG`
 
-Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API.
+Find and serve files using Django's [`finders`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#finders-module) API. Defaults to `True` if Django's `DEBUG` setting is enabled.
 
-It's possible to use this setting in production, but be mindful of the [`settings.py:STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`settings.py:STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings. By default, the finders API only searches the `'static'` directory in each app, which are not the copies post-processed by ServeStatic.
+It's possible to use this setting in production, but it will be less efficient than other methods. Also, be mindful of the [`STATICFILES_DIRS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-dirs) and [`STATICFILE_FINDERS`](https://docs.djangoproject.com/en/stable/ref/settings/#staticfiles-finders) settings.
 
-Note that `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
+By default, the finders API only searches the `'static'` directory in each Django app, which are not the copies post-processed by ServeStatic. Additionally, `STATICFILES_DIRS` cannot equal `STATIC_ROOT` while running the `collectstatic` management command.
 
 ---
 
 ## `SERVESTATIC_USE_STATIC_ROOT`
 
-**Default:** `not (settings.py:SERVESTATIC_USE_MANIFEST or settings.py:SERVESTATIC_USE_FINDERS)`
+**Default:** `not (SERVESTATIC_USE_MANIFEST or SERVESTATIC_USE_FINDERS)`
 
 Find and serve all files within Django's `STATIC_ROOT` (file scan is only run during startup). This defaults to `True` if you do not have no other method configured.
 
@@ -58,7 +60,7 @@ This allows users to have their `STATIC_ROOT` directory contain files which are 
 
 ## `SERVESTATIC_MAX_AGE`
 
-**Default:** `60 if not settings.py:DEBUG else 0`
+**Default:** `60 if not DEBUG else 0`
 
 Time (in seconds) for which browsers and proxies should cache **non-versioned** files.
 
@@ -74,7 +76,7 @@ Set to `None` to disable setting any `Cache-Control` header on non-versioned fil
 
 **Default:** `False`
 
-If `True` enable index file serving. If set to a non-empty string, enable index files and use that string as the index file name.
+If `True`, serve an index file when a directory is requested. When set to `True`, ServeStatic will assume your index files are named `index.html`. However, if this value is set to a string, it will use that as the index file name.
 
 ---
 
@@ -259,7 +261,7 @@ SERVESTATIC_IMMUTABLE_FILE_TEST = immutable_file_test
 
 ## `SERVESTATIC_STATIC_PREFIX`
 
-**Default:** `settings.py:STATIC_URL`
+**Default:** `STATIC_URL`
 
 The URL prefix under which static files will be served.
 
@@ -289,10 +291,4 @@ This setting is only effective if the `ServeStatic` storage backend is being use
 
 Set to `False` to prevent Django throwing an error if you reference a static file which doesn't exist in the manifest.
 
-This works by setting the [`manifest_strict`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#django.contrib.staticfiles.storage.ManifestStaticFilesStorage.manifest_strict) option on the underlying Django storage instance, as described in the Django documentation.
-
-This setting is only effective if the `ServeStatic` storage backend is being used.
-
-!!! Note
-
-    If a file isn't found in the `staticfiles.json` manifest at runtime, a `ValueError` is raised. This behavior can be disabled by subclassing `ManifestStaticFilesStorage` and setting the `manifest_strict` attribute to `False` -- nonexistent paths will remain unchanged.
+This setting only takes effect when using `CompressedManifestStaticFilesStorage`, and it works by setting the [`manifest_strict`](https://docs.djangoproject.com/en/stable/ref/contrib/staticfiles/#django.contrib.staticfiles.storage.ManifestStaticFilesStorage.manifest_strict) option on the underlying Django storage instance, as described in the Django documentation.

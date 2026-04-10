@@ -15,14 +15,19 @@ Don't forget to remove deprecated code on each major release!
 
 - Nothing (yet)
 
+## [4.3.0] - 2026-04-09
+
+### Fixed
+
+- Fix a bug where the Django `collectstatic` command could crash when encountering static files that reference a URL containing query parameters.
+
 ## [4.2.0] - 2026-04-01
 
 ### Added
 
-- Added new Django setting `SERVESTATIC_USE_STATIC_ROOT` to allow users to opt in to having `ServeStatic` scan all files within `STATIC_ROOT` at start-up. This is now enabled by default.
+- Added new Django setting `SERVESTATIC_USE_STATIC_ROOT` to allow users to opt in to having `ServeStatic` scan all files within `STATIC_ROOT` at start-up.
 - Add JavaScript and CSS minification support to the `servestatic` CLI command.
 - Add JavaScript and CSS minification support to the `servestatic` the Django storage backend.
-
 
 ## [4.1.0] - 2026-03-07
 
@@ -170,7 +175,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...HEAD
+[4.3.0]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/Archmonger/ServeStatic/compare/3.1.0...4.0.0

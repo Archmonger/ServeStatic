@@ -3,6 +3,7 @@ logs
 *.log
 *.pot
 *.pyc
+.django_cache
 .dccachea
 __pycache__
 *.sqlite3

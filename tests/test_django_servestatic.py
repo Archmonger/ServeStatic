@@ -387,8 +387,6 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_CHARSET": ""}, "servestatic.E017"),
         ({"SERVESTATIC_ALLOW_ALL_ORIGINS": "yes"}, "servestatic.E018"),
         ({"SERVESTATIC_SKIP_COMPRESS_EXTENSIONS": "jpg,png"}, "servestatic.E019"),
-        ({"SERVESTATIC_USE_GZIP": "yes"}, "servestatic.E032"),
-        ({"SERVESTATIC_USE_BROTLI": "yes"}, "servestatic.E033"),
         ({"SERVESTATIC_USE_ZSTD": "yes"}, "servestatic.E020"),
         ({"SERVESTATIC_ZSTD_DICTIONARY": 123}, "servestatic.E021"),
         ({"SERVESTATIC_ZSTD_DICTIONARY_IS_RAW": "yes"}, "servestatic.E022"),
@@ -400,6 +398,8 @@ def test_django_check_accepts_correct_gzip_middleware_order():
         ({"SERVESTATIC_MANIFEST_STRICT": "yes"}, "servestatic.E028"),
         ({"SERVESTATIC_ALLOW_UNSAFE_SYMLINKS": "yes"}, "servestatic.E029"),
         ({"SERVESTATIC_MINIFY": "yes"}, "servestatic.E031"),
+        ({"SERVESTATIC_USE_GZIP": "yes"}, "servestatic.E032"),
+        ({"SERVESTATIC_USE_BROTLI": "yes"}, "servestatic.E033"),
     ],
 )
 def test_django_check_reports_invalid_setting_types(overrides, error_id):
@@ -993,6 +993,19 @@ def test_manifest_with_keep_only_hashed(static_files):
 
         finally:
             static_root: Path = settings.STATIC_ROOT
+            shutil.rmtree(static_root, ignore_errors=True)
+
+
+@pytest.mark.usefixtures("static_files")
+def test_manifest_with_keep_only_hashed_query_string():
+    with override_settings(SERVESTATIC_USE_MANIFEST=True, SERVESTATIC_KEEP_ONLY_HASHED_FILES=True):
+        try:
+            # Collect static files
+            reset_lazy_object(storage.staticfiles_storage)
+            # This should not raise an OSError (like [WinError 123] on Windows) due to `?` query strings in `hashed_name` mappings.
+            call_command("collectstatic", verbosity=0, interactive=False)
+        finally:
+            static_root = settings.STATIC_ROOT
             shutil.rmtree(static_root, ignore_errors=True)
 
 
