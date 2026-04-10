@@ -15,7 +15,7 @@ Don't forget to remove deprecated code on each major release!
 
 - Nothing (yet)
 
-## [4.3.0] - 2026-04-03
+## [4.3.0] - 2026-04-09
 
 ### Fixed
 
