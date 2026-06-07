@@ -15,7 +15,7 @@ Don't forget to remove deprecated code on each major release!
 
 ## [4.3.1] - 2026-06-06
 
-- Fix manifest file mangling during collectstatic dry run.
+- Fix manifest file mangling during `collectstatic` dry run.
 
 ## [4.3.0] - 2026-04-09
 
