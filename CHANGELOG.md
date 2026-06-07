@@ -27,7 +27,7 @@ Don't forget to remove deprecated code on each major release!
 
 - Added new Django setting `SERVESTATIC_USE_STATIC_ROOT` to allow users to opt in to having `ServeStatic` scan all files within `STATIC_ROOT` at start-up.
 - Add JavaScript and CSS minification support to the `servestatic` CLI command.
-- Add JavaScript and CSS minification support to the `servestatic` the Django storage backend.
+- Add JavaScript and CSS minification support to Django.
 
 ## [4.1.0] - 2026-03-07
 
