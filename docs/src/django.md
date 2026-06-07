@@ -8,7 +8,7 @@ We mention Heroku in a few places, but there's nothing Heroku-specific about Ser
 
 Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list.
 
-!!! warning "Middleware order is important!"
+??? warning "Middleware order is important!"
 
     The ServeStatic middleware should be placed directly after the Django [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security) (if you are using it) and before all other middleware.
 

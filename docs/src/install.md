@@ -4,7 +4,9 @@ The documentation below is a quick-start guide to using ServeStatic to serve you
 
 ## Installation
 
-!!! note "Optional Extras" ServeStatic has optional extras ('brotli' and 'minify') for Brotli compression and minification. The example below shows how to install with these extras, but you can omit them if you don't need those features.
+!!! note "Optional Extras"
+
+    ServeStatic has optional extras (`brotli` and `minify`) for Brotli compression and minification. The example below shows how to install with these extras, but you can omit them if you don't need those features.
 
 To install from PyPI, run the following command:
 
@@ -15,21 +17,15 @@ pip install servestatic[brotli, minify]
 
 ## Using with ASGI
 
-!!! note
-
-    For configuration instructions, see the [ASGI guide](asgi.md).
+For configuration instructions, see the [ASGI guide](asgi.md).
 
 ## Using with WSGI
 
-!!! note
-
-    For configuration instructions, see the [WSGI guide](wsgi.md).
+For configuration instructions, see the [WSGI guide](wsgi.md).
 
 ## Using with Django
 
-!!! note
-
-    For advanced configuration instructions, see the [full Django guide](django.md).
+Below is the quick start guide for Django. For advanced configuration instructions, see the [full Django guide](django.md).
 
 Edit your `settings.py` file and add ServeStatic to the `MIDDLEWARE` list, above all other middleware apart from Django's [SecurityMiddleware](https://docs.djangoproject.com/en/stable/ref/middleware/#module-django.middleware.security).
 
