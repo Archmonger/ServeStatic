@@ -229,3 +229,45 @@ def test_storage_post_process_with_compression_handles_items_without_hashed_name
     results = list(storage.post_process_with_compression([("styles.css", None, True)]))
 
     assert results == [("styles.css", None, True)]
+
+
+def test_storage_post_process_dry_run_skips_add_stats_to_manifest(monkeypatch):
+    storage = CompressedManifestStaticFilesStorage()
+
+    monkeypatch.setattr(
+        ManifestStaticFilesStorage,
+        "post_process",
+        lambda self, *args, **kwargs: iter([]),
+    )
+
+    add_stats_called = {"value": False}
+
+    def fake_add_stats_to_manifest():
+        add_stats_called["value"] = True
+
+    monkeypatch.setattr(storage, "add_stats_to_manifest", fake_add_stats_to_manifest)
+
+    list(storage.post_process({}, dry_run=True))
+
+    assert add_stats_called["value"] is False
+
+
+def test_storage_post_process_non_dry_run_calls_add_stats_to_manifest(monkeypatch):
+    storage = CompressedManifestStaticFilesStorage()
+
+    monkeypatch.setattr(
+        ManifestStaticFilesStorage,
+        "post_process",
+        lambda self, *args, **kwargs: iter([]),
+    )
+
+    add_stats_called = {"value": False}
+
+    def fake_add_stats_to_manifest():
+        add_stats_called["value"] = True
+
+    monkeypatch.setattr(storage, "add_stats_to_manifest", fake_add_stats_to_manifest)
+
+    list(storage.post_process({}, dry_run=False))
+
+    assert add_stats_called["value"] is True

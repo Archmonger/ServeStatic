@@ -2,8 +2,8 @@
 nav:
   - Home: index.md
   - Installation:
-      - Quick Start: quick-start.md
-      - Install ServeStatic on your...:
+      - Install from PyPI: install.md
+      - Configure ServeStatic on your...:
           - ASGI Project: asgi.md
           - WSGI Project: wsgi.md
           - Django Project: django.md

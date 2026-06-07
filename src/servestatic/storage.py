@@ -99,7 +99,8 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
                 processed = self.make_helpful_exception(processed, name)  # noqa: PLW2901
             yield name, hashed_name, processed
 
-        self.add_stats_to_manifest()
+        if not kwargs.get("dry_run"):
+            self.add_stats_to_manifest()
 
     def add_stats_to_manifest(self) -> None:
         """Adds additional `stats` field to Django's manifest file."""
