@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
-- Nothing (yet)
+## [4.3.1] - 2026-06-06
+
+- Fix manifest file mangling during collectstatic dry run.
 
 ## [4.3.0] - 2026-04-09
 
@@ -175,7 +177,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.1...HEAD
+[4.3.1]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...4.3.1
 [4.3.0]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/Archmonger/ServeStatic/compare/4.0.0...4.1.0
