@@ -4,7 +4,7 @@
 
     `ServeStaticASGI` inherits its interface and features from the [WSGI variant](wsgi.md).
 
-To enable ServeStatic on an existing ASGI asgi_app, wrap it in a `ServeStaticASGI` instance and tell it where to find your static files. For example:
+To enable ServeStatic on an existing ASGI application, wrap it in a `ServeStaticASGI` instance and tell it where to find your static files. For example:
 
 === "`my_project.py`"
 
