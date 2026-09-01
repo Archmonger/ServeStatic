@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+### Changed
+
+- Remove the redundant `packaging` build dependency.
+
 ## [4.3.1] - 2026-06-06
 
 - Fix manifest file mangling during `collectstatic` dry run.
