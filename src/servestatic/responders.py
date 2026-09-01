@@ -42,6 +42,7 @@ NOT_ALLOWED_RESPONSE = Response(
 # Headers which should be returned with a 304 Not Modified response as
 # specified here: https://tools.ietf.org/html/rfc7232#section-4.1
 NOT_MODIFIED_HEADERS = (
+    "Access-Control-Allow-Origin",
     "Cache-Control",
     "Content-Location",
     "Date",
@@ -184,7 +185,7 @@ class StaticFile:
             raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
         if start > end:
-            return self.get_range_not_satisfiable_response(file_handle, size)
+            return self.get_range_not_satisfiable_response(file_handle, size, headers)
         if file_handle is not None:
             file_handle = SlicedFile(file_handle, start, end)
         headers.extend((
@@ -213,7 +214,7 @@ class StaticFile:
             raise ValueError(msg)
         start, end = self.get_byte_range(range_header, size)
         if start > end:
-            return await self.aget_range_not_satisfiable_response(file_handle, size)
+            return await self.aget_range_not_satisfiable_response(file_handle, size, headers)
         sliced_file: AsyncSlicedFile | None = None
         if file_handle is not None:
             sliced_file = AsyncSlicedFile(file_handle, start, end)
@@ -249,23 +250,35 @@ class StaticFile:
         return start, end
 
     @staticmethod
-    def get_range_not_satisfiable_response(file_handle: BufferedIOBase | None, size: int) -> Response:
+    def get_range_not_satisfiable_response(
+        file_handle: BufferedIOBase | None,
+        size: int,
+        headers: list[tuple[str, str | None]] | None = None,
+    ) -> Response:
         if file_handle is not None:
             file_handle.close()
+        response_headers = list(headers) if headers else []
+        response_headers.append(("Content-Range", f"bytes */{size}"))
         return Response(
             HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
-            [("Content-Range", f"bytes */{size}")],
+            response_headers,
             None,
         )
 
     @staticmethod
-    async def aget_range_not_satisfiable_response(file_handle: AsyncFile | None, size: int) -> Response:
+    async def aget_range_not_satisfiable_response(
+        file_handle: AsyncFile | None,
+        size: int,
+        headers: list[tuple[str, str | None]] | None = None,
+    ) -> Response:
         """Variant of `get_range_not_satisfiable_response` that works with
         async file objects. Async file handles do not need to be closed, since they
         are only opened via context managers while being dispatched."""
+        response_headers = list(headers) if headers else []
+        response_headers.append(("Content-Range", f"bytes */{size}"))
         return Response(
             HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
-            [("Content-Range", f"bytes */{size}")],
+            response_headers,
             None,
         )
 

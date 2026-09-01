@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
-- No changes here, yet!
+### Fixed
+
+- Keep CORS / cache headers on `416` (Range Not Satisfiable) and `304` (Not Modified) responses, so that cross-origin media probes are not broken.
 
 ## [4.3.2] - 2026-09-01
 
