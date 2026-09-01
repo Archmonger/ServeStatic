@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- No changes here, yet!
+
+## [4.3.2] - 2026-09-01
+
 ### Changed
 
 - Remove the redundant `packaging` build dependency.
@@ -181,7 +185,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.1...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.2...HEAD
+[4.3.2]: https://github.com/Archmonger/ServeStatic/compare/4.3.1...4.3.2
 [4.3.1]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...4.3.1
 [4.3.0]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/Archmonger/ServeStatic/compare/4.1.0...4.2.0
