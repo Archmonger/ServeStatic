@@ -221,6 +221,7 @@ def test_not_modified_exact(server, files):
     last_mod = response.headers["Last-Modified"]
     response = server.get(files.js_url, headers={"If-Modified-Since": last_mod})
     assert response.status_code == 304
+    assert response.headers.get("Access-Control-Allow-Origin") == "*"
 
 
 def test_not_modified_future(server, files):
@@ -402,6 +403,8 @@ def test_out_of_range_error(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=10000-11000"})
     assert response.status_code == 416
     assert response.headers["Content-Range"] == f"bytes */{len(files.js_content)}"
+    assert response.headers.get("Access-Control-Allow-Origin") == "*"
+    assert "Cache-Control" in response.headers
 
 
 def test_warn_about_missing_directories(application):
