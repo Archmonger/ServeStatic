@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling", "packaging<26"]
+requires = ["hatchling", "packaging"]
 
 [project]
 name = "servestatic"
