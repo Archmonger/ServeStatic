@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 from wsgiref.headers import Headers
 
-from servestatic.utils import AsyncFile
+from servestatic.utils import AsyncFile, parse_accept_encoding
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -358,40 +358,6 @@ class StaticFile:
             msg = "No matching file found from path."
             raise MissingFileError(msg)
         return result
-
-
-def parse_accept_encoding(header: str) -> set[str]:
-    """
-    Return the set of content codings the client is willing to accept.
-
-    The header is parsed as described in RFC 9110 section 12.5.3 rather than
-    matched as a substring, so that a coding the client has refused with
-    ``q=0`` is not offered to it, and a coding name is only recognised when it
-    appears as a whole token.
-    """
-    accepted: set[str] = set()
-    for entry in header.split(","):
-        coding, _, params = entry.partition(";")
-        coding = coding.strip().lower()
-        if not coding:
-            continue
-        quality = 1.0
-        for param in params.split(";"):
-            name, sep, value = param.partition("=")
-            if name.strip().lower() != "q":
-                continue
-            if not sep:
-                break
-            try:
-                quality = float(value.strip())
-            except ValueError:
-                # An unparseable qvalue makes the whole entry invalid; treat
-                # the coding as unacceptable rather than guess.
-                quality = 0.0
-            break
-        if quality > 0:
-            accepted.add(coding)
-    return accepted
 
 
 class Redirect:

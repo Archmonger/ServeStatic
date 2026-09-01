@@ -25,8 +25,8 @@ from servestatic.responders import (
     NotARegularFileError,
     Redirect,
     StaticFile,
-    parse_accept_encoding,
 )
+from servestatic.utils import parse_accept_encoding
 
 from .utils import AppServer, Files
 
@@ -186,6 +186,25 @@ def test_get_accept_gzip_with_qvalue(server, files):
         ("gzip; q", {"gzip"}),
         (",,", set()),
         ("", set()),
+        # Spaces around commas, mixed case, and surrounding whitespace.
+        (" gzip , br ", {"gzip", "br"}),
+        ("GZIP, BroTLI", {"gzip", "brotli"}),
+        ("gzip,,br", {"gzip", "br"}),
+        ("gzip,", {"gzip"}),
+        # OWS around the q= separator.
+        ("gzip ; q = 0.5", {"gzip"}),
+        ("gzip;q =0", set()),
+        # Multiple parameters after the coding.
+        ("gzip;foo=bar;q=0", set()),
+        ("gzip;evil;q=0.5", {"gzip"}),
+        # Quoted qvalues are not valid per RFC 9110; treated as unacceptable.
+        ('gzip; q="0.5"', set()),
+        # Unparseable qvalues are treated as unacceptable.
+        ("gzip;q=1e999", set()),
+        ("gzip;q=-0.5", set()),
+        ("gzip;q=", set()),
+        # qvalue of exactly 1.0 and ordering of params.
+        ("gzip;q=1;foo=bar", {"gzip"}),
     ],
 )
 def test_parse_accept_encoding(header, expected):
