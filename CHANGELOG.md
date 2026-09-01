@@ -19,6 +19,7 @@ Don't forget to remove deprecated code on each major release!
 
 ### Changed
 
+- Parse the `Accept-Encoding` header rather than matching it as a substring. A coding refused with `q=0`, such as `gzip;q=0`, is no longer served, and a coding is only offered when its name appears as a whole token.
 - Remove the redundant `packaging` build dependency.
 
 ## [4.3.1] - 2026-06-06

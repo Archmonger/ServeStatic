@@ -44,3 +44,4 @@ symlinks
 minification
 minify
 uncached
+substring

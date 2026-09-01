@@ -19,7 +19,14 @@ import pytest
 
 from servestatic import ServeStatic
 from servestatic.base import ServeStaticBase
-from servestatic.responders import FileEntry, MissingFileError, NotARegularFileError, Redirect, StaticFile
+from servestatic.responders import (
+    FileEntry,
+    MissingFileError,
+    NotARegularFileError,
+    Redirect,
+    StaticFile,
+)
+from servestatic.utils import parse_accept_encoding
 
 from .utils import AppServer, Files
 
@@ -124,6 +131,84 @@ def test_get_accept_gzip(server, files):
     assert response.content == files.gzip_content
     assert response.headers["Content-Encoding"] == "gzip"
     assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.parametrize(
+    "accept_encoding",
+    [
+        "gzip;q=0",
+        "gzip;q=0.0",
+        "gzip; q=0",
+        "identity, gzip;q=0",
+    ],
+)
+def test_get_gzip_refused_by_qvalue(server, files, accept_encoding):
+    # A qvalue of zero means the client will not accept that coding.
+    response = server.get(files.gzip_url, headers={"Accept-Encoding": accept_encoding})
+    assert response.content == files.gzip_content
+    assert "Content-Encoding" not in response.headers
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.parametrize(
+    "accept_encoding",
+    [
+        "x-gzip-really",
+        "supergzip",
+        "gzip spam brotli",
+    ],
+)
+def test_get_gzip_not_matched_as_substring(server, files, accept_encoding):
+    # The coding must appear as a whole token, not anywhere in the header.
+    response = server.get(files.gzip_url, headers={"Accept-Encoding": accept_encoding})
+    assert response.content == files.gzip_content
+    assert "Content-Encoding" not in response.headers
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
+def test_get_accept_gzip_with_qvalue(server, files):
+    response = server.get(files.gzip_url, headers={"Accept-Encoding": "gzip;q=0.5"})
+    assert response.content == files.gzip_content
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        ("gzip", {"gzip"}),
+        ("gzip, br", {"gzip", "br"}),
+        ("gzip;", {"gzip"}),
+        ("Brotli", {"brotli"}),
+        ("gzip ; q=0.5", {"gzip"}),
+        ("gzip;foo=bar", {"gzip"}),
+        ("gzip;q=abc", set()),
+        ("gzip; q", {"gzip"}),
+        (",,", set()),
+        ("", set()),
+        # Spaces around commas, mixed case, and surrounding whitespace.
+        (" gzip , br ", {"gzip", "br"}),
+        ("GZIP, BroTLI", {"gzip", "brotli"}),
+        ("gzip,,br", {"gzip", "br"}),
+        ("gzip,", {"gzip"}),
+        # OWS around the q= separator.
+        ("gzip ; q = 0.5", {"gzip"}),
+        ("gzip;q =0", set()),
+        # Multiple parameters after the coding.
+        ("gzip;foo=bar;q=0", set()),
+        ("gzip;evil;q=0.5", {"gzip"}),
+        # Quoted qvalues are not valid per RFC 9110; treated as unacceptable.
+        ('gzip; q="0.5"', set()),
+        # Unparseable qvalues are treated as unacceptable.
+        ("gzip;q=1e999", set()),
+        ("gzip;q=-0.5", set()),
+        ("gzip;q=", set()),
+        # qvalue of exactly 1.0 and ordering of params.
+        ("gzip;q=1;foo=bar", {"gzip"}),
+    ],
+)
+def test_parse_accept_encoding(header, expected):
+    assert parse_accept_encoding(header) == expected
 
 
 def test_cannot_directly_request_gzipped_file(server, files):
