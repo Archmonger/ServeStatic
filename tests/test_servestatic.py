@@ -19,7 +19,14 @@ import pytest
 
 from servestatic import ServeStatic
 from servestatic.base import ServeStaticBase
-from servestatic.responders import FileEntry, MissingFileError, NotARegularFileError, Redirect, StaticFile
+from servestatic.responders import (
+    FileEntry,
+    MissingFileError,
+    NotARegularFileError,
+    Redirect,
+    StaticFile,
+    parse_accept_encoding,
+)
 
 from .utils import AppServer, Files
 
@@ -164,6 +171,25 @@ def test_get_accept_gzip_with_qvalue(server, files):
     assert response.content == files.gzip_content
     assert response.headers["Content-Encoding"] == "gzip"
     assert response.headers["Vary"] == "Accept-Encoding"
+
+
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        ("gzip", {"gzip"}),
+        ("gzip, br", {"gzip", "br"}),
+        ("gzip;", {"gzip"}),
+        ("Brotli", {"brotli"}),
+        ("gzip ; q=0.5", {"gzip"}),
+        ("gzip;foo=bar", {"gzip"}),
+        ("gzip;q=abc", set()),
+        ("gzip; q", {"gzip"}),
+        (",,", set()),
+        ("", set()),
+    ],
+)
+def test_parse_accept_encoding(header, expected):
+    assert parse_accept_encoding(header) == expected
 
 
 def test_cannot_directly_request_gzipped_file(server, files):
