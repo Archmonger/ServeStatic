@@ -13,6 +13,12 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+## [4.3.3] - 2026-09-02
+
+### Changed
+
+- Parse the `Accept-Encoding` header rather than matching it as a substring. A coding refused with `q=0`, such as `gzip;q=0`, is no longer served, and a coding is only offered when its name appears as a whole token.
+
 ### Fixed
 
 - Keep CORS / cache headers on `416` (Range Not Satisfiable) and `304` (Not Modified) responses, so that cross-origin media probes are not broken.
@@ -21,7 +27,6 @@ Don't forget to remove deprecated code on each major release!
 
 ### Changed
 
-- Parse the `Accept-Encoding` header rather than matching it as a substring. A coding refused with `q=0`, such as `gzip;q=0`, is no longer served, and a coding is only offered when its name appears as a whole token.
 - Remove the redundant `packaging` build dependency.
 
 ## [4.3.1] - 2026-06-06
@@ -188,7 +193,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.2...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.3...HEAD
+[4.3.3]: https://github.com/Archmonger/ServeStatic/compare/4.3.2...4.3.3
 [4.3.2]: https://github.com/Archmonger/ServeStatic/compare/4.3.1...4.3.2
 [4.3.1]: https://github.com/Archmonger/ServeStatic/compare/4.3.0...4.3.1
 [4.3.0]: https://github.com/Archmonger/ServeStatic/compare/4.2.0...4.3.0
