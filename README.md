@@ -29,7 +29,28 @@ When using `ServeStatic`, best practices are automatically handled such as:
 - Proper handling of `Accept-Encoding` and `Vary` headers
 - Setting far-future cache headers for immutable static files.
 
-Visit the [documentation](https://archmonger.github.io/ServeStatic/) to get started or learn more about `ServeStatic` .
+
+## Quick Start
+
+Here is a short example of ASGI standalone mode:
+
+```python
+# filename: my_project.py
+from servestatic import ServeStaticASGI
+
+asgi_app = ServeStaticASGI(
+    application=None,  # `application=None` will run ServeStatic in standalone mode.
+    root="/path/to/static/files",
+)
+```
+
+Now, use any webserver CLI to serve static files. Since this example uses ASGI, here is a sample command for `uvicorn` (a popular ASGI webserver):
+
+```
+uvicorn my_project:asgi_app
+```
+
+Visit the [documentation](https://archmonger.github.io/ServeStatic/) to get started, or learn more about `ServeStatic` .
 
 ## Frequently Asked Questions
 
