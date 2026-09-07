@@ -162,8 +162,15 @@ class ServeStaticBase:
         if getattr(self, "allow_unsafe_symlinks", False):
             return True
 
-        resolved_root = os.path.realpath(normalized_root)
-        resolved_path = os.path.realpath(normalized_path)
+        try:
+            resolved_root = os.path.realpath(normalized_root)
+            resolved_path = os.path.realpath(normalized_path)
+        except ValueError:
+            # A raw NUL byte (e.g. from a request path containing %00) survives
+            # normpath() but makes realpath() raise. Treat such a path as being
+            # outside the root (i.e. not found/forbidden) rather than letting an
+            # unhandled ValueError propagate and crash the request.
+            return False
         return self._path_is_within(resolved_root, resolved_path)
 
     @staticmethod

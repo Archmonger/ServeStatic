@@ -22,6 +22,7 @@ Don't forget to remove deprecated code on each major release!
 ### Fixed
 
 - Keep CORS / cache headers on `416` (Range Not Satisfiable) and `304` (Not Modified) responses, so that cross-origin media probes are not broken.
+- Prevent an unhandled `ValueError` crash when a request path contains a NUL byte (`%00`) that survives normalization, which could be triggered by an unauthenticated request to crash the server (DoS / log-flood).
 
 ## [4.3.2] - 2026-09-01
 
