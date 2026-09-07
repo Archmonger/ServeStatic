@@ -571,6 +571,22 @@ def test_path_within_root_normalizes_drive_root_separator(monkeypatch):
     assert app.path_within_root("C:\\", "C:\\static\\file.js")
 
 
+def test_path_within_root_returns_false_when_realpath_raises_value_error(monkeypatch):
+    """A NUL byte that survives normpath must not crash: treat it as outside root."""
+    app = DummyServeStaticBase(None)
+
+    def fake_path_is_within(root, path):
+        return True
+
+    def fake_realpath(value):
+        raise ValueError("embedded null character")
+
+    monkeypatch.setattr(app, "_path_is_within", fake_path_is_within)
+    monkeypatch.setattr(os.path, "realpath", fake_realpath)
+
+    assert app.path_within_root("/srv/static", "/srv/static/hello.txt\x00.evil") is False
+
+
 def test_is_compressed_variant_detects_zstd_suffix_with_cache():
     cache = {"/tmp/app.js": fake_stat_entry(st_mtime=1)}
     assert DummyServeStaticBase.is_compressed_variant("/tmp/app.js.zstd", stat_cache=cache)
