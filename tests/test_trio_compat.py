@@ -13,12 +13,12 @@ from pathlib import Path
 
 import pytest
 
-trio = pytest.importorskip("trio")
-
 from servestatic import utils as servestatic_utils
 from servestatic.asgi import ServeStaticASGI
 
 from .utils import AsgiHttpScopeEmulator, AsgiReceiveEmulator, AsgiSendEmulator, Files
+
+trio = pytest.importorskip("trio")
 
 
 async def run_asgi_under_trio(application, path: str) -> AsgiSendEmulator:
