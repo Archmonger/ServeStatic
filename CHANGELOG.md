@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+### Changed
+
+- Make the standalone ASGI/WSGI serving core compatible with the trio async backend. Thread-offload now detects the running async library (via sniffio, lazily and optionally) and dispatches to asyncio or trio, so ServeStatic no longer returns empty responses under trio-based servers (e.g. Anycorn `--worker-class trio`).
+
 ## [4.3.4] - 2026-09-07
 
 ### Fixed
