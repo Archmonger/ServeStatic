@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, cast
 
 from asgiref.compatibility import guarantee_single_callable
 from asgiref.typing import HTTPResponseBodyEvent, HTTPResponseStartEvent
 
 from servestatic.base import ServeStaticBase
-from servestatic.utils import decode_path_info, get_block_size
+from servestatic.utils import decode_path_info, get_block_size, run_async_in_thread
 
 if TYPE_CHECKING:
     from asgiref.typing import (
@@ -32,7 +31,7 @@ class ServeStaticASGI(ServeStaticBase):
             http_scope = cast("HTTPScope", scope)
             path = decode_path_info(http_scope["path"])
             if self.autorefresh:
-                static_file = await asyncio.to_thread(self.find_file, path)
+                static_file = await run_async_in_thread(self.find_file, path)
             else:
                 static_file = self.files.get(path)
 

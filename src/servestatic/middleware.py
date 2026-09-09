@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import os
 import warnings
@@ -29,6 +28,7 @@ from servestatic.utils import (
     AsyncToSyncIterator,
     EmptyAsyncIterator,
     ensure_leading_trailing_slash,
+    run_async_in_thread,
     stat_files,
 )
 from servestatic.wsgi import ServeStaticBase
@@ -155,7 +155,7 @@ class ServeStaticMiddleware(ServeStaticBase):
         """If the URL contains a static file, serve it. Otherwise, continue to the next
         middleware."""
         if self.autorefresh:
-            static_file = await asyncio.to_thread(self.find_file, request.path_info)
+            static_file = await run_async_in_thread(self.find_file, request.path_info)
         else:
             static_file = self.files.get(request.path_info)
         if static_file is not None:
