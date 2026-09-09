@@ -39,10 +39,13 @@ def current_async_library() -> str:
     """Return the name of the running async library ("asyncio", "trio", ...).
 
     Uses sniffio when available, falling back to "asyncio" otherwise. This mirrors
-    how anyio reports the backend and keeps the dependency-free core safe.
+    how anyio reports the backend and keeps the dependency-free core safe. sniffio is
+    an optional transitive dependency (pulled in by trio/anyio), so it is loaded
+    dynamically to keep the dependency-free core and pyright's strict type check
+    happy.
     """
     try:
-        import sniffio
+        sniffio = importlib.import_module("sniffio")
     except ImportError:  # pragma: no cover - asyncio is assumed when sniffio is absent
         return "asyncio"
     try:
