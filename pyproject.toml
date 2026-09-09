@@ -61,6 +61,7 @@ extra-dependencies = [
   "brotli",
   "rcssmin",
   "rjsmin",
+  "trio",
 ]
 randomize = true
 matrix-name-format = "{variable}-{value}"

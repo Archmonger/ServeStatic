@@ -4,6 +4,7 @@ import asyncio
 import concurrent.futures
 import contextlib
 import functools
+import importlib
 import math
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -57,15 +58,11 @@ async def run_async_in_thread(func: Callable[..., T], *args: object) -> T:
     hard dependency on anyio. Under asyncio it delegates to ``asyncio.to_thread``;
     under trio it uses ``trio.to_thread.run_sync``.
     """
-    library = current_async_library()
-    if library == "trio" or library == "asyncio":
-        if library == "trio":
-            import trio
-
-            return await trio.to_thread.run_sync(func, *args)
-        return await asyncio.to_thread(func, *args)
-    # Unknown/unsupported backend: fall back to asyncio's semantics, which is the
-    # closest available behaviour given no other backend is importable.
+    if current_async_library() == "trio":
+        # trio is an optional backend; import it dynamically so the dependency-free
+        # core (and pyright's strict type checking) never need it at build time.
+        trio = importlib.import_module("trio")
+        return await trio.to_thread.run_sync(func, *args)
     return await asyncio.to_thread(func, *args)
 
 
@@ -235,8 +232,7 @@ class AsyncFile:
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
         if current_async_library() == "trio":
             # Under trio there is no asyncio loop; offload via trio's thread pool.
-            import trio
-
+            trio = importlib.import_module("trio")
             return await trio.to_thread.run_sync(func, *args)
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
