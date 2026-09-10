@@ -4,10 +4,18 @@ import asyncio
 import concurrent.futures
 import contextlib
 import functools
+import importlib
 import math
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar, cast
+
+# The standalone ASGI/WSGI core only hard-depends on asgiref. To remain trio-
+# compatible without adding a hard dependency on anyio/trio, we optionally use
+# sniffio (pulled in by trio/anyio when one of those backends is in use) to detect
+# the running async backend and dispatch to the appropriate thread-offload
+# primitive. If sniffio isn't available we assume asyncio, which is safe because
+# asymmetric asyncio-only code paths are the fallback used when no trio is present.
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, Iterator
@@ -25,6 +33,40 @@ ASGI_BLOCK_SIZE = 8192
 
 def get_block_size() -> int:
     return ASGI_BLOCK_SIZE
+
+
+def current_async_library() -> str:
+    """Return the name of the running async library ("asyncio", "trio", ...).
+
+    Uses sniffio when available, falling back to "asyncio" otherwise. This mirrors
+    how anyio reports the backend and keeps the dependency-free core safe. sniffio is
+    an optional transitive dependency (pulled in by trio/anyio), so it is loaded
+    dynamically to keep the dependency-free core and pyright's strict type check
+    happy.
+    """
+    try:
+        sniffio = importlib.import_module("sniffio")
+    except ImportError:  # pragma: no cover - asyncio is assumed when sniffio is absent
+        return "asyncio"
+    try:
+        return sniffio.current_async_library()
+    except sniffio.AsyncLibraryNotFoundError:  # pragma: no cover - outside any async context
+        return "asyncio"
+
+
+async def run_async_in_thread(func: Callable[..., T], *args: object) -> T:
+    """Run a blocking callable in a worker thread from the current async backend.
+
+    This shim lets the standalone core run under both asyncio and trio without a
+    hard dependency on anyio. Under asyncio it delegates to ``asyncio.to_thread``;
+    under trio it uses ``trio.to_thread.run_sync``.
+    """
+    if current_async_library() == "trio":
+        # trio is an optional backend; import it dynamically so the dependency-free
+        # core (and pyright's strict type checking) never need it at build time.
+        trio = importlib.import_module("trio")
+        return await trio.to_thread.run_sync(func, *args)
+    return await asyncio.to_thread(func, *args)
 
 
 # Follow Django in treating URLs as UTF-8 encoded (which requires undoing the
@@ -191,6 +233,10 @@ class AsyncFile:
 
     async def _execute(self, func: Callable[..., T], *args: object) -> T:
         """Run a function in a dedicated thread (specific to each AsyncFile instance)."""
+        if current_async_library() == "trio":
+            # Under trio there is no asyncio loop; offload via trio's thread pool.
+            trio = importlib.import_module("trio")
+            return await trio.to_thread.run_sync(func, *args)
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
         return await self.loop.run_in_executor(self.executor, func, *args)
