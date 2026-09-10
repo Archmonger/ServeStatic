@@ -46,3 +46,7 @@ minify
 uncached
 substring
 webserver
+anycorn
+asyncio
+sniffio
+trio
