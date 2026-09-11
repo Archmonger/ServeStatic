@@ -8,7 +8,7 @@ from email.utils import formatdate, parsedate
 from http import HTTPStatus
 from io import BufferedIOBase
 from time import mktime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
 from wsgiref.headers import Headers
 
@@ -184,7 +184,7 @@ class StaticFile:
                 # The server will transmit the whole file by path, so discard the
                 # handle we created for range handling. (range_file is always
                 # non-None here since method != HEAD creates it above.)
-                await range_file.close()
+                await cast("AsyncFile", range_file).close()
                 return Response(HTTPStatus.OK, headers, None, path=path)
             # Otherwise keep the (open) handle so we can stream the full file.
             return Response(HTTPStatus.OK, headers, range_file, path=path if method != "HEAD" else None)
