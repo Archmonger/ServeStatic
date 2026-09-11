@@ -19,17 +19,22 @@ if TYPE_CHECKING:
 
 
 class Response:  # noqa: B903
-    __slots__ = ("file", "headers", "status")
+    __slots__ = ("file", "headers", "path", "status")
 
     def __init__(
         self,
         status: HTTPStatus,
         headers: list[tuple[str, str | None]],
         file: BufferedIOBase | AsyncFile | AsyncSlicedFile | None,
+        path: str | None = None,
     ) -> None:
         self.status = status
         self.headers = headers
         self.file = file
+        # Absolute path of the file being sent. This is only populated for a
+        # full-file (non-sliced) response so the ASGI server can offload the
+        # file transmission via the `http.response.pathsend` extension.
+        self.path = path
 
 
 NOT_ALLOWED_RESPONSE = Response(
@@ -145,25 +150,52 @@ class StaticFile:
                 return self.get_range_response(range_header, headers, file_handle)
         return Response(HTTPStatus.OK, headers, file_handle)
 
-    async def aget_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
+    async def aget_response(
+        self,
+        method: str,
+        request_headers: Mapping[str, str],
+        *,
+        pathsend: bool = False,
+    ) -> Response:
         """Variant of `get_response` that works with async HTTP requests.
-        To minimize code duplication, `request_headers` conforms to WSGI header spec."""
+        To minimize code duplication, `request_headers` conforms to WSGI header spec.
+
+        When `pathsend` is True, the caller has confirmed that the underlying ASGI
+        server advertises the `http.response.pathsend` extension. In that case we
+        skip opening an async file handle for a full-file send and instead populate
+        `Response.path`, allowing the server to transmit the file by path.
+        """
         if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
         if self.is_not_modified(request_headers):
             return self.not_modified_response
         path, headers = self.get_path_and_headers(request_headers)
-        # We do not await this async file handle to allow us the option of opening
-        # it in a thread later
-        file_handle = AsyncFile(path, "rb") if method != "HEAD" else None
         range_header = request_headers.get("HTTP_RANGE")
         if range_header:
             # If we can't interpret the Range request for any reason then
             # just ignore it and return the standard response (this
-            # behaviour is allowed by the spec)
+            # behaviour is allowed by the spec). Range requests always require a
+            # real file handle since pathsend does not support slicing.
+            range_file = AsyncFile(path, "rb") if method != "HEAD" else None
             with contextlib.suppress(ValueError):
-                return await self.aget_range_response(range_header, headers, file_handle)
-        return Response(HTTPStatus.OK, headers, file_handle)
+                return await self.aget_range_response(range_header, headers, range_file)
+            # The Range header was uninterpretable; fall through to a full send.
+            if range_file is not None:
+                await range_file.close()
+            if pathsend and method != "HEAD":
+                # The server will transmit the whole file by path, so discard the
+                # handle we created for range handling.
+                return Response(HTTPStatus.OK, headers, None, path=path)
+            return Response(HTTPStatus.OK, headers, range_file, path=path if method != "HEAD" else None)
+        if method == "HEAD":
+            return Response(HTTPStatus.OK, headers, None)
+        if pathsend:
+            # The server will stream the file by path, so we open no file handle
+            # (and create no async file thread pool) on our side.
+            return Response(HTTPStatus.OK, headers, None, path=path)
+        # We do not await this async file handle to allow us the option of opening
+        # it in a thread later.
+        return Response(HTTPStatus.OK, headers, AsyncFile(path, "rb"), path=path)
 
     def get_range_response(
         self,
@@ -391,7 +423,13 @@ class Redirect:
             return Response(self.response.status, headers, None)
         return self.response
 
-    async def aget_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
+    async def aget_response(
+        self,
+        method: str,
+        request_headers: Mapping[str, str],
+        *,
+        pathsend: bool = False,
+    ) -> Response:
         return self.get_response(method, request_headers)
 
 
