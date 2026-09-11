@@ -195,6 +195,20 @@ def test_pathsend_malformed_range_falls_back_to_full_send(application, test_file
     assert os.path.normpath(send[1]["path"]) == os.path.normpath(os.path.join(test_files.directory, test_files.js_path))
 
 
+def test_malformed_range_falls_back_to_full_send_without_pathsend(application, test_files):
+    """When pathsend is not advertised, an uninterpretable Range header is
+    ignored (per spec) and the full file is streamed via `http.response.body`.
+    Regression test: the discarded range handle must not be reused, which would
+    otherwise raise `ValueError: I/O operation on closed file`."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=abc")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == test_files.js_content
+    assert all(msg["type"] != "http.response.pathsend" for msg in send.message)
+
+
 def test_pathsend_head_malformed_range_falls_back_to_headers(application, test_files):
     """A malformed Range header on a HEAD request is ignored; because HEAD has no
     body it must not emit a pathsend message, just the response headers."""

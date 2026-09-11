@@ -180,12 +180,13 @@ class StaticFile:
             with contextlib.suppress(ValueError):
                 return await self.aget_range_response(range_header, headers, range_file)
             # The Range header was uninterpretable; fall through to a full send.
-            if range_file is not None:
-                await range_file.close()
             if pathsend and method != "HEAD":
                 # The server will transmit the whole file by path, so discard the
                 # handle we created for range handling.
+                if range_file is not None:
+                    await range_file.close()
                 return Response(HTTPStatus.OK, headers, None, path=path)
+            # Otherwise keep the (open) handle so we can stream the full file.
             return Response(HTTPStatus.OK, headers, range_file, path=path if method != "HEAD" else None)
         if method == "HEAD":
             return Response(HTTPStatus.OK, headers, None)
