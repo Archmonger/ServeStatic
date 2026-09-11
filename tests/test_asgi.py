@@ -148,7 +148,7 @@ def test_pathsend_uses_pathsend_event(application, test_files):
     asyncio.run(application(scope, receive, send))
     assert send.status == 200
     assert send[1]["type"] == "http.response.pathsend"
-    assert send[1]["path"] == os.path.join(test_files.directory, test_files.js_path)
+    assert os.path.normpath(send[1]["path"]) == os.path.normpath(os.path.join(test_files.directory, test_files.js_path))
     assert len(send.message) == 2
 
 
@@ -192,7 +192,7 @@ def test_pathsend_malformed_range_falls_back_to_full_send(application, test_file
     asyncio.run(application(scope, receive, send))
     assert send.status == 200
     assert send[1]["type"] == "http.response.pathsend"
-    assert send[1]["path"] == os.path.join(test_files.directory, test_files.js_path)
+    assert os.path.normpath(send[1]["path"]) == os.path.normpath(os.path.join(test_files.directory, test_files.js_path))
 
 
 def test_pathsend_head_malformed_range_falls_back_to_headers(application, test_files):
