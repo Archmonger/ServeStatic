@@ -182,9 +182,9 @@ class StaticFile:
             # The Range header was uninterpretable; fall through to a full send.
             if pathsend and method != "HEAD":
                 # The server will transmit the whole file by path, so discard the
-                # handle we created for range handling.
-                if range_file is not None:
-                    await range_file.close()
+                # handle we created for range handling. (range_file is always
+                # non-None here since method != HEAD creates it above.)
+                await range_file.close()
                 return Response(HTTPStatus.OK, headers, None, path=path)
             # Otherwise keep the (open) handle so we can stream the full file.
             return Response(HTTPStatus.OK, headers, range_file, path=path if method != "HEAD" else None)
