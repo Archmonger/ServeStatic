@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 from asgiref.compatibility import guarantee_single_callable
-from asgiref.typing import HTTPResponseBodyEvent, HTTPResponsePathsendEvent, HTTPResponseStartEvent
+from asgiref.typing import HTTPResponseBodyEvent, HTTPResponseStartEvent
 
 from servestatic.base import ServeStaticBase
 from servestatic.utils import decode_path_info, get_block_size, run_async_in_thread
@@ -93,10 +93,12 @@ class FileServerASGI:
 
         # A pathsend response has no body streamed by us: the server sends the
         # file located at `response.path` (a full-file send only).
-        # `HTTPResponsePathsendEvent` is not part of asgiref's `ASGISendEvent`
-        # union, so cast it to satisfy the send callable's type signature.
+        # `http.response.pathsend` is not part of asgiref's `ASGISendEvent` union,
+        # and `HTTPResponsePathsendEvent` is only available on asgiref >= 3.8, so
+        # construct the event inline and cast it to satisfy the send callable's
+        # type signature without a hard runtime dependency on that symbol.
         if response.file is None and response.path is not None:
-            await send(cast("Any", HTTPResponsePathsendEvent(type="http.response.pathsend", path=response.path)))
+            await send(cast("Any", {"type": "http.response.pathsend", "path": response.path}))
             return
 
         # Head responses have no body, so we terminate early
