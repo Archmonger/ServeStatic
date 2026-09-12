@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class Response:  # noqa: B903
-    __slots__ = ("file", "headers", "path", "status")
+    __slots__ = ("count", "file", "headers", "offset", "path", "status")
 
     def __init__(
         self,
@@ -27,6 +27,9 @@ class Response:  # noqa: B903
         headers: list[tuple[str, str | None]],
         file: BufferedIOBase | AsyncFile | AsyncSlicedFile | None,
         path: str | None = None,
+        *,
+        offset: int | None = None,
+        count: int | None = None,
     ) -> None:
         self.status = status
         self.headers = headers
@@ -35,6 +38,12 @@ class Response:  # noqa: B903
         # full-file (non-sliced) response so the ASGI server can offload the
         # file transmission via the `http.response.pathsend` extension.
         self.path = path
+        # Byte offset / count for the `http.response.zerocopysend` extension.
+        # When `offset` is set, `file` is a real (fd-backed) file object that the
+        # ASGI server transmits via `os.sendfile` and the application must close
+        # once the send completes.
+        self.offset = offset
+        self.count = count
 
 
 NOT_ALLOWED_RESPONSE = Response(
@@ -156,6 +165,7 @@ class StaticFile:
         request_headers: Mapping[str, str],
         *,
         pathsend: bool = False,
+        zerocopysend: bool = False,
     ) -> Response:
         """Variant of `get_response` that works with async HTTP requests.
         To minimize code duplication, `request_headers` conforms to WSGI header spec.
@@ -164,6 +174,12 @@ class StaticFile:
         server advertises the `http.response.pathsend` extension. In that case we
         skip opening an async file handle for a full-file send and instead populate
         `Response.path`, allowing the server to transmit the file by path.
+
+        When `zerocopysend` is True, the caller has confirmed that the ASGI server
+        advertises `http.response.zerocopysend`. This is the preferred offload path
+        because, unlike `pathsend`, it supports slicing: a real (fd-backed) file
+        handle is always opened and populated with the appropriate `offset`/`count`
+        so the server can transmit the file (or a byte range) via `os.sendfile`.
         """
         if method not in {"GET", "HEAD"}:
             return NOT_ALLOWED_RESPONSE
@@ -172,31 +188,60 @@ class StaticFile:
         path, headers = self.get_path_and_headers(request_headers)
         range_header = request_headers.get("HTTP_RANGE")
         if range_header:
-            # If we can't interpret the Range request for any reason then
-            # just ignore it and return the standard response (this
-            # behaviour is allowed by the spec). Range requests always require a
-            # real file handle since pathsend does not support slicing.
-            range_file = AsyncFile(path, "rb") if method != "HEAD" else None
-            with contextlib.suppress(ValueError):
-                return await self.aget_range_response(range_header, headers, range_file)
-            # The Range header was uninterpretable; fall through to a full send.
-            if pathsend and method != "HEAD":
+            # Range requests always require a real file handle. zerocopysend is the
+            # only offload extension that supports slicing, so when it is advertised
+            # we keep the raw (fd-backed) handle and annotate the response with the
+            # slice offset/count for the server to transmit via os.sendfile.
+            file_handle = self._open_for_send(path, method, zerocopysend)
+            try:
+                return await self.aget_range_response(range_header, headers, file_handle, zerocopysend=zerocopysend)
+            except ValueError:
+                # The Range header was uninterpretable; fall through to a full send.
+                pass
+            if method == "HEAD":
+                return Response(HTTPStatus.OK, headers, None)
+            if zerocopysend:
+                return Response(HTTPStatus.OK, headers, file_handle, offset=0)
+            if pathsend:
                 # The server will transmit the whole file by path, so discard the
-                # handle we created for range handling. (range_file is always
-                # non-None here since method != HEAD creates it above.)
-                await cast("AsyncFile", range_file).close()
+                # (always non-None for GET) handle we opened for range handling.
+                await cast("AsyncFile", file_handle).close()
                 return Response(HTTPStatus.OK, headers, None, path=path)
             # Otherwise keep the (open) handle so we can stream the full file.
-            return Response(HTTPStatus.OK, headers, range_file, path=path if method != "HEAD" else None)
+            return Response(HTTPStatus.OK, headers, file_handle, path=path)
         if method == "HEAD":
             return Response(HTTPStatus.OK, headers, None)
+        if zerocopysend:
+            # zerocopysend is the preferred offload: it handles both full-file and
+            # sliced sends. Open a real (fd-backed) handle and let the server
+            # transmit the whole file via os.sendfile (offset=0, count omitted = EOF).
+            return Response(HTTPStatus.OK, headers, self._open_for_send(path, method, zerocopysend), offset=0)
         if pathsend:
             # The server will stream the file by path, so we open no file handle
             # (and create no async file thread pool) on our side.
             return Response(HTTPStatus.OK, headers, None, path=path)
         # We do not await this async file handle to allow us the option of opening
         # it in a thread later.
-        return Response(HTTPStatus.OK, headers, AsyncFile(path, "rb"), path=path)
+        return Response(HTTPStatus.OK, headers, self._open_for_send(path, method, zerocopysend), path=path)
+
+    @staticmethod
+    def _open_for_send(
+        path: str,
+        method: str,
+        zerocopysend: bool,
+    ) -> BufferedIOBase | AsyncFile | None:
+        """Open a file handle for the given method.
+
+        For HEAD requests no body is sent, so no handle is opened. For zerocopysend
+        we open a plain synchronous file object because the ASGI server needs its
+        underlying OS file descriptor to perform the zero-copy sendfile; there is no
+        benefit to async file IO since we never read through it in Python.
+        """
+        if method == "HEAD":
+            return None
+        if zerocopysend:
+            return open(path, "rb")
+        return AsyncFile(path, "rb")
 
     def get_range_response(
         self,
@@ -230,7 +275,9 @@ class StaticFile:
         self,
         range_header: str,
         base_headers: list[tuple[str, str | None]],
-        file_handle: AsyncFile | None,
+        file_handle: BufferedIOBase | AsyncFile | None,
+        *,
+        zerocopysend: bool = False,
     ) -> Response:
         """Variant of `get_range_response` that works with async file objects."""
         headers: list[tuple[str, str | None]] = []
@@ -247,9 +294,24 @@ class StaticFile:
         start, end = self.get_byte_range(range_header, size)
         if start > end:
             return await self.aget_range_not_satisfiable_response(file_handle, size, headers)
-        sliced_file: AsyncSlicedFile | None = None
-        if file_handle is not None:
-            sliced_file = AsyncSlicedFile(file_handle, start, end)
+        if zerocopysend and file_handle is not None:
+            # Keep the raw (fd-backed) handle and let the server transmit the
+            # slice via sendfile using the byte range as offset/count.
+            headers.extend((
+                ("Content-Range", f"bytes {start}-{end}/{size}"),
+                ("Content-Length", str(end - start + 1)),
+            ))
+            return Response(
+                HTTPStatus.PARTIAL_CONTENT,
+                headers,
+                file_handle,
+                offset=start,
+                count=end - start + 1,
+            )
+        # Non-zerocopysend range sends always use an AsyncFile handle (opened via
+        # `_open_for_send` with zerocopysend=False), so wrap it in an
+        # AsyncSlicedFile to stream the requested byte range.
+        sliced_file = AsyncSlicedFile(cast("AsyncFile", file_handle), start, end) if file_handle is not None else None
         headers.extend((
             ("Content-Range", f"bytes {start}-{end}/{size}"),
             ("Content-Length", str(end - start + 1)),
@@ -299,13 +361,17 @@ class StaticFile:
 
     @staticmethod
     async def aget_range_not_satisfiable_response(
-        file_handle: AsyncFile | None,
+        file_handle: BufferedIOBase | AsyncFile | None,
         size: int,
         headers: list[tuple[str, str | None]] | None = None,
     ) -> Response:
         """Variant of `get_range_not_satisfiable_response` that works with
         async file objects. Async file handles do not need to be closed, since they
-        are only opened via context managers while being dispatched."""
+        are only opened via context managers while being dispatched. A synchronous
+        (zerocopysend) handle that was opened for a range request is closed here
+        because the unsatisfiable response discards it."""
+        if file_handle is not None and not isinstance(file_handle, AsyncFile):
+            file_handle.close()
         response_headers = list(headers) if headers else []
         response_headers.append(("Content-Range", f"bytes */{size}"))
         return Response(
@@ -430,6 +496,7 @@ class Redirect:
         request_headers: Mapping[str, str],
         *,
         pathsend: bool = False,
+        zerocopysend: bool = False,
     ) -> Response:
         return self.get_response(method, request_headers)
 

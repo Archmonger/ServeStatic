@@ -243,6 +243,171 @@ def test_pathsend_head_has_no_body(application, test_files):
     assert send[1]["type"] == "http.response.body"
 
 
+def test_zerocopysend_uses_zerocopysend_event(application, test_files):
+    """When the server advertises zerocopysend, a full-file GET is sent via
+    `http.response.zerocopysend` with an fd-backed file object and offset=0."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "extensions": {"http.response.zerocopysend": {}}})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    event = send.zerocopysend
+    assert event is not None
+    # The event carries a real fd-backed file object.
+    assert hasattr(event["file"], "fileno")
+    assert event["offset"] == 0
+    assert "count" not in event
+    assert len(send.message) == 2
+    # Per spec the application must close the descriptor after the send.
+    assert event["file"].closed
+
+
+def test_zerocopysend_full_file_content(application, test_files):
+    """The fd-backed file passed to zerocopysend holds the full file content."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/large-file.txt", "extensions": {"http.response.zerocopysend": {}}})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    event = send.zerocopysend
+    assert event is not None
+    assert event["offset"] == 0
+    assert "count" not in event
+
+
+def test_zerocopysend_range_uses_offset_and_count(application, test_files):
+    """zerocopysend supports slicing, so a Range request is offloaded with the
+    byte range as offset/count rather than streamed by us."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=0-13")],
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 206
+    assert send.headers[b"content-range"] == b"bytes 0-13/%d" % len(test_files.js_content)
+    event = send.zerocopysend
+    assert event is not None
+    assert event["offset"] == 0
+    assert event["count"] == 14
+    assert event["file"].closed
+
+
+def test_zerocopysend_suffix_range_uses_offset_and_count(application, test_files):
+    """A suffix Range request computes the correct absolute offset/count for
+    the zero-copy send."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=-4")],
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 206
+    size = len(test_files.js_content)
+    event = send.zerocopysend
+    assert event is not None
+    assert event["offset"] == size - 4
+    assert event["count"] == 4
+
+
+def test_zerocopysend_malformed_range_falls_back_to_full_send(application, test_files):
+    """An uninterpretable Range header is ignored (per spec), so the full file is
+    sent via zerocopysend (offset=0, count omitted)."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=abc")],
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    event = send.zerocopysend
+    assert event is not None
+    assert event["offset"] == 0
+    assert "count" not in event
+
+
+def test_zerocopysend_not_used_when_not_advertised(application, test_files):
+    """Without the zerocopysend extension in scope, ServeStatic streams the body
+    via `http.response.body` as usual."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == test_files.js_content
+    assert all(msg["type"] != "http.response.zerocopysend" for msg in send.message)
+
+
+def test_zerocopysend_head_has_no_body(application, test_files):
+    """HEAD requests must not emit a zerocopysend body message."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "method": "HEAD",
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b""
+    assert send.zerocopysend is None
+    assert len(send.message) == 2
+    assert send[1]["type"] == "http.response.body"
+
+
+def test_zerocopysend_head_malformed_range_falls_back_to_headers(application, test_files):
+    """A malformed Range header on a HEAD request is ignored; because HEAD has no
+    body it must not emit a zerocopysend message, just the response headers."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "method": "HEAD",
+        "headers": [(b"range", b"bytes=abc")],
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b""
+    assert send.zerocopysend is None
+    assert len(send.message) == 2
+    assert send[1]["type"] == "http.response.body"
+
+
+def test_zerocopysend_out_of_range_returns_416(application, test_files):
+    """An unsatisfiable range request returns 416 and does not emit a
+    zerocopysend event."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=10000-11000")],
+        "extensions": {"http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 416
+    assert send.headers[b"content-range"] == b"bytes */%d" % len(test_files.js_content)
+    assert send.zerocopysend is None
+
+
+def test_zerocopysend_preferred_over_pathsend(application, test_files):
+    """When a server advertises both extensions, zerocopysend (which supports
+    slicing) is preferred over pathsend for full-file sends."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "extensions": {"http.response.pathsend": {}, "http.response.zerocopysend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.zerocopysend is not None
+    assert all(msg["type"] != "http.response.pathsend" for msg in send.message)
+
+
 def test_async_file_del_does_not_join_current_thread(test_files, capsys):
     file_path = str(Path(test_files.directory) / test_files.js_path)
     holder = {"async_file": servestatic_utils.AsyncFile(file_path, "rb")}

@@ -16,6 +16,7 @@ Don't forget to remove deprecated code on each major release!
 ### Added
 
 - Support the ASGI `http.response.pathsend` extension for full-file sends. When the ASGI server advertises this extension (e.g. Granian), ServeStatic now offloads the file transmission to the server via `pathsend` instead of streaming the file through Python file IO. Range (sliced) requests continue to stream over `http.response.body` since `pathsend` has no slicing support.
+- Support the ASGI `http.response.zerocopysend` extension (e.g. nonecorn or anycorn). When the ASGI server advertises this extension, ServeStatic offloads file transmission to the server via `zerocopysend`. Unlike `pathsend`, `zerocopysend` supports slicing, so both full-file and Range (sliced) requests are transmitted zero-copy. When a server advertises both extensions, `zerocopysend` is preferred for performance reasons.
 
 ### Changed
 
