@@ -139,6 +139,110 @@ def test_large_static_file(application, test_files):
     assert b"text/plain" in send.headers[b"content-type"]
 
 
+def test_pathsend_uses_pathsend_event(application, test_files):
+    """When the server advertises pathsend, a full-file GET is sent via
+    `http.response.pathsend` instead of streaming the body."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "extensions": {"http.response.pathsend": {}}})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send[1]["type"] == "http.response.pathsend"
+    assert os.path.normpath(send[1]["path"]) == os.path.normpath(os.path.join(test_files.directory, test_files.js_path))
+    assert len(send.message) == 2
+
+
+def test_pathsend_not_used_when_not_advertised(application, test_files):
+    """Without the pathsend extension in scope, ServeStatic streams the body
+    via `http.response.body` as usual."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js"})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.body == test_files.js_content
+    assert all(msg["type"] != "http.response.pathsend" for msg in send.message)
+
+
+def test_pathsend_range_still_streams_body(application, test_files):
+    """Pathsend does not support slicing, so a Range request must keep
+    streaming the sliced body even when the server advertises pathsend."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=0-13")],
+        "extensions": {"http.response.pathsend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 206
+    assert send.body == test_files.js_content[:14]
+    assert all(msg["type"] != "http.response.pathsend" for msg in send.message)
+
+
+def test_pathsend_malformed_range_falls_back_to_full_send(application, test_files):
+    """An uninterpretable Range header is ignored (per spec), so the full file is
+    sent via pathsend when the server advertises it."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "headers": [(b"range", b"bytes=abc")],
+        "extensions": {"http.response.pathsend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send[1]["type"] == "http.response.pathsend"
+    assert os.path.normpath(send[1]["path"]) == os.path.normpath(os.path.join(test_files.directory, test_files.js_path))
+
+
+def test_malformed_range_falls_back_to_full_send_without_pathsend(application, test_files):
+    """When pathsend is not advertised, an uninterpretable Range header is
+    ignored (per spec) and the full file is streamed via `http.response.body`.
+    Regression test: the discarded range handle must not be reused, which would
+    otherwise raise `ValueError: I/O operation on closed file`."""
+    scope = AsgiHttpScopeEmulator({"path": "/static/app.js", "headers": [(b"range", b"bytes=abc")]})
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == test_files.js_content
+    assert all(msg["type"] != "http.response.pathsend" for msg in send.message)
+
+
+def test_pathsend_head_malformed_range_falls_back_to_headers(application, test_files):
+    """A malformed Range header on a HEAD request is ignored; because HEAD has no
+    body it must not emit a pathsend message, just the response headers."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "method": "HEAD",
+        "headers": [(b"range", b"bytes=abc")],
+        "extensions": {"http.response.pathsend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b""
+    assert len(send.message) == 2
+    assert send[1]["type"] == "http.response.body"
+
+
+def test_pathsend_head_has_no_body(application, test_files):
+    """HEAD requests must not emit a pathsend body message."""
+    scope = AsgiHttpScopeEmulator({
+        "path": "/static/app.js",
+        "method": "HEAD",
+        "extensions": {"http.response.pathsend": {}},
+    })
+    receive = AsgiReceiveEmulator()
+    send = AsgiSendEmulator()
+    asyncio.run(application(scope, receive, send))
+    assert send.status == 200
+    assert send.body == b""
+    assert len(send.message) == 2
+    assert send[1]["type"] == "http.response.body"
+
+
 def test_async_file_del_does_not_join_current_thread(test_files, capsys):
     file_path = str(Path(test_files.directory) / test_files.js_path)
     holder = {"async_file": servestatic_utils.AsyncFile(file_path, "rb")}

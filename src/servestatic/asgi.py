@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from asgiref.compatibility import guarantee_single_callable
 from asgiref.typing import HTTPResponseBodyEvent, HTTPResponseStartEvent
@@ -68,8 +68,13 @@ class FileServerASGI:
         }
         wsgi_headers["QUERY_STRING"] = scope["query_string"].decode("latin-1")
 
+        # Check whether the ASGI server advertises the `http.response.pathsend`
+        # extension for more efficient file transmission (e.g. os.sendfile).
+        extensions = scope.get("extensions") or {}
+        pathsend_supported = "http.response.pathsend" in extensions
+
         # Get the ServeStatic file response
-        response = await self.static_file.aget_response(scope["method"], wsgi_headers)
+        response = await self.static_file.aget_response(scope["method"], wsgi_headers, pathsend=pathsend_supported)
 
         # Start a new HTTP response for the file
         await send(
@@ -85,6 +90,16 @@ class FileServerASGI:
                 trailers=False,
             )
         )
+
+        # A pathsend response has no body streamed by us: the server sends the
+        # file located at `response.path` (a full-file send only).
+        # `http.response.pathsend` is not part of asgiref's `ASGISendEvent` union,
+        # and `HTTPResponsePathsendEvent` is only available on asgiref >= 3.8, so
+        # construct the event inline and cast it to satisfy the send callable's
+        # type signature without a hard runtime dependency on that symbol.
+        if response.file is None and response.path is not None:
+            await send(cast("Any", {"type": "http.response.pathsend", "path": response.path}))
+            return
 
         # Head responses have no body, so we terminate early
         if response.file is None:
