@@ -47,6 +47,7 @@ uncached
 substring
 webserver
 anycorn
+granian
 asyncio
 sniffio
 trio
