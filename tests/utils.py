@@ -225,6 +225,11 @@ class AsgiSendEmulator:
         return sum(bool(msg.get("body")) for msg in self.message)
 
     @property
+    def zerocopysend(self):
+        """Return the first `http.response.zerocopysend` event, if any."""
+        return next((msg for msg in self.message if msg.get("type") == "http.response.zerocopysend"), None)
+
+    @property
     def headers(self):
         """Return the headers from the first event."""
         return dict(self[0]["headers"])

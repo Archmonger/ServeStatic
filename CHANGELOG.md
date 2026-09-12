@@ -17,6 +17,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Support the ASGI `http.response.pathsend` extension for full-file sends. When the ASGI server advertises this extension (e.g. Granian), ServeStatic now offloads the file transmission to the server via `pathsend` instead of streaming the file through Python file IO. Range (sliced) requests continue to stream over `http.response.body` since `pathsend` has no slicing support.
 
+- Support the ASGI `http.response.zerocopysend` extension (e.g. nonecorn or anycorn). When the ASGI server advertises this extension, ServeStatic offloads file transmission to the server via `os.sendfile`. Unlike `pathsend`, `zerocopysend` supports slicing, so both full-file and Range (sliced) requests are transmitted zero-copy. When a server advertises both extensions, `zerocopysend` is preferred because it handles sliced sends as well.
+
 ### Changed
 
 - Make the standalone ASGI/WSGI serving core compatible with the trio async backend. Thread-offload now detects the running async library (via sniffio, lazily and optionally) and dispatches to asyncio or trio, so ServeStatic no longer returns empty responses under trio-based servers (e.g. Anycorn `--worker-class trio`).

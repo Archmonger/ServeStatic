@@ -68,13 +68,17 @@ class FileServerASGI:
         }
         wsgi_headers["QUERY_STRING"] = scope["query_string"].decode("latin-1")
 
-        # Check whether the ASGI server advertises the `http.response.pathsend`
-        # extension for more efficient file transmission (e.g. os.sendfile).
+        # Check which efficient file-transmission extensions the ASGI server
+        # advertises (e.g. os.sendfile). `zerocopysend` supports slicing, so it is
+        # preferred when available; `pathsend` is a full-file-only fallback.
         extensions = scope.get("extensions") or {}
         pathsend_supported = "http.response.pathsend" in extensions
+        zerocopysend_supported = "http.response.zerocopysend" in extensions
 
         # Get the ServeStatic file response
-        response = await self.static_file.aget_response(scope["method"], wsgi_headers, pathsend=pathsend_supported)
+        response = await self.static_file.aget_response(
+            scope["method"], wsgi_headers, pathsend=pathsend_supported, zerocopysend=zerocopysend_supported
+        )
 
         # Start a new HTTP response for the file
         await send(
@@ -99,6 +103,22 @@ class FileServerASGI:
         # type signature without a hard runtime dependency on that symbol.
         if response.file is None and response.path is not None:
             await send(cast("Any", {"type": "http.response.pathsend", "path": response.path}))
+            return
+
+        # A zero-copy response carries a real fd-backed file object that the server
+        # transmits via `os.sendfile`. The ASGI spec requires the application to
+        # close the descriptor once the send completes.
+        if response.offset is not None and response.file is not None:
+            event: dict[str, object] = {
+                "type": "http.response.zerocopysend",
+                "file": response.file,
+                "offset": response.offset,
+                "more_body": False,
+            }
+            if response.count is not None:
+                event["count"] = response.count
+            await send(cast("Any", event))
+            response.file.close()
             return
 
         # Head responses have no body, so we terminate early
