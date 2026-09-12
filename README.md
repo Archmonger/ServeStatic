@@ -58,7 +58,7 @@ Visit the [documentation](https://archmonger.github.io/ServeStatic/) to get star
 
 The short answer to this is that if you care about performance and efficiency then you should be using `ServeStatic` behind a CDN (such as CloudFront). Due to the caching headers `ServeStatic` sends, the vast majority of static requests will be served directly by the CDN without touching your application, so it really doesn't make much difference how efficient `ServeStatic` is.
 
-That said, `ServeStatic` is pretty efficient. Because it only has to serve a fixed set of files it does all the work of finding files and determining the correct headers upfront on initialization. Requests can then be served with little more than a dictionary lookup to find the appropriate response. Also, when used with gunicorn (and most other WSGI servers) the actual business of pushing the file down the network interface is handled by the kernel's very efficient `sendfile` syscall, not by Python.
+That said, `ServeStatic` is pretty efficient. Because it only has to serve a fixed set of files it does all the work of finding files and determining the correct headers upfront on initialization. Requests can then be served with little more than a dictionary lookup to find the appropriate response. Also, when used with a `file_wrapper` compatible WSGI server (e.g. `gunicorn`) or `zerocopysend`/`pathsend` compatible ASGI server (e.g. `granian`, `anycorn`, `nonecorn`) the actual business of pushing the file down the network interface is handled by the kernel's very efficient `sendfile` syscall, not by Python.
 
 ### Shouldn't I be pushing my static files to S3 (using Django-Storages)?
 
