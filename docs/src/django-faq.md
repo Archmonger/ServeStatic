@@ -8,7 +8,7 @@ Alternatively, if you are only utilizing Django Compressor for its minification 
 
 ## Can I use `ServeStatic` for media files?
 
-`ServeStatic` is not suitable for serving user-uploaded "media" files. For one thing, as described above, it only checks for static files at startup and so files added after the app starts won't be seen. More importantly though, serving user-uploaded files from the same domain as your main application is a security risk (this [blog post](https://security.googleblog.com/2012/08/content-hosting-for-modern-web.html) from Google security describes the problem well). And in addition to that, using local disk to store and serve your user media makes it harder to scale your application across multiple machines.
+`ServeStatic` is not suitable for serving user-uploaded "media" files. For one thing, as described above, it only checks for static files at startup and so files added after the app starts won't be seen. More importantly though, serving user-uploaded files from the same domain as your main application is a security risk (this [blog post](https://grsee.com/resources/pentesting/securing-file-uploads-risks-and-strategies-to-consider/) describes the problem well). And in addition to that, using local disk to store and serve your user media makes it harder to scale your application across multiple machines.
 
 For all these reasons, it's much better to store files on a separate dedicated storage service and serve them to users from there. The [django-storages](https://django-storages.readthedocs.io/) library provides many options e.g. Amazon S3, Azure Storage, and Rackspace CloudFiles.
 
