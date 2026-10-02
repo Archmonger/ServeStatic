@@ -52,3 +52,4 @@ nonecorn
 asyncio
 sniffio
 trio
+whatwg

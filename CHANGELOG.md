@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- No changes here, yet!
+
+## [4.4.0] - 2026-10-02
+
 ### Added
 
 - Support the ASGI `http.response.pathsend` extension for full-file sends. When the ASGI server advertises this extension (e.g. Granian), ServeStatic now offloads the file transmission to the server via `pathsend` instead of streaming the file through Python file IO. Range (sliced) requests continue to stream over `http.response.body` since `pathsend` has no slicing support.
@@ -208,7 +212,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.3.4...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.4.0...HEAD
+[4.4.0]: https://github.com/Archmonger/ServeStatic/compare/4.3.4...4.4.0
 [4.3.4]: https://github.com/Archmonger/ServeStatic/compare/4.3.3...4.3.4
 [4.3.3]: https://github.com/Archmonger/ServeStatic/compare/4.3.2...4.3.3
 [4.3.2]: https://github.com/Archmonger/ServeStatic/compare/4.3.1...4.3.2
