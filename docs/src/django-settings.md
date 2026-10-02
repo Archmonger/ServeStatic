@@ -116,7 +116,7 @@ Toggles whether to send an `Access-Control-Allow-Origin: *` header for all stati
 
 This allows cross-origin requests for static files which means your static files will continue to work as expected even if they are served via a CDN and therefore on a different domain. Without this your static files will _mostly_ work, but you may have problems with fonts loading in Firefox, or accessing images in canvas elements, or other mysterious things.
 
-The W3C [explicitly state](https://www.w3.org/TR/cors/#security) that this behaviour is safe for publicly accessible files.
+WHATWG [explicitly state](https://fetch.spec.whatwg.org/#basic-safe-cors-protocol-setup) that this behaviour is safe for publicly accessible files.
 
 ---
 
