@@ -173,7 +173,7 @@ def test_get_accept_gzip_with_qvalue(server, files):
 
 
 @pytest.mark.parametrize(
-    "header, expected",
+    ("header", "expected"),
     [
         ("gzip", {"gzip"}),
         ("gzip, br", {"gzip", "br"}),
@@ -577,7 +577,7 @@ def test_path_within_root_returns_false_when_realpath_raises_value_error(monkeyp
         return True
 
     def fake_realpath(value):
-        raise ValueError("embedded null character")
+        raise ValueError
 
     monkeypatch.setattr(app, "_path_is_within", fake_path_is_within)
     monkeypatch.setattr(os.path, "realpath", fake_realpath)
