@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 import stat
-import sys
 import tempfile
 import warnings
 from contextlib import closing
@@ -174,7 +173,7 @@ def test_get_accept_gzip_with_qvalue(server, files):
 
 
 @pytest.mark.parametrize(
-    "header, expected",
+    ("header", "expected"),
     [
         ("gzip", {"gzip"}),
         ("gzip, br", {"gzip", "br"}),
@@ -502,7 +501,6 @@ def test_immutable_file_test_defaults_to_cli_hash_pattern():
     assert not app.immutable_file_test("", "/static/app.js")
 
 
-@pytest.mark.skipif(sys.version_info < (3, 4), reason="Pathlib was added in Python 3.4")
 def test_directory_path_can_be_pathlib_instance():
     root = Path(Files("root").directory)
     # Check we can construct instance without it blowing up
@@ -579,7 +577,7 @@ def test_path_within_root_returns_false_when_realpath_raises_value_error(monkeyp
         return True
 
     def fake_realpath(value):
-        raise ValueError("embedded null character")
+        raise ValueError
 
     monkeypatch.setattr(app, "_path_is_within", fake_path_is_within)
     monkeypatch.setattr(os.path, "realpath", fake_realpath)

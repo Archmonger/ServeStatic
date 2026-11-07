@@ -63,6 +63,7 @@ def test_trio_large_file(test_files):
 
 def test_trio_current_async_library_reports_trio():
     async def check():
+        await trio.lowlevel.checkpoint()
         assert servestatic_utils.current_async_library() == "trio"
 
     trio.run(check)
