@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- No changes here, yet!
+
+## [4.4.1] - 2026-11-14
+
 ### Fixed
 
 - `SERVESTATIC_IMMUTABLE_FILE_TEST` is now honoured by `ServeStaticMiddleware`. Previously the setting was read but ignored, because the middleware's manifest-based check never consulted the user-provided function or regex.
@@ -214,7 +218,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.4.0...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.4.1...HEAD
+[4.4.1]: https://github.com/Archmonger/ServeStatic/compare/4.4.0...4.4.1
 [4.4.0]: https://github.com/Archmonger/ServeStatic/compare/4.3.4...4.4.0
 [4.3.4]: https://github.com/Archmonger/ServeStatic/compare/4.3.3...4.3.4
 [4.3.3]: https://github.com/Archmonger/ServeStatic/compare/4.3.2...4.3.3
