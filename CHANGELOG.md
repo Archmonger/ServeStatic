@@ -13,7 +13,9 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
-- No changes here, yet!
+### Fixed
+
+- `SERVESTATIC_IMMUTABLE_FILE_TEST` is now honoured by `ServeStaticMiddleware`. Previously the setting was read but ignored, because the middleware's manifest-based check never consulted the user-provided function or regex.
 
 ## [4.4.0] - 2026-10-02
 
