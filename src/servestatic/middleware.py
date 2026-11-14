@@ -256,6 +256,10 @@ class ServeStaticMiddleware(ServeStaticBase):
         file with a hash of its contents as part of its name) which can
         therefore be cached forever
         """
+        # A user-provided test replaces the manifest-based default entirely,
+        # matching the behavior of the other ServeStatic variants.
+        if self.user_immutable_file_test is not None:
+            return super().immutable_file_test(path, url)
         if not url.startswith(self.static_prefix):
             return False
         name = url[len(self.static_prefix) :]

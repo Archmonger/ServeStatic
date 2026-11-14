@@ -175,6 +175,58 @@ def test_asgi_versioned_file_cached_forever_brotli_2(asgi_application, static_fi
     assert headers.get(b"Vary") == b"Accept-Encoding"
 
 
+@override_settings(
+    SERVESTATIC_USE_MANIFEST=False,
+    SERVESTATIC_IMMUTABLE_FILE_TEST=r"^/static/app\.js$",
+)
+@pytest.mark.usefixtures("_collect_static")
+def test_user_immutable_file_test_regex_controls_cache_header(static_files):
+    app_server = AppServer(get_wsgi_application())
+    with closing(app_server):
+        response = app_server.get(settings.STATIC_URL + static_files.js_path)
+    assert response.content == static_files.js_content
+    assert response.headers.get("Cache-Control") == f"max-age={ServeStaticMiddleware.FOREVER}, public, immutable"
+
+
+def test_middleware_immutable_file_test_uses_user_regex(async_middleware_response):
+    class Settings:
+        DEBUG = False
+        INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_USE_STATIC_ROOT = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+        SERVESTATIC_IMMUTABLE_FILE_TEST = r"^/static/dist/assets/.+-[0-9a-zA-Z_-]{8}\.\w+$"
+
+    middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert middleware.immutable_file_test("/tmp/main-BXk3n2Qa.js", "/static/dist/assets/main-BXk3n2Qa.js")
+    assert not middleware.immutable_file_test("/tmp/app.js", "/static/app.js")
+
+
+def test_middleware_immutable_file_test_uses_user_callable(async_middleware_response):
+    def is_ok(_path, url):
+        return url.endswith(".ok")
+
+    class Settings:
+        DEBUG = False
+        INSTALLED_APPS = ["servestatic", "django.contrib.staticfiles"]
+        SERVESTATIC_AUTOREFRESH = False
+        SERVESTATIC_USE_MANIFEST = False
+        SERVESTATIC_USE_FINDERS = False
+        SERVESTATIC_USE_STATIC_ROOT = False
+        SERVESTATIC_STATIC_PREFIX = "/static/"
+        STATIC_URL = "/static/"
+        STATIC_ROOT = None
+        SERVESTATIC_IMMUTABLE_FILE_TEST = is_ok
+
+    middleware = ServeStaticMiddleware(get_response=async_middleware_response, settings=Settings)
+    assert middleware.immutable_file_test("/tmp/file.ok", "/static/file.ok")
+    assert not middleware.immutable_file_test("/tmp/app.js", "/static/app.js")
+
+
 @pytest.mark.usefixtures("_collect_static")
 def test_unversioned_file_not_cached_forever(server, static_files):
     url = settings.STATIC_URL + static_files.js_path
