@@ -1,5 +1,8 @@
 uv.lock
 
+# LLM artifacts #
+memories/*
+
 # Django #
 logs
 *.log
