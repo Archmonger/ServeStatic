@@ -384,10 +384,11 @@ def test_cli_hash_logs_worker_errors(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(servestatic_cli.ManifestHashGenerator, "process", mock_process)
 
-    main(["--hash", "--manifest", str(src), str(dest)])
+    assert main(["--hash", "--manifest", str(src), str(dest)]) == 1
 
     captured = capsys.readouterr()
-    assert "Error hashing" in captured.out
+    assert "Error hashing" in captured.err
+    assert "test.txt" in captured.err
 
 
 def test_cli_compress_logs_worker_errors(tmp_path, monkeypatch, capsys):
@@ -402,10 +403,31 @@ def test_cli_compress_logs_worker_errors(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr(servestatic_cli.Compressor, "compress", mock_compress)
 
-    main(["--compress", str(src), str(dest)])
+    assert main(["--compress", str(src), str(dest)]) == 1
 
     captured = capsys.readouterr()
-    assert "Error compressing" in captured.out
+    assert "Error compressing" in captured.err
+    assert "test.txt" in captured.err
+
+
+def test_cli_errors_reported_to_stderr_when_quiet(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content\n" * 1000)
+    dest = tmp_path / "dest"
+
+    def mock_compress(*_args, **_kwargs):
+        msg = "compress failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(servestatic_cli.Compressor, "compress", mock_compress)
+
+    assert main(["--compress", "-q", str(src), str(dest)]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Error compressing" in captured.err
+    assert "test.txt" in captured.err
 
 
 def test_cli_passes_zstd_options_to_compressor(tmp_path, monkeypatch):
