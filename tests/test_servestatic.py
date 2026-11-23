@@ -488,6 +488,15 @@ def test_if_range_unparsable_date_doesnt_match(server, files):
     assert response.content == files.js_content
 
 
+def test_if_range_date_without_last_modified_doesnt_match():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry()})
+    response = responder.get_response(
+        "HEAD",
+        {"HTTP_RANGE": "bytes=0-0", "HTTP_IF_RANGE": "Wed, 21 Oct 2015 07:28:00 GMT"},
+    )
+    assert int(response.status) == 200
+
+
 def test_out_of_range_error(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=10000-11000"})
     assert response.status_code == 416
