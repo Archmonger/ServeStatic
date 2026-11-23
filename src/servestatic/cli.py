@@ -5,6 +5,7 @@ import fnmatch
 import json
 import os
 import shutil
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -185,6 +186,13 @@ def main(argv: list[str] | None = None) -> int:
 
             files_to_process.append(p)
 
+    # Set to True if any file fails to hash or compress, so we can exit non-zero
+    had_errors = False
+
+    def log_error(message: str) -> None:
+        # Errors are always written to stderr, even with --quiet
+        sys.stderr.write(f"{message}\n")
+
     # 2. Hashing and Manifest
     manifest_paths = {}
     if args.hash or args.manifest:
@@ -210,7 +218,8 @@ def main(argv: list[str] | None = None) -> int:
                     rel_original, rel_hashed = future.result()
                     manifest_paths[rel_original] = rel_hashed
                 except Exception as e:
-                    log(f"Error hashing {futures[future]}: {e}")
+                    had_errors = True
+                    log_error(f"Error hashing {futures[future]}: {e}")
 
     # Write manifest
     if args.manifest:
@@ -260,21 +269,20 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         with ThreadPoolExecutor() as executor:
-            futures = []
-
             # Check if it's worth compressing based on extension (images, zip, etc)
-            futures.extend(
-                executor.submit(compressor.compress, str(p))
+            futures = {
+                executor.submit(compressor.compress, str(p)): p
                 for p in files_to_compress
                 if compressor.should_compress(p.name)
-            )
+            }
             for future in as_completed(futures):
                 try:
                     future.result()
                 except Exception as e:
-                    log(f"Error compressing: {e}")
+                    had_errors = True
+                    log_error(f"Error compressing {futures[future]}: {e}")
 
-    return 0
+    return 1 if had_errors else 0
 
 
 if __name__ == "__main__":  # pragma: no cover
