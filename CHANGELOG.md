@@ -13,6 +13,10 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+- No changes here, yet!
+
+## [4.5.0] - 2026-11-23
+
 ### Changed
 
 - `Accept-Encoding` handling now follows RFC 9110 qvalues: the acceptable variant with the highest qvalue is served (ties go to the smallest file), an explicitly requested `identity` is preferred when it has a higher qvalue than a compressed variant, `x-gzip` is treated as `gzip`, and the `*` wildcard is treated as accepting no codings. Header parsing is capped at 2048 bytes to avoid excessive work on attacker-controlled input.
@@ -233,7 +237,8 @@ Don't forget to remove deprecated code on each major release!
 
 - Forked from [`whitenoise`](https://github.com/evansd/whitenoise) to add ASGI support.
 
-[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.4.1...HEAD
+[Unreleased]: https://github.com/Archmonger/ServeStatic/compare/4.5.0...HEAD
+[4.5.0]: https://github.com/Archmonger/ServeStatic/compare/4.4.1...4.5.0
 [4.4.1]: https://github.com/Archmonger/ServeStatic/compare/4.4.0...4.4.1
 [4.4.0]: https://github.com/Archmonger/ServeStatic/compare/4.3.4...4.4.0
 [4.3.4]: https://github.com/Archmonger/ServeStatic/compare/4.3.3...4.3.4
