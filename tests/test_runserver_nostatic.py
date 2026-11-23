@@ -27,7 +27,7 @@ def get_legacy_alias_runserver_module():
 def test_command_output():
     command = get_command_instance("runserver")
     parser = command.create_parser("manage.py", "runserver")
-    assert "Wrapped by 'servestatic'" in parser.format_help()
+    assert "Wrapped by 'servestatic'" in parser.description
     assert not parser.get_default("use_static_handler")
 
 
