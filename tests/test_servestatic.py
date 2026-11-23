@@ -18,6 +18,7 @@ from wsgiref.simple_server import demo_app
 import pytest
 
 from servestatic import ServeStatic
+from servestatic import responders as responders_module
 from servestatic.base import ServeStaticBase
 from servestatic.responders import (
     FileEntry,
@@ -898,3 +899,79 @@ def test_user_app():
     # Check if the response is a 404 Not Found
     assert result["status"] == "404 Not Found"
     assert b"Not Found" in response
+
+
+def test_etag_weak_list_and_star_match(server, files):
+    etag = server.get(files.js_url).headers["ETag"]
+    for if_none_match in (f"W/{etag}", f'"abc", {etag}', f'"abc",{etag} , "def"', "*"):
+        response = server.get(files.js_url, headers={"If-None-Match": if_none_match})
+        assert response.status_code == 304, if_none_match
+
+
+def test_etag_list_without_match(server, files):
+    response = server.get(files.js_url, headers={"If-None-Match": '"abc", "def"'})
+    assert response.status_code == 200
+
+
+def test_if_none_match_allows_commas_inside_opaque_tag():
+    responder = StaticFile(__file__, [("ETag", '"a,b"')], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": '"a,b"'})
+    assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": '"a", "b"'})
+
+
+def test_if_none_match_weak_comparison_ignores_prefix_on_both_sides():
+    responder = StaticFile(__file__, [("ETag", 'W/"abc"')], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": '"abc"'})
+
+
+def test_if_none_match_star_matches_without_etag():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry()})
+    assert responder.etag is None
+    assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": "*"})
+
+
+def test_if_none_match_ignores_tags_beyond_length_limit():
+    responder = StaticFile(__file__, [("ETag", '"abc"')], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    padding = '"' + ("x" * 2048) + '"'
+    assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": f'{padding}, "abc"'})
+
+
+def test_shared_headers_are_interned_between_static_files():
+    stat_cache = {__file__: fake_stat_entry(st_mtime=1)}
+    headers = [("Content-Type", "text/css"), ("Cache-Control", "max-age=60")]
+    first = StaticFile(__file__, headers, stat_cache=stat_cache)
+    second = StaticFile(__file__, headers, stat_cache=stat_cache)
+    first_headers = first.alternatives[0][2]
+    second_headers = second.alternatives[0][2]
+    assert first_headers[0] is second_headers[0]
+    assert first_headers[1] is second_headers[1]
+
+
+def test_not_modified_response_shares_header_tuples():
+    responder = StaticFile(
+        __file__,
+        [("Access-Control-Allow-Origin", "*"), ("Cache-Control", "max-age=60")],
+        stat_cache={__file__: fake_stat_entry(st_mtime=1)},
+    )
+
+    def get_header(headers, name):
+        return next(header for header in headers if header[0] == name)
+
+    assert get_header(responder.not_modified_response.headers, "Access-Control-Allow-Origin") is get_header(
+        responder.alternatives[0][2], "Access-Control-Allow-Origin"
+    )
+
+
+def test_share_headers_cache_is_bounded(monkeypatch):
+    monkeypatch.setattr(responders_module, "_shared_headers", {})
+    monkeypatch.setattr(responders_module, "_MAX_SHARED_HEADERS", 1)
+
+    first = [("Content-Type", "text/plain"), ("X-Custom", "value")]
+    shared = responders_module.share_headers(first)
+    assert shared[0] is first[0]
+    assert shared[1] is first[1]
+
+    second = [("Content-Type", "text/html")]
+    result = responders_module.share_headers(second)
+    assert result[0] is second[0]
+    assert len(responders_module._shared_headers) == 1

@@ -103,6 +103,16 @@ class Compressor:
             msg = "Zstandard dictionary support requires Python 3.14+ with compression.zstd available"
             raise RuntimeError(msg)
         self.use_zstd = use_zstd and (zstd is not None)
+        # Suffixes this compressor may write. Used to clean up variants which
+        # are no longer valid after a file's contents change.
+        suffixes = []
+        if self.use_zstd:
+            suffixes.append(".zstd")
+        if self.use_brotli:
+            suffixes.append(".br")
+        if self.use_gzip:
+            suffixes.append(".gz")
+        self.suffixes = tuple(suffixes)
         self.zstd_level = zstd_level
         self.zstd_dict = self.load_zstd_dictionary(zstd_dict, is_raw=zstd_dict_is_raw)
         self.log = logger
@@ -159,16 +169,22 @@ class Compressor:
             compressed = self.compress_zstd(data, level=self.zstd_level, zstd_dict=self.zstd_dict)
             if self.is_compressed_effectively("Zstandard", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".zstd", stat_result))
+            else:
+                self.remove_stale(path + ".zstd")
 
         if self.use_brotli:
             compressed = self.compress_brotli(data)
             if self.is_compressed_effectively("Brotli", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".br", stat_result))
+            else:
+                self.remove_stale(path + ".br")
 
         if self.use_gzip:
             compressed = self.compress_gzip(data)
             if self.is_compressed_effectively("Gzip", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".gz", stat_result))
+            else:
+                self.remove_stale(path + ".gz")
 
         return filenames
 
@@ -208,6 +224,18 @@ class Compressor:
         else:
             self.log(f"Skipping {path} ({encoding_name} compression not effective)")
         return is_effective
+
+    @staticmethod
+    def remove_stale(filename: str) -> None:
+        """
+        Remove a compressed variant which is no longer a valid representation
+        of the current file contents.
+
+        Missing files are ignored so that a first compression run, which has no
+        previous variants to clean up, does not fail.
+        """
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(filename)
 
     @staticmethod
     def write_data(path: str, data: bytes, suffix: str, stat_result: os.stat_result) -> str:

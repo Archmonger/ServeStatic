@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import contextlib
 import errno
+import filecmp
 import json
 import os
 import re
+import shutil
 import textwrap
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import unquote, urlsplit
@@ -163,13 +165,58 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         hashed_files = set(hashed_names.values())
         if self.keep_only_hashed_files:
             files_to_delete = (original_files | new_files) - hashed_files
-            files_to_compress = hashed_files
-        else:
-            files_to_delete = set()
-            files_to_compress = original_files | hashed_files
-        self.delete_files(files_to_delete)
+            self.delete_files(files_to_delete)
+
+        # Compress the hashed files first. Unhashed files whose contents are
+        # identical to their hashed counterpart can then reuse those compressed
+        # variants instead of compressing the same data a second time.
+        compressed_names: dict[str, list[str]] = {}
+        for name, compressed_name in self.compress_files(hashed_files):
+            compressed_names.setdefault(name, []).append(compressed_name)
+            yield name, compressed_name, True
+        if self.keep_only_hashed_files:
+            return
+
+        files_to_compress: list[str] = []
+        for name in original_files - hashed_files:
+            hashed_name = hashed_names[name]
+            if hashed_name in compressed_names and filecmp.cmp(self.path(name), self.path(hashed_name), shallow=False):
+                stat_result = os.stat(self.path(name))
+                copied_suffixes = set()
+                for compressed_name in compressed_names[hashed_name]:
+                    suffix = compressed_name[len(hashed_name) :]
+                    copy_name = name + suffix
+                    shutil.copyfile(self.path(compressed_name), self.path(copy_name))
+                    os.utime(self.path(copy_name), (stat_result.st_atime, stat_result.st_mtime))
+                    copied_suffixes.add(suffix)
+                    yield name, copy_name, True
+                self.remove_stale_variants(name, copied_suffixes)
+            else:
+                # Files whose contents differ (for example CSS files with URLs
+                # rewritten to their hashed names) must be compressed separately.
+                files_to_compress.append(name)
+
         for name, compressed_name in self.compress_files(files_to_compress):
             yield name, compressed_name, True
+
+    def remove_stale_variants(self, name: str, kept_suffixes: set[str]) -> None:
+        """
+        Remove compressed variants of an unhashed file which were not copied
+        from its hashed counterpart.
+
+        Without this, a variant left over from a previous run (for example a
+        stale ``.br`` file when Brotli compression is no longer effective) would
+        continue to be served with the current validators even though its
+        contents are out of date.
+        """
+        compressor: Compressor | None = getattr(self, "compressor", None)
+        if compressor is None:
+            return
+        for suffix in compressor.suffixes:
+            if suffix in kept_suffixes:
+                continue
+            with contextlib.suppress(FileNotFoundError):
+                os.remove(self.path(name + suffix))
 
     def hashed_name(self, *args: Any, **kwargs: Any) -> str:
         name = super().hashed_name(*args, **kwargs)
@@ -199,7 +246,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
     def create_compressor(self, **kwargs: Any) -> Compressor:  # noqa: PLR6301
         return Compressor(**kwargs)
 
-    def compress_files(self, paths: set[str]) -> Iterator[tuple[str, str]]:
+    def compress_files(self, paths: Iterable[str]) -> Iterator[tuple[str, str]]:
         self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
 
         def _compress_path(path: str) -> list[tuple[str, str]]:

@@ -255,3 +255,37 @@ def test_load_zstd_dictionary_returns_prebuilt_object(monkeypatch):
     sentinel = object()
 
     assert Compressor.load_zstd_dictionary(sentinel) is sentinel
+
+
+def test_compress_zstd_without_level_or_dictionary(monkeypatch):
+    class FakeZstd:
+        def __init__(self):
+            self.kwargs = None
+
+        def compress(self, data, **kwargs):
+            self.kwargs = kwargs
+            return b"compressed"
+
+    fake_zstd = FakeZstd()
+    monkeypatch.setattr(compress_module, "zstd", fake_zstd)
+
+    assert Compressor.compress_zstd(b"abc") == b"compressed"
+    assert fake_zstd.kwargs == {}
+
+
+def test_compress_zstd_removes_stale_variant_when_not_effective(tmp_path, monkeypatch):
+    class FakeZstd:
+        def compress(self, data, **kwargs):
+            return data
+
+    monkeypatch.setattr(compress_module, "zstd", FakeZstd())
+
+    source_path = tmp_path / "app.js"
+    source_path.write_bytes(b"a" * 1000)
+    stale_path = tmp_path / "app.js.zstd"
+    stale_path.write_bytes(b"stale")
+
+    compressor = Compressor(use_gzip=False, use_brotli=False, use_zstd=True, quiet=True)
+
+    assert compressor.compress(str(source_path)) == []
+    assert not stale_path.exists()

@@ -271,3 +271,118 @@ def test_storage_post_process_non_dry_run_calls_add_stats_to_manifest(monkeypatc
     list(storage.post_process({}, dry_run=False))
 
     assert add_stats_called["value"] is True
+
+
+def _write_file(path, contents, mtime=1234):
+    with open(path, "wb") as f:
+        f.write(contents)
+    os.utime(path, (mtime, mtime))
+
+
+def test_unhashed_files_reuse_hashed_compressed_variants(setup, monkeypatch):
+    storage = CompressedManifestStaticFilesStorage()
+    root = settings.STATIC_ROOT
+    hashed_name = "app.abc123.js"
+    unhashed_name = "app.js"
+    contents = b"console.log('hi');"
+    _write_file(os.path.join(root, hashed_name), contents, mtime=5678)
+    _write_file(os.path.join(root, unhashed_name), contents, mtime=5678)
+
+    class FakeCompressor:
+        suffixes = (".gz", ".br")
+
+    storage.compressor = FakeCompressor()
+    calls = []
+
+    def fake_compress_files(paths):
+        paths = list(paths)
+        calls.append(paths)
+        results = []
+        if hashed_name in paths:
+            for suffix in (".gz", ".br"):
+                compressed_path = os.path.join(root, hashed_name + suffix)
+                _write_file(compressed_path, contents + suffix.encode())
+                results.append((hashed_name, hashed_name + suffix))
+        return results
+
+    monkeypatch.setattr(storage, "compress_files", fake_compress_files)
+    monkeypatch.setattr(storage, "delete_files", lambda _items: None)
+
+    results = list(storage.post_process_with_compression([(unhashed_name, hashed_name, True)]))
+
+    assert calls == [[hashed_name], []]
+    assert (unhashed_name, unhashed_name + ".gz", True) in results
+    assert (unhashed_name, unhashed_name + ".br", True) in results
+    assert os.path.getmtime(os.path.join(root, unhashed_name + ".gz")) == 5678
+    assert os.path.getmtime(os.path.join(root, unhashed_name + ".br")) == 5678
+
+
+def test_unhashed_stale_variant_is_removed_when_reusing_hashed_copy(setup, monkeypatch):
+    storage = CompressedManifestStaticFilesStorage()
+    root = settings.STATIC_ROOT
+    hashed_name = "app.abc123.js"
+    unhashed_name = "app.js"
+    contents = b"console.log('hi');"
+    _write_file(os.path.join(root, hashed_name), contents)
+    _write_file(os.path.join(root, unhashed_name), contents)
+    stale_path = os.path.join(root, unhashed_name + ".br")
+    _write_file(stale_path, b"stale")
+
+    class FakeCompressor:
+        suffixes = (".gz", ".br", ".zstd")
+
+    storage.compressor = FakeCompressor()
+
+    def fake_compress_files(paths):
+        paths = list(paths)
+        if hashed_name in paths:
+            compressed_path = os.path.join(root, hashed_name + ".gz")
+            _write_file(compressed_path, b"compressed")
+            return [(hashed_name, hashed_name + ".gz")]
+        return []
+
+    monkeypatch.setattr(storage, "compress_files", fake_compress_files)
+    monkeypatch.setattr(storage, "delete_files", lambda _items: None)
+
+    list(storage.post_process_with_compression([(unhashed_name, hashed_name, True)]))
+
+    assert os.path.exists(os.path.join(root, unhashed_name + ".gz"))
+    assert not os.path.exists(stale_path)
+
+
+def test_unhashed_file_with_different_contents_is_compressed_separately(setup, monkeypatch):
+    storage = CompressedManifestStaticFilesStorage()
+    root = settings.STATIC_ROOT
+    hashed_name = "styles.abc123.css"
+    unhashed_name = "styles.css"
+    _write_file(os.path.join(root, hashed_name), b"body { color: red; }")
+    _write_file(os.path.join(root, unhashed_name), b"body { color: blue; }")
+
+    class FakeCompressor:
+        suffixes = (".gz",)
+
+    storage.compressor = FakeCompressor()
+    calls = []
+
+    def fake_compress_files(paths):
+        paths = list(paths)
+        calls.append(paths)
+        results = []
+        for path in paths:
+            compressed_path = os.path.join(root, path + ".gz")
+            _write_file(compressed_path, b"compressed")
+            results.append((path, path + ".gz"))
+        return results
+
+    monkeypatch.setattr(storage, "compress_files", fake_compress_files)
+    monkeypatch.setattr(storage, "delete_files", lambda _items: None)
+
+    list(storage.post_process_with_compression([(unhashed_name, hashed_name, True)]))
+
+    assert calls == [[hashed_name], [unhashed_name]]
+    assert os.path.exists(os.path.join(root, unhashed_name + ".gz"))
+
+
+def test_remove_stale_variants_without_compressor_returns():
+    storage = CompressedManifestStaticFilesStorage()
+    storage.remove_stale_variants("app.js", set())

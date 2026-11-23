@@ -65,6 +65,12 @@ If you need to compress files outside of the static files storage system you can
 
     ServeStatic only sends compressed responses for encodings requested by the client, so enabling these formats remains backward-compatible.
 
+??? note "Stale compressed files"
+
+    When a file changes so that compression of an encoding is no longer effective, `collectstatic` removes the compressed variant it previously generated (`.gz`, `.br`, or `.zstd`) rather than leaving stale content to be served. Variants belonging to encodings you have disabled are left in place; run `collectstatic --clear` to remove them.
+
+    ServeStatic cannot distinguish variants it generated from compressed files you provide yourself. If you ship a compressed file alongside an uncompressed file, and that encoding is not effective for the uncompressed file, the compressed file may be removed as stale.
+
 ## Step 4: Make sure Django's `staticfiles` is configured correctly
 
 If you're familiar with Django you'll know what to do. If you're just getting started with a new Django project then you'll need add the following to the bottom of your `settings.py` file:

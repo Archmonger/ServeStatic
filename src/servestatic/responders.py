@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import errno
 import os
+import re
 import stat
 from calendar import timegm
 from email.utils import formatdate, parsedate
@@ -15,7 +16,7 @@ from wsgiref.headers import Headers
 from servestatic.utils import AsyncFile, parse_accept_encoding
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Mapping, Sequence
 
 
 class Response:  # noqa: B903
@@ -68,6 +69,58 @@ NOT_MODIFIED_HEADERS = (
 # header from the base headers so cross-origin range probes can read the
 # response.
 RANGE_NOT_SATISFIABLE_HEADERS = frozenset({"access-control-allow-origin"})
+
+# Header names whose values are constant for a given file, and which are
+# therefore safe to intern and share between `StaticFile` instances. Headers
+# whose values can vary per response (such as Content-Length) are deliberately
+# excluded.
+SHARED_HEADERS = frozenset({
+    "Access-Control-Allow-Origin",
+    "Cache-Control",
+    "Content-Encoding",
+    "Content-Type",
+    "Vary",
+})
+
+# Bound the header interning cache so that applications which generate unique
+# per-file header values (for example through `SERVESTATIC_ADD_HEADERS_FUNCTION`)
+# cannot make it grow without limit.
+_MAX_SHARED_HEADERS = 1024
+
+_shared_headers: dict[tuple[str, str | None], tuple[str, str | None]] = {}
+
+# RFC 9110 section 13.1.2 allows `*` or a comma-separated list of entity tags.
+# Opaque tags may themselves contain commas, so split the header into tokens
+# rather than naively splitting on ",". This matches either the wildcard or a
+# single (possibly weak) entity tag.
+_IF_NONE_MATCH_TAG_RE = re.compile(r'(?:W/)?"[^"]*"|\*')
+
+# Cap the amount of header data we parse, matching the limit used for
+# `Accept-Encoding`, so an attacker cannot force unbounded work per request.
+_MAX_IF_NONE_MATCH_LENGTH = 2048
+
+
+def share_headers(headers: Sequence[tuple[str, str | None]]) -> list[tuple[str, str | None]]:
+    """
+    Return a header list where repeated common header tuples are replaced with
+    a single shared tuple object.
+
+    This reduces the memory footprint of `StaticFile` instances, which each
+    keep several header lists. The cache is bounded, so once it is full any
+    header value which is not already cached is returned unchanged.
+    """
+    shared = _shared_headers
+    result: list[tuple[str, str | None]] = []
+    for header in headers:
+        if header[0] not in SHARED_HEADERS:
+            result.append(header)
+        elif header in shared:
+            result.append(shared[header])
+        elif len(shared) < _MAX_SHARED_HEADERS:
+            result.append(shared.setdefault(header, header))
+        else:
+            result.append(header)
+    return result
 
 
 class SlicedFile(BufferedIOBase):
@@ -429,7 +482,11 @@ class StaticFile:
     @staticmethod
     def get_not_modified_response(headers: Headers) -> Response:
         not_modified_headers = [(key, headers[key]) for key in NOT_MODIFIED_HEADERS if key in headers]
-        return Response(status=HTTPStatus.NOT_MODIFIED, headers=not_modified_headers, file=None)
+        return Response(
+            status=HTTPStatus.NOT_MODIFIED,
+            headers=share_headers(not_modified_headers),
+            file=None,
+        )
 
     @staticmethod
     def get_alternatives(
@@ -444,13 +501,21 @@ class StaticFile:
             headers["Content-Length"] = str(file_entry.size)
             if encoding:
                 headers["Content-Encoding"] = encoding
-            alternatives.append((encoding, file_entry.path, headers.items()))
+            alternatives.append((encoding, file_entry.path, share_headers(headers.items())))
         return alternatives
 
     def is_not_modified(self, request_headers: Mapping[str, str]) -> bool:
-        previous_etag = request_headers.get("HTTP_IF_NONE_MATCH")
-        if previous_etag is not None:
-            return previous_etag == self.etag
+        if_none_match = request_headers.get("HTTP_IF_NONE_MATCH")
+        if if_none_match is not None:
+            # RFC 9110 section 13.1.2: If-None-Match uses the weak comparison
+            # function, so "W/" prefixes are ignored on both sides. The value
+            # may be "*" or a comma-separated list of entity tags, and opaque
+            # tags may contain commas.
+            for match in _IF_NONE_MATCH_TAG_RE.finditer(if_none_match[:_MAX_IF_NONE_MATCH_LENGTH]):
+                tag = match.group()
+                if tag == "*" or (self.etag is not None and tag.removeprefix("W/") == self.etag.removeprefix("W/")):
+                    return True
+            return False
         if self.last_modified is None:
             return False
         try:
