@@ -53,3 +53,7 @@ asyncio
 sniffio
 trio
 whatwg
+codings
+qvalue
+qvalues
+validators
