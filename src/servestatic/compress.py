@@ -11,7 +11,7 @@ from io import BytesIO
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Collection, Iterable
 
 try:
     import brotli
@@ -103,6 +103,20 @@ class Compressor:
             msg = "Zstandard dictionary support requires Python 3.14+ with compression.zstd available"
             raise RuntimeError(msg)
         self.use_zstd = use_zstd and (zstd is not None)
+        # Suffixes this compressor may write. Used to clean up variants which
+        # are no longer valid after a file's contents change.
+        suffixes = []
+        if self.use_zstd:
+            suffixes.append(".zstd")
+        if self.use_brotli:
+            suffixes.append(".br")
+        if self.use_gzip:
+            suffixes.append(".gz")
+        self.suffixes = tuple(suffixes)
+        # Full paths which are static sources rather than generated variants.
+        # Storage backends populate this before compressing so that supplied
+        # compressed files are not removed as stale.
+        self._protected_paths: Collection[str] = ()
         self.zstd_level = zstd_level
         self.zstd_dict = self.load_zstd_dictionary(zstd_dict, is_raw=zstd_dict_is_raw)
         self.log = logger
@@ -139,8 +153,11 @@ class Compressor:
     def should_compress(self, filename: str) -> bool:
         return not self.extension_re.search(filename)
 
-    def compress(self, path: str | os.PathLike[str]) -> list[str]:
+    def compress(self, path: str | os.PathLike[str], protected_paths: Collection[str] | None = None) -> list[str]:
         path = os.fspath(path)
+        protected: Collection[str] = (
+            getattr(self, "_protected_paths", ()) if protected_paths is None else protected_paths
+        )
         filenames = []
         with open(path, "rb") as f:
             stat_result = os.fstat(f.fileno())
@@ -159,16 +176,22 @@ class Compressor:
             compressed = self.compress_zstd(data, level=self.zstd_level, zstd_dict=self.zstd_dict)
             if self.is_compressed_effectively("Zstandard", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".zstd", stat_result))
+            else:
+                self.remove_stale(path + ".zstd", protected)
 
         if self.use_brotli:
             compressed = self.compress_brotli(data)
             if self.is_compressed_effectively("Brotli", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".br", stat_result))
+            else:
+                self.remove_stale(path + ".br", protected)
 
         if self.use_gzip:
             compressed = self.compress_gzip(data)
             if self.is_compressed_effectively("Gzip", path, size, compressed):
                 filenames.append(self.write_data(path, compressed, ".gz", stat_result))
+            else:
+                self.remove_stale(path + ".gz", protected)
 
         return filenames
 
@@ -208,6 +231,22 @@ class Compressor:
         else:
             self.log(f"Skipping {path} ({encoding_name} compression not effective)")
         return is_effective
+
+    @staticmethod
+    def remove_stale(filename: str, protected_paths: Collection[str] = ()) -> None:
+        """
+        Remove a compressed variant which is no longer a valid representation
+        of the current file contents.
+
+        Missing files are ignored so that a first compression run, which has no
+        previous variants to clean up, does not fail. Paths in
+        ``protected_paths`` are left alone so that compressed files supplied as
+        static sources are not mistaken for generated variants.
+        """
+        if filename in protected_paths or not os.path.isfile(filename):
+            return
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(filename)
 
     @staticmethod
     def write_data(path: str, data: bytes, suffix: str, stat_result: os.stat_result) -> str:
