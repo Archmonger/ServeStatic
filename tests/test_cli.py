@@ -430,6 +430,26 @@ def test_cli_errors_reported_to_stderr_when_quiet(tmp_path, monkeypatch, capsys)
     assert "test.txt" in captured.err
 
 
+def test_cli_hash_errors_reported_to_stderr_when_quiet(tmp_path, monkeypatch, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "test.txt").write_text("content")
+    dest = tmp_path / "dest"
+
+    def mock_process(*_args, **_kwargs):
+        msg = "hash failed"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(servestatic_cli.ManifestHashGenerator, "process", mock_process)
+
+    assert main(["--hash", "--manifest", "-q", str(src), str(dest)]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Error hashing" in captured.err
+    assert "test.txt" in captured.err
+
+
 def test_cli_passes_zstd_options_to_compressor(tmp_path, monkeypatch):
     src = tmp_path / "src"
     src.mkdir()
