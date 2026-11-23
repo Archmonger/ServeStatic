@@ -15,7 +15,7 @@ Don't forget to remove deprecated code on each major release!
 
 ### Fixed
 
-- The `servestatic` CLI now exits with a non-zero status code when any file fails to hash or compress, and reports each error, including the file name, to stderr even when `--quiet` is used. Previously, errors were only logged to stdout and the command still exited `0`, which hid failures from CI and build scripts.
+- The `servestatic` CLI now exits with a non-zero status code when any file fails to hash or compress, and reports each error, including the file name, to standard error even when `--quiet` is used. Previously, errors were only logged to standard output and the command still exited `0`, which hid failures from CI and build scripts.
 
 ## [4.4.1] - 2026-11-14
 

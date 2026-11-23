@@ -191,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def log_error(message: str) -> None:
         # Errors are always written to stderr, even with --quiet
-        print(message, file=sys.stderr)
+        sys.stderr.write(f"{message}\n")
 
     # 2. Hashing and Manifest
     manifest_paths = {}
