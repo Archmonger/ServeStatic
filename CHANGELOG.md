@@ -18,7 +18,7 @@ Don't forget to remove deprecated code on each major release!
 - `Accept-Encoding` handling now follows RFC 9110 qvalues: the acceptable variant with the highest qvalue is served (ties go to the smallest file), an explicitly requested `identity` is preferred when it has a higher qvalue than a compressed variant, `x-gzip` is treated as `gzip`, and the `*` wildcard is treated as accepting no codings. Header parsing is capped at 2048 bytes to avoid excessive work on attacker-controlled input.
 - `If-None-Match` handling now follows RFC 9110 section 13.1.2: comparison is weak, so `W/` prefixes are ignored on both sides; the header may be `*` or a comma-separated list of entity tags; and opaque tags containing commas are parsed correctly. Header parsing is capped at 2048 bytes.
 - Common per-file header tuples (`Content-Type`, `Cache-Control`, `Vary`, `Content-Encoding`, and `Access-Control-Allow-Origin`) are now interned and shared between static files, reducing memory use on sites with many static files. The cache is bounded so per-file custom header values cannot grow it without limit.
-- `CompressedManifestStaticFilesStorage` now compresses hashed files first and copies those compressed variants for unhashed files whose contents are identical, instead of compressing the same data twice.
+- `CompressedManifestStaticFilesStorage` now compresses hashed files first and copies those compressed variants for unhashed files whose contents are identical, avoiding a second compression pass whenever the hashed file produced variants.
 
 ### Fixed
 
@@ -27,7 +27,7 @@ Don't forget to remove deprecated code on each major release!
 - Generated ETags are now independent of the server's time zone, so servers in different time zones produce the same ETag for the same file and `If-None-Match`/`If-Range` keep working across them. ETags change once for servers not running in UTC.
 - `416 Range Not Satisfiable` responses now carry only `Access-Control-Allow-Origin` (plus `Content-Range`) instead of all base headers. Cache headers, validators, and content headers are omitted so caches do not store the error response.
 - `.woff` files are now served as `font/woff` (matching nginx since 2018), and `apple-app-site-association` files are served as `application/json`.
-- `collectstatic` now removes a previously generated `.gz`, `.br`, or `.zstd` variant when compression of that encoding is no longer effective, so clients are not served stale compressed content under the current validators.
+- `collectstatic` now removes a previously generated `.gz`, `.br`, or `.zstd` variant when compression of that encoding is no longer effective, so clients are not served stale compressed content under the current validators. Compressed files supplied as static sources are preserved rather than treated as stale variants.
 - Reusing a hashed file's compressed variants for an identical unhashed file no longer leaves behind stale variants from a previous run (for example a `.br` file when only gzip compression is still effective), which could otherwise be served with the unhashed file's current validators.
 
 ## [4.4.1] - 2026-11-14

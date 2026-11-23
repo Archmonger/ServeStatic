@@ -14,6 +14,7 @@ from django.core.management import call_command
 from django.test.utils import override_settings
 from django.utils.functional import empty
 
+from servestatic.compress import Compressor
 from servestatic.storage import CompressedManifestStaticFilesStorage, MissingFileError
 
 from .utils import Files
@@ -313,6 +314,10 @@ def test_unhashed_files_reuse_hashed_compressed_variants(setup, monkeypatch):
     assert calls == [[hashed_name], []]
     assert (unhashed_name, unhashed_name + ".gz", True) in results
     assert (unhashed_name, unhashed_name + ".br", True) in results
+    with open(os.path.join(root, unhashed_name + ".gz"), "rb") as f:
+        assert f.read() == contents + b".gz"
+    with open(os.path.join(root, unhashed_name + ".br"), "rb") as f:
+        assert f.read() == contents + b".br"
     assert os.path.getmtime(os.path.join(root, unhashed_name + ".gz")) == 5678
     assert os.path.getmtime(os.path.join(root, unhashed_name + ".br")) == 5678
 
@@ -383,6 +388,128 @@ def test_unhashed_file_with_different_contents_is_compressed_separately(setup, m
     assert os.path.exists(os.path.join(root, unhashed_name + ".gz"))
 
 
-def test_remove_stale_variants_without_compressor_returns():
+def test_unhashed_file_same_size_different_contents_is_compressed_separately(setup, monkeypatch):
     storage = CompressedManifestStaticFilesStorage()
+    root = settings.STATIC_ROOT
+    hashed_name = "app.abc123.js"
+    unhashed_name = "app.js"
+    _write_file(os.path.join(root, hashed_name), b"a" * 100)
+    _write_file(os.path.join(root, unhashed_name), b"b" * 100)
+
+    class FakeCompressor:
+        suffixes = (".gz",)
+
+    storage.compressor = FakeCompressor()
+    calls = []
+
+    def fake_compress_files(paths):
+        paths = list(paths)
+        calls.append(paths)
+        results = []
+        for path in paths:
+            compressed_path = os.path.join(root, path + ".gz")
+            _write_file(compressed_path, b"compressed")
+            results.append((path, path + ".gz"))
+        return results
+
+    monkeypatch.setattr(storage, "compress_files", fake_compress_files)
+    monkeypatch.setattr(storage, "delete_files", lambda _items: None)
+
+    list(storage.post_process_with_compression([(unhashed_name, hashed_name, True)]))
+
+    assert calls == [[hashed_name], [unhashed_name]]
+    assert os.path.exists(os.path.join(root, unhashed_name + ".gz"))
+
+
+def test_remove_stale_variants_without_compressor_returns(setup):
+    storage = CompressedManifestStaticFilesStorage()
+    stale_path = os.path.join(settings.STATIC_ROOT, "app.js.gz")
+    _write_file(stale_path, b"stale")
+
     storage.remove_stale_variants("app.js", set())
+
+    assert os.path.exists(stale_path)
+
+
+def test_remove_stale_variants_preserves_protected_source(setup):
+    storage = CompressedManifestStaticFilesStorage()
+    protected_path = os.path.join(settings.STATIC_ROOT, "app.js.br")
+    _write_file(protected_path, b"user supplied")
+
+    class FakeCompressor:
+        suffixes = (".gz", ".br")
+
+    storage.compressor = FakeCompressor()
+    storage.remove_stale_variants("app.js", set(), {"app.js.br"})
+
+    assert os.path.exists(protected_path)
+
+
+def test_remove_stale_variants_skips_directory(setup):
+    storage = CompressedManifestStaticFilesStorage()
+    stale_path = os.path.join(settings.STATIC_ROOT, "app.js.gz")
+    os.makedirs(stale_path)
+
+    class FakeCompressor:
+        suffixes = (".gz",)
+
+    storage.compressor = FakeCompressor()
+    storage.remove_stale_variants("app.js", set())
+
+    assert os.path.isdir(stale_path)
+
+
+def test_remove_stale_variants_ignores_compressor_without_suffixes(setup):
+    storage = CompressedManifestStaticFilesStorage()
+    stale_path = os.path.join(settings.STATIC_ROOT, "app.js.gz")
+    _write_file(stale_path, b"stale")
+
+    class FakeCompressor:
+        pass
+
+    storage.compressor = FakeCompressor()
+    storage.remove_stale_variants("app.js", set())
+
+    assert os.path.exists(stale_path)
+
+
+def test_user_supplied_compressed_source_is_not_removed(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "app.js").write_bytes(b"hi")
+    (source / "app.js.gz").write_bytes(b"user supplied")
+    root = tmp_path / "root"
+    root.mkdir()
+
+    with override_settings(
+        STATICFILES_DIRS=[str(source)],
+        STATIC_ROOT=str(root),
+        SERVESTATIC_USE_GZIP=True,
+        SERVESTATIC_USE_BROTLI=False,
+        SERVESTATIC_USE_ZSTD=False,
+    ):
+        call_command("collectstatic", verbosity=0, interactive=False)
+
+    assert (root / "app.js.gz").read_bytes() == b"user supplied"
+
+
+def test_user_supplied_brotli_source_is_not_removed_when_copying(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "app.js").write_bytes(b"a" * 1000)
+    (source / "app.js.br").write_bytes(b"user supplied")
+    root = tmp_path / "root"
+    root.mkdir()
+
+    monkeypatch.setattr(Compressor, "compress_brotli", staticmethod(lambda data: data))
+
+    with override_settings(
+        STATICFILES_DIRS=[str(source)],
+        STATIC_ROOT=str(root),
+        SERVESTATIC_USE_GZIP=True,
+        SERVESTATIC_USE_BROTLI=True,
+        SERVESTATIC_USE_ZSTD=False,
+    ):
+        call_command("collectstatic", verbosity=0, interactive=False)
+
+    assert (root / "app.js.br").read_bytes() == b"user supplied"

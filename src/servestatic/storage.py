@@ -52,6 +52,12 @@ class CompressedStaticFilesStorage(StaticFilesStorage):
             return
 
         self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
+        # Compressed files which are themselves static sources (for example a
+        # pre-compressed file shipped alongside its uncompressed source) must
+        # not be removed as if they were stale generated variants.
+        protected_paths = {self.path(path) for path in paths}
+        with contextlib.suppress(AttributeError):
+            compressor._protected_paths = protected_paths
 
         def _compress_path(path: str) -> list[tuple[str, str, bool]]:
             compressed: list[tuple[str, str, bool]] = []
@@ -163,6 +169,11 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         self.stop_tracking_new_files()
         original_files = set(hashed_names.keys())
         hashed_files = set(hashed_names.values())
+        # Compressed files which are themselves static sources (for example a
+        # pre-compressed file shipped alongside its uncompressed source) must
+        # not be removed as if they were stale generated variants.
+        protected_files = original_files | new_files
+        self._protected_paths = protected_files
         if self.keep_only_hashed_files:
             files_to_delete = (original_files | new_files) - hashed_files
             self.delete_files(files_to_delete)
@@ -190,7 +201,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
                     os.utime(self.path(copy_name), (stat_result.st_atime, stat_result.st_mtime))
                     copied_suffixes.add(suffix)
                     yield name, copy_name, True
-                self.remove_stale_variants(name, copied_suffixes)
+                self.remove_stale_variants(name, copied_suffixes, protected_files)
             else:
                 # Files whose contents differ (for example CSS files with URLs
                 # rewritten to their hashed names) must be compressed separately.
@@ -199,7 +210,7 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         for name, compressed_name in self.compress_files(files_to_compress):
             yield name, compressed_name, True
 
-    def remove_stale_variants(self, name: str, kept_suffixes: set[str]) -> None:
+    def remove_stale_variants(self, name: str, kept_suffixes: set[str], protected_paths: Iterable[str] = ()) -> None:
         """
         Remove compressed variants of an unhashed file which were not copied
         from its hashed counterpart.
@@ -208,15 +219,24 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         stale ``.br`` file when Brotli compression is no longer effective) would
         continue to be served with the current validators even though its
         contents are out of date.
+
+        Variants listed in ``protected_paths`` are static sources supplied by
+        the application, not generated files, and are left in place. A custom
+        compressor which does not define ``suffixes`` simply disables this
+        cleanup.
         """
         compressor: Compressor | None = getattr(self, "compressor", None)
         if compressor is None:
             return
-        for suffix in compressor.suffixes:
-            if suffix in kept_suffixes:
+        protected = set(protected_paths)
+        for suffix in getattr(compressor, "suffixes", ()):
+            if suffix in kept_suffixes or name + suffix in protected:
+                continue
+            path = self.path(name + suffix)
+            if not os.path.isfile(path):
                 continue
             with contextlib.suppress(FileNotFoundError):
-                os.remove(self.path(name + suffix))
+                os.remove(path)
 
     def hashed_name(self, *args: Any, **kwargs: Any) -> str:
         name = super().hashed_name(*args, **kwargs)
@@ -248,6 +268,9 @@ class CompressedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
     def compress_files(self, paths: Iterable[str]) -> Iterator[tuple[str, str]]:
         self.compressor = compressor = self.create_compressor(**get_compressor_kwargs(quiet=True))
+        protected_paths = {self.path(path) for path in getattr(self, "_protected_paths", ())}
+        with contextlib.suppress(AttributeError):
+            compressor._protected_paths = protected_paths
 
         def _compress_path(path: str) -> list[tuple[str, str]]:
             compressed: list[tuple[str, str]] = []

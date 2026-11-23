@@ -67,9 +67,9 @@ If you need to compress files outside of the static files storage system you can
 
 ??? note "Stale compressed files"
 
-    When a file changes so that compression of an encoding is no longer effective, `collectstatic` removes the compressed variant it previously generated (`.gz`, `.br`, or `.zstd`) rather than leaving stale content to be served. Variants belonging to encodings you have disabled are left in place; run `collectstatic --clear` to remove them.
+    When a file changes so that compression of an encoding is no longer effective, `collectstatic` removes the compressed variant it previously generated (`.gz`, `.br`, or `.zstd`) rather than leaving stale content to be served. Variants belonging to encodings you have disabled, or to extensions excluded by `SERVESTATIC_SKIP_COMPRESS_EXTENSIONS`, are left in place and will continue to be served if a client requests them; run `collectstatic --clear` to remove them.
 
-    ServeStatic cannot distinguish variants it generated from compressed files you provide yourself. If you ship a compressed file alongside an uncompressed file, and that encoding is not effective for the uncompressed file, the compressed file may be removed as stale.
+    ServeStatic cannot distinguish variants it generated from compressed files you provide yourself. Compressed files supplied as part of your static sources are treated as source files and are preserved by `collectstatic`. Compressed files placed directly in `STATIC_ROOT` are not tracked as sources and may be removed as stale; the standalone compression command cannot make this distinction either.
 
 ## Step 4: Make sure Django's `staticfiles` is configured correctly
 

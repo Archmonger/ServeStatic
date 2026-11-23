@@ -91,9 +91,10 @@ _shared_headers: dict[tuple[str, str | None], tuple[str, str | None]] = {}
 
 # RFC 9110 section 13.1.2 allows `*` or a comma-separated list of entity tags.
 # Opaque tags may themselves contain commas, so split the header into tokens
-# rather than naively splitting on ",". This matches either the wildcard or a
-# single (possibly weak) entity tag.
-_IF_NONE_MATCH_TAG_RE = re.compile(r'(?:W/)?"[^"]*"|\*')
+# rather than naively splitting on ",". Tokens may be quoted (the RFC form) or
+# unquoted for backwards compatibility with custom ETag values supplied through
+# `SERVESTATIC_ADD_HEADERS_FUNCTION`.
+_IF_NONE_MATCH_TAG_RE = re.compile(r'(?:[^,"]|"[^"]*")+')
 
 # Cap the amount of header data we parse, matching the limit used for
 # `Accept-Encoding`, so an attacker cannot force unbounded work per request.
@@ -510,10 +511,16 @@ class StaticFile:
             # RFC 9110 section 13.1.2: If-None-Match uses the weak comparison
             # function, so "W/" prefixes are ignored on both sides. The value
             # may be "*" or a comma-separated list of entity tags, and opaque
-            # tags may contain commas.
-            for match in _IF_NONE_MATCH_TAG_RE.finditer(if_none_match[:_MAX_IF_NONE_MATCH_LENGTH]):
-                tag = match.group()
-                if tag == "*" or (self.etag is not None and tag.removeprefix("W/") == self.etag.removeprefix("W/")):
+            # tags may contain commas. Unquoted tags are accepted for backwards
+            # compatibility with custom ETag values.
+            value = if_none_match[:_MAX_IF_NONE_MATCH_LENGTH].strip()
+            if value == "*":
+                return True
+            if self.etag is None:
+                return False
+            etag = self.etag.removeprefix("W/")
+            for match in _IF_NONE_MATCH_TAG_RE.finditer(value):
+                if match.group().strip().removeprefix("W/") == etag:
                     return True
             return False
         if self.last_modified is None:

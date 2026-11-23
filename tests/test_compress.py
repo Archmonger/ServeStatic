@@ -289,3 +289,52 @@ def test_compress_zstd_removes_stale_variant_when_not_effective(tmp_path, monkey
 
     assert compressor.compress(str(source_path)) == []
     assert not stale_path.exists()
+
+
+def test_compress_gzip_removes_stale_variant_when_not_effective(tmp_path):
+    source_path = tmp_path / "app.js"
+    source_path.write_bytes(b"hi")
+    stale_path = tmp_path / "app.js.gz"
+    stale_path.write_bytes(b"stale")
+
+    compressor = Compressor(use_gzip=True, use_brotli=False, use_zstd=False, quiet=True)
+
+    assert compressor.compress(str(source_path)) == []
+    assert not stale_path.exists()
+
+
+def test_compress_brotli_removes_stale_variant_when_not_effective(tmp_path, monkeypatch):
+    monkeypatch.setattr(Compressor, "compress_brotli", staticmethod(lambda data: data))
+
+    source_path = tmp_path / "app.js"
+    source_path.write_bytes(b"a" * 1000)
+    stale_path = tmp_path / "app.js.br"
+    stale_path.write_bytes(b"stale")
+
+    compressor = Compressor(use_gzip=False, use_brotli=True, use_zstd=False, quiet=True)
+
+    assert compressor.compress(str(source_path)) == []
+    assert not stale_path.exists()
+
+
+def test_remove_stale_skips_directory(tmp_path):
+    stale_path = tmp_path / "app.js.gz"
+    stale_path.mkdir()
+
+    Compressor.remove_stale(str(stale_path))
+
+    assert stale_path.is_dir()
+
+
+def test_compress_preserves_protected_stale_variant(tmp_path, monkeypatch):
+    monkeypatch.setattr(Compressor, "compress_brotli", staticmethod(lambda data: data))
+
+    source_path = tmp_path / "app.js"
+    source_path.write_bytes(b"a" * 1000)
+    protected_path = tmp_path / "app.js.br"
+    protected_path.write_bytes(b"user supplied")
+
+    compressor = Compressor(use_gzip=False, use_brotli=True, use_zstd=False, quiet=True)
+
+    assert compressor.compress(str(source_path), {str(protected_path)}) == []
+    assert protected_path.read_bytes() == b"user supplied"

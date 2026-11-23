@@ -930,10 +930,29 @@ def test_if_none_match_star_matches_without_etag():
     assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": "*"})
 
 
+def test_if_none_match_non_star_without_etag_does_not_match():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry()})
+    assert responder.etag is None
+    assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": '"abc"'})
+
+
 def test_if_none_match_ignores_tags_beyond_length_limit():
     responder = StaticFile(__file__, [("ETag", '"abc"')], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
     padding = '"' + ("x" * 2048) + '"'
     assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": f'{padding}, "abc"'})
+
+
+def test_if_none_match_matches_unquoted_custom_etag():
+    responder = StaticFile(__file__, [("ETag", "abc")], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": "abc"})
+    assert responder.is_not_modified({"HTTP_IF_NONE_MATCH": "W/abc"})
+    assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": '"abc"'})
+
+
+def test_if_none_match_rejects_malformed_wildcard_and_adjacent_tags():
+    responder = StaticFile(__file__, [("ETag", '"abc"')], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    for if_none_match in ('"abc"*', "foo*bar", "W/*", '"abc""def"'):
+        assert not responder.is_not_modified({"HTTP_IF_NONE_MATCH": if_none_match}), if_none_match
 
 
 def test_shared_headers_are_interned_between_static_files():
