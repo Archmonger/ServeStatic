@@ -450,6 +450,23 @@ def test_cli_hash_errors_reported_to_stderr_when_quiet(tmp_path, monkeypatch, ca
     assert "test.txt" in captured.err
 
 
+def test_cli_compress_mixed_success_and_failure(tmp_path, capsys):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "failed.js").write_text("console.log(1);\n" * 500)
+    (src / "succeeded.js").write_text("console.log(2);\n" * 500)
+    dest = tmp_path / "dest"
+    (dest / "failed.js.gz").mkdir(parents=True)
+
+    assert main(["--compress", "--no-brotli", "--no-zstd", str(src), str(dest)]) == 1
+
+    captured = capsys.readouterr()
+    assert "Error compressing" in captured.err
+    assert "failed.js" in captured.err
+    assert "succeeded.js" not in captured.err
+    assert (dest / "succeeded.js.gz").exists()
+
+
 def test_cli_passes_zstd_options_to_compressor(tmp_path, monkeypatch):
     src = tmp_path / "src"
     src.mkdir()
