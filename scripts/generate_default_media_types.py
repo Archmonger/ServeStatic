@@ -39,9 +39,7 @@ EXTRA_MIMETYPES = {
     ".jxl": "image/jxl",
     ".md": "text/markdown",
     ".mjs": "text/javascript",
-    ".woff": "application/font-woff",
-    ".woff2": "font/woff2",
-    "apple-app-site-association": "application/pkc7-mime",
+    "apple-app-site-association": "application/json",
     # Adobe: https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/xdomain.html#policy-file-host-basics
     "crossdomain.xml": "text/x-cross-domain-policy",
 }

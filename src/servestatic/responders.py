@@ -4,10 +4,10 @@ import contextlib
 import errno
 import os
 import stat
+from calendar import timegm
 from email.utils import formatdate, parsedate
 from http import HTTPStatus
 from io import BufferedIOBase
-from time import mktime
 from typing import TYPE_CHECKING, cast
 from urllib.parse import quote
 from wsgiref.headers import Headers
@@ -53,7 +53,7 @@ NOT_ALLOWED_RESPONSE = Response(
 )
 
 # Headers which should be returned with a 304 Not Modified response as
-# specified here: https://tools.ietf.org/html/rfc7232#section-4.1
+# specified here: https://www.rfc-editor.org/rfc/rfc9110#section-15.4.5
 NOT_MODIFIED_HEADERS = (
     "Access-Control-Allow-Origin",
     "Cache-Control",
@@ -63,6 +63,11 @@ NOT_MODIFIED_HEADERS = (
     "Expires",
     "Vary",
 )
+
+# 416 responses should not be cached, so deliberately keep only the CORS
+# header from the base headers so cross-origin range probes can read the
+# response.
+RANGE_NOT_SATISFIABLE_HEADERS = frozenset({"access-control-allow-origin"})
 
 
 class SlicedFile(BufferedIOBase):
@@ -129,6 +134,8 @@ class AsyncSlicedFile:
 
 
 class StaticFile:
+    __slots__ = ("alternatives", "etag", "last_modified", "not_modified_response")
+
     def __init__(
         self,
         path: str,
@@ -151,7 +158,7 @@ class StaticFile:
         path, headers = self.get_path_and_headers(request_headers)
         file_handle = open(path, "rb") if method != "HEAD" else None
         range_header = request_headers.get("HTTP_RANGE")
-        if range_header:
+        if range_header and self.is_if_range_satisfied(request_headers):
             # If we can't interpret the Range request for any reason then
             # just ignore it and return the standard response (this
             # behaviour is allowed by the spec)
@@ -187,7 +194,7 @@ class StaticFile:
             return self.not_modified_response
         path, headers = self.get_path_and_headers(request_headers)
         range_header = request_headers.get("HTTP_RANGE")
-        if range_header:
+        if range_header and self.is_if_range_satisfied(request_headers):
             # Range requests always require a real file handle. zerocopysend is the
             # only offload extension that supports slicing, so when it is advertised
             # we keep the raw (fd-backed) handle and annotate the response with the
@@ -351,7 +358,9 @@ class StaticFile:
     ) -> Response:
         if file_handle is not None:
             file_handle.close()
-        response_headers = list(headers) if headers else []
+        response_headers = [
+            (key, value) for key, value in (headers or []) if key.lower() in RANGE_NOT_SATISFIABLE_HEADERS
+        ]
         response_headers.append(("Content-Range", f"bytes */{size}"))
         return Response(
             HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
@@ -372,7 +381,9 @@ class StaticFile:
         because the unsatisfiable response discards it."""
         if file_handle is not None and not isinstance(file_handle, AsyncFile):
             file_handle.close()
-        response_headers = list(headers) if headers else []
+        response_headers = [
+            (key, value) for key, value in (headers or []) if key.lower() in RANGE_NOT_SATISFIABLE_HEADERS
+        ]
         response_headers.append(("Content-Range", f"bytes */{size}"))
         return Response(
             HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
@@ -411,7 +422,7 @@ class StaticFile:
         if "ETag" not in headers:
             last_modified = parsedate(headers["Last-Modified"])
             if last_modified:
-                timestamp = int(mktime(last_modified))
+                timestamp = timegm(last_modified)
                 headers["ETag"] = f'"{timestamp:x}-{main_file.size:x}"'
         return headers
 
@@ -451,44 +462,61 @@ class StaticFile:
             return last_requested_ts >= self.last_modified
         return False
 
+    def is_if_range_satisfied(self, request_headers: Mapping[str, str]) -> bool:
+        # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.5
+        if_range = request_headers.get("HTTP_IF_RANGE")
+        if if_range is None:
+            return True
+        if_range = if_range.strip()
+        if if_range.startswith("W/"):
+            # Weak entity tags never match
+            return False
+        if if_range.startswith('"'):
+            return if_range == self.etag
+        if self.last_modified is None:
+            return False
+        return parsedate(if_range) == self.last_modified
+
     def get_path_and_headers(self, request_headers: Mapping[str, str]) -> tuple[str, list[tuple[str, str | None]]]:
-        accept_encoding = request_headers.get("HTTP_ACCEPT_ENCODING", "")
-        if accept_encoding == "*":
-            accept_encoding = ""
-        accepted = parse_accept_encoding(accept_encoding)
-        # These are sorted by size so first match is the best
-        result = next(
-            (
-                (path, headers)
-                for encoding, path, headers in self.alternatives
-                # An uncompressed file is always an acceptable fallback.
-                if not encoding or encoding in accepted
-            ),
-            None,
-        )
-        if result is None:
+        accepted = parse_accept_encoding(request_headers.get("HTTP_ACCEPT_ENCODING", ""))
+        # These are sorted by size so ties go to the smallest
+        best: tuple[str, list[tuple[str, str | None]]] | None = None
+        best_quality = -1.0
+        for encoding, path, headers in self.alternatives:
+            if encoding is None:
+                # Serve uncompressed as a last resort, even if refused, since
+                # we cannot do better.
+                quality = accepted.get("identity", 0.0)
+            elif encoding in accepted:
+                quality = accepted[encoding]
+            else:
+                continue
+            if quality > best_quality:
+                best = (path, headers)
+                best_quality = quality
+        if best is None:
             msg = "No matching file found from path."
             raise MissingFileError(msg)
-        return result
+        return best
 
 
 class Redirect:
-    location = "Location"
+    __slots__ = ("headers", "location", "response")
 
     def __init__(self, location: str, headers: Mapping[str, str] | None = None) -> None:
-        response_headers: list[tuple[str, str | None]] = list(headers.items()) if headers else []
-        response_headers.append((self.location, quote(location.encode("utf8"))))
-        self.response = Response(HTTPStatus.FOUND, response_headers, None)
+        self.headers: list[tuple[str, str | None]] = list(headers.items()) if headers else []
+        self.location = quote(location.encode("utf8"))
+        self.response = Response(HTTPStatus.FOUND, [*self.headers, ("Location", self.location)], None)
 
     def get_response(self, method: str, request_headers: Mapping[str, str]) -> Response:
         query_string = request_headers.get("QUERY_STRING")
-        if query_string:
-            headers = list(self.response.headers)
-            i, value = next((i, value) for (i, (name, value)) in enumerate(headers) if name == self.location)
-            value = f"{value or ''}?{query_string}"
-            headers[i] = (self.location, value)
-            return Response(self.response.status, headers, None)
-        return self.response
+        if not query_string:
+            return self.response
+        return Response(
+            HTTPStatus.FOUND,
+            [*self.headers, ("Location", f"{self.location}?{query_string}")],
+            None,
+        )
 
     async def aget_response(
         self,

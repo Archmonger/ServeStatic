@@ -124,7 +124,7 @@ def default_types() -> dict[str, str]:
         ".wml": "text/vnd.wap.wml",
         ".wmlc": "application/vnd.wap.wmlc",
         ".wmv": "video/x-ms-wmv",
-        ".woff": "application/font-woff",
+        ".woff": "font/woff",
         ".woff2": "font/woff2",
         ".xhtml": "application/xhtml+xml",
         ".xls": "application/vnd.ms-excel",
@@ -133,6 +133,6 @@ def default_types() -> dict[str, str]:
         ".xpi": "application/x-xpinstall",
         ".xspf": "application/xspf+xml",
         ".zip": "application/zip",
-        "apple-app-site-association": "application/pkc7-mime",
+        "apple-app-site-association": "application/json",
         "crossdomain.xml": "text/x-cross-domain-policy",
     }

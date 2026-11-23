@@ -7,6 +7,7 @@ import re
 import shutil
 import stat
 import tempfile
+import time
 import warnings
 from contextlib import closing
 from pathlib import Path
@@ -175,39 +176,83 @@ def test_get_accept_gzip_with_qvalue(server, files):
 @pytest.mark.parametrize(
     ("header", "expected"),
     [
-        ("gzip", {"gzip"}),
-        ("gzip, br", {"gzip", "br"}),
-        ("gzip;", {"gzip"}),
-        ("Brotli", {"brotli"}),
-        ("gzip ; q=0.5", {"gzip"}),
-        ("gzip;foo=bar", {"gzip"}),
-        ("gzip;q=abc", set()),
-        ("gzip; q", {"gzip"}),
-        (",,", set()),
-        ("", set()),
+        ("gzip", {"gzip": 1.0}),
+        ("gzip, br", {"gzip": 1.0, "br": 1.0}),
+        ("gzip;", {}),
+        ("Brotli", {"brotli": 1.0}),
+        ("gzip ; q=0.5", {"gzip": 0.5}),
+        ("gzip;q=1", {"gzip": 1.0}),
+        ("gzip;Q=0.5", {"gzip": 0.5}),
+        ("gzip;foo=bar", {}),
+        ("gzip;q=abc", {}),
+        ("gzip; q", {}),
+        (",,", {}),
+        ("", {}),
         # Spaces around commas, mixed case, and surrounding whitespace.
-        (" gzip , br ", {"gzip", "br"}),
-        ("GZIP, BroTLI", {"gzip", "brotli"}),
-        ("gzip,,br", {"gzip", "br"}),
-        ("gzip,", {"gzip"}),
-        # OWS around the q= separator.
-        ("gzip ; q = 0.5", {"gzip"}),
-        ("gzip;q =0", set()),
-        # Multiple parameters after the coding.
-        ("gzip;foo=bar;q=0", set()),
-        ("gzip;evil;q=0.5", {"gzip"}),
-        # Quoted qvalues are not valid per RFC 9110; treated as unacceptable.
-        ('gzip; q="0.5"', set()),
-        # Unparseable qvalues are treated as unacceptable.
-        ("gzip;q=1e999", set()),
-        ("gzip;q=-0.5", set()),
-        ("gzip;q=", set()),
-        # qvalue of exactly 1.0 and ordering of params.
-        ("gzip;q=1;foo=bar", {"gzip"}),
+        (" gzip , br ", {"gzip": 1.0, "br": 1.0}),
+        ("GZIP, BroTLI", {"gzip": 1.0, "brotli": 1.0}),
+        ("gzip,,br", {"gzip": 1.0, "br": 1.0}),
+        ("gzip,", {"gzip": 1.0}),
+        # The x-gzip alias is treated as gzip, and duplicate codings keep the
+        # highest qvalue.
+        ("x-gzip", {"gzip": 1.0}),
+        ("gzip;q=0.2, x-gzip;q=0.7", {"gzip": 0.7}),
+        # The wildcard is treated as accepting no codings.
+        ("*", {}),
+        ("*;q=1", {}),
+        # Refused codings are omitted.
+        ("gzip;q=0", {}),
+        ("gzip;q=0.000", {}),
+        ("gzip;q=1.5", {}),
+        ("gzip;q=-1", {}),
+        ("gzip;q=", {}),
+        ("gzip;q=1e999", {}),
+        # OWS around the q= separator is not accepted.
+        ("gzip ; q = 0.5", {}),
+        ("gzip;q =0", {}),
+        # Additional parameters invalidate the entry.
+        ("gzip;foo=bar;q=0", {}),
+        ("gzip;evil;q=0.5", {}),
+        ("gzip;q=1;foo=bar", {}),
+        # Quoted qvalues are not valid per RFC 9110.
+        ('gzip; q="0.5"', {}),
+        # Unknown codings are returned whole, not matched as substrings.
+        ("x-gzip-really", {"x-gzip-really": 1.0}),
+        ("supergzip", {"supergzip": 1.0}),
+        ("gzip;q=0.5, identity", {"gzip": 0.5, "identity": 1.0}),
     ],
 )
 def test_parse_accept_encoding(header, expected):
     assert parse_accept_encoding(header) == expected
+
+
+def test_parse_accept_encoding_rejects_overlong_header():
+    # Protect against DoS attacks by refusing to parse long headers.
+    assert parse_accept_encoding("gzip," * 500) == {}
+
+
+def test_get_accept_encoding_prefers_highest_qvalue(server, files):
+    response = server.get(
+        files.gzip_url,
+        headers={"Accept-Encoding": "gzip;q=0.5, identity"},
+    )
+    assert response.content == files.gzip_content
+    assert "Content-Encoding" not in response.headers
+
+
+def test_get_accept_encoding_ties_go_to_smallest_file(server, files):
+    response = server.get(
+        files.gzip_url,
+        headers={"Accept-Encoding": "gzip;q=0.5, identity;q=0.5"},
+    )
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.content == files.gzip_content
+
+
+def test_get_accept_encoding_serves_x_gzip_as_gzip(server, files):
+    response = server.get(files.gzip_url, headers={"Accept-Encoding": "x-gzip"})
+    assert response.headers["Content-Encoding"] == "gzip"
+    assert response.content == files.gzip_content
 
 
 def test_cannot_directly_request_gzipped_file(server, files):
@@ -398,12 +443,59 @@ def test_request_last_byte_plus_one_is_out_of_range(server, files):
     assert response.headers["Content-Range"] == f"bytes */{len(files.js_content)}"
 
 
+def test_if_range_etag_matches(server, files):
+    etag = server.get(files.js_url).headers["ETag"]
+    response = server.get(files.js_url, headers={"Range": "bytes=0-0", "If-Range": etag})
+    assert response.status_code == 206
+    assert response.content == files.js_content[:1]
+
+
+def test_if_range_etag_doesnt_match(server, files):
+    response = server.get(
+        files.js_url,
+        headers={"Range": "bytes=0-0", "If-Range": '"594bd1d1-36"'},
+    )
+    assert response.status_code == 200
+    assert response.content == files.js_content
+
+
+def test_if_range_weak_etag_doesnt_match(server, files):
+    etag = server.get(files.js_url).headers["ETag"]
+    response = server.get(files.js_url, headers={"Range": "bytes=0-0", "If-Range": f"W/{etag}"})
+    assert response.status_code == 200
+    assert response.content == files.js_content
+
+
+def test_if_range_date_matches(server, files):
+    last_mod = server.get(files.js_url).headers["Last-Modified"]
+    response = server.get(files.js_url, headers={"Range": "bytes=0-0", "If-Range": last_mod})
+    assert response.status_code == 206
+    assert response.content == files.js_content[:1]
+
+
+def test_if_range_date_doesnt_match(server, files):
+    response = server.get(
+        files.js_url,
+        headers={"Range": "bytes=0-0", "If-Range": "Fri, 11 Apr 2001 11:47:06 GMT"},
+    )
+    assert response.status_code == 200
+    assert response.content == files.js_content
+
+
+def test_if_range_unparsable_date_doesnt_match(server, files):
+    response = server.get(files.js_url, headers={"Range": "bytes=0-0", "If-Range": "garbage"})
+    assert response.status_code == 200
+    assert response.content == files.js_content
+
+
 def test_out_of_range_error(server, files):
     response = server.get(files.js_url, headers={"Range": "bytes=10000-11000"})
     assert response.status_code == 416
     assert response.headers["Content-Range"] == f"bytes */{len(files.js_content)}"
     assert response.headers.get("Access-Control-Allow-Origin") == "*"
-    assert "Cache-Control" in response.headers
+    assert "Cache-Control" not in response.headers
+    assert "ETag" not in response.headers
+    assert "Content-Type" not in response.headers
 
 
 def test_warn_about_missing_directories(application):
@@ -707,6 +799,30 @@ def test_get_headers_preserves_existing_last_modified_and_etag():
     )
     assert headers["Last-Modified"] == "Wed, 21 Oct 2015 07:28:00 GMT"
     assert headers["ETag"] == '"existing"'
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset() is Unix-only")
+def test_etag_independent_of_timezone(monkeypatch):
+    mtime = 1_700_000_000
+    stat_cache = {__file__: fake_stat_entry(st_size=1024, st_mtime=mtime)}
+    monkeypatch.setenv("TZ", "EST+05")
+    time.tzset()
+    try:
+        responder = StaticFile(__file__, [], stat_cache=stat_cache)
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+    assert responder.etag == f'"{mtime:x}-400"'
+
+
+def test_async_get_response_honours_if_range():
+    responder = StaticFile(__file__, [], stat_cache={__file__: fake_stat_entry(st_mtime=1)})
+    response = asyncio.run(
+        responder.aget_response("HEAD", {"HTTP_RANGE": "bytes=0-0", "HTTP_IF_RANGE": responder.etag})
+    )
+    assert int(response.status) == 206
+    response = asyncio.run(responder.aget_response("HEAD", {"HTTP_RANGE": "bytes=0-0", "HTTP_IF_RANGE": '"nope"'}))
+    assert int(response.status) == 200
 
 
 def test_file_entry_reraises_unexpected_oserror():

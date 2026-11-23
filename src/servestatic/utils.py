@@ -5,9 +5,9 @@ import concurrent.futures
 import contextlib
 import functools
 import importlib
-import math
 import os
 from concurrent.futures import ThreadPoolExecutor
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar, cast
 
 # The standalone ASGI/WSGI core only hard-depends on asgiref. To remain trio-
@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Concatenate, ParamSpec, TypeVar, cast
 # asymmetric asyncio-only code paths are the fallback used when no trio is present.
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, Iterator
+    from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable, Iterator, Mapping
     from io import IOBase
     from os import PathLike
 
@@ -81,43 +81,62 @@ def ensure_leading_trailing_slash(path: str | None) -> str:
     return f"/{path}/" if path else "/"
 
 
-def parse_accept_encoding(header: str) -> set[str]:
-    """
-    Return the set of content codings the client is willing to accept.
+# Recipients should treat x-gzip as equivalent to gzip:
+# https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1.3
+CODING_ALIASES = MappingProxyType({"x-gzip": "gzip"})
 
-    The header is parsed as described in RFC 9110 section 12.5.3 rather than
-    matched as a substring, so that a coding the client has refused with
-    ``q=0`` is not offered to it, and a coding name is only recognised when it
-    appears as a whole token.
+
+def parse_accept_encoding(header: str) -> Mapping[str, float]:
     """
-    accepted: set[str] = set()
-    for entry in header.split(","):
-        coding, _, params = entry.partition(";")
-        coding = coding.strip().lower()
-        if not coding:
+    Return a mapping of content codings the client accepts to their qvalues,
+    per RFC 9110 section 12.5.3.
+
+    Refused codings, with ``q=0``, are omitted. The wildcard ``*`` is treated
+    as accepting no codings.
+    """
+    if len(header) > 2048:
+        # Protect against DoS attacks by limiting the length we're willing to parse
+        return MappingProxyType({})
+
+    # Content codings and parameter names are case-insensitive:
+    # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
+    return _parse_accept_encoding(header.lower())
+
+
+# Browsers send a limited set of Accept-Encoding headers, so cache parsed results
+@functools.lru_cache
+def _parse_accept_encoding(header: str) -> Mapping[str, float]:
+    accepted: dict[str, float] = {}
+    for part in header.split(","):
+        stripped = part.strip()
+        if not stripped:
             continue
-        quality = 1.0
-        for param in params.split(";"):
-            name, sep, value = param.partition("=")
-            if name.strip().lower() != "q":
-                continue
-            if not sep:
-                break
-            try:
-                quality = float(value.strip())
-            except ValueError:
-                # An unparseable qvalue makes the whole entry invalid; treat
-                # the coding as unacceptable rather than guess.
-                quality = 0.0
-            else:
-                # Per RFC 9110 a qvalue must be a number in the range 0.000 to
-                # 1.000; any other finite value (e.g. ``inf``) is invalid.
-                if not math.isfinite(quality) or not 0.0 <= quality <= 1.0:
-                    quality = 0.0
-            break
-        if quality > 0:
-            accepted.add(coding)
-    return accepted
+        parsed = _parse_accept_encoding_part(stripped)
+        if parsed is not None:
+            coding, quality = parsed
+            accepted[coding] = max(quality, accepted.get(coding, 0.0))
+    return MappingProxyType(accepted)
+
+
+def _parse_accept_encoding_part(part: str) -> tuple[str, float] | None:
+    if part.startswith("*"):
+        return None
+
+    if ";" not in part:
+        return CODING_ALIASES.get(part, part), 1.0
+
+    coding, params = part.split(";", 1)
+    coding = coding.strip()
+    params = params.strip()
+    if params.startswith("q="):
+        try:
+            quality = float(params[2:])
+        except ValueError:
+            return None
+        if 0 < quality <= 1:
+            return CODING_ALIASES.get(coding, coding), quality
+
+    return None
 
 
 def scantree(root: str | PathLike[str]) -> Iterator[tuple[str, os.stat_result]]:

@@ -13,9 +13,17 @@ Don't forget to remove deprecated code on each major release!
 
 ## [Unreleased]
 
+### Changed
+
+- `Accept-Encoding` handling now follows RFC 9110 qvalues: the acceptable variant with the highest qvalue is served (ties go to the smallest file), an explicitly requested `identity` is preferred when it has a higher qvalue than a compressed variant, `x-gzip` is treated as `gzip`, and the `*` wildcard is treated as accepting no codings. Header parsing is capped at 2048 bytes to avoid excessive work on attacker-controlled input.
+
 ### Fixed
 
 - The `servestatic` CLI now exits with a non-zero status code when any file fails to hash or compress, and reports each error, including the file name, to standard error even when `--quiet` is used. Previously, errors were only logged to standard output and the command still exited `0`, which hid failures from CI and build scripts.
+- Range requests now honour the `If-Range` header per RFC 9110 section 13.1.5. A strong entity tag must match exactly, weak entity tags never match, and a date must equal `Last-Modified`; otherwise the full representation is returned with `200` instead of a `206`, preventing clients from splicing ranges from different versions of a file.
+- Generated ETags are now independent of the server's time zone, so servers in different time zones produce the same ETag for the same file and `If-None-Match`/`If-Range` keep working across them. ETags change once for servers not running in UTC.
+- `416 Range Not Satisfiable` responses now carry only `Access-Control-Allow-Origin` (plus `Content-Range`) instead of all base headers. Cache headers, validators, and content headers are omitted so caches do not store the error response.
+- `.woff` files are now served as `font/woff` (matching nginx since 2018), and `apple-app-site-association` files are served as `application/json`.
 
 ## [4.4.1] - 2026-11-14
 

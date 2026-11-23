@@ -115,7 +115,9 @@ def test_out_of_range_error(application, test_files):
     assert send.status == 416
     assert send.headers[b"content-range"] == b"bytes */%d" % len(test_files.js_content)
     assert send.headers[b"access-control-allow-origin"] == b"*"
-    assert b"cache-control" in send.headers
+    assert b"cache-control" not in send.headers
+    assert b"etag" not in send.headers
+    assert b"content-type" not in send.headers
 
 
 def test_wrong_method_type(application, test_files):
